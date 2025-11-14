@@ -92,7 +92,7 @@ const ChatBotDemo = () => {
   };
 
   return (
-    <div className="mx-auto size-full h-screen max-w-4xl p-6">
+    <div className="mx-auto size-full h-screen max-w-4xl p-14">
       <div className="flex h-full flex-col">
         <Conversation className="h-full">
           <ConversationContent>
