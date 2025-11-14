@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { PrivyProvider } from "@privy-io/react-auth";
 
 type Props = {
@@ -11,6 +11,16 @@ const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 const privyClientId = process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID;
 
 export function PrivyAuthProvider({ children }: Props) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <>{children}</>;
+  }
+
   if (!privyAppId) {
     if (process.env.NODE_ENV === "development") {
       console.warn(

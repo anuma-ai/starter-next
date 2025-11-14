@@ -28,11 +28,7 @@ export function PrivySignInButton() {
   };
 
   if (!ready) {
-    return (
-      <Button size="sm" disabled>
-        Sign in
-      </Button>
-    );
+    return <Button disabled>Sign in</Button>;
   }
 
   if (authenticated) {
@@ -51,7 +47,7 @@ export function PrivySignInButton() {
   }
 
   return (
-    <Button size="sm" onClick={handleLogin} disabled={isLoading}>
+    <Button onClick={handleLogin} disabled={isLoading}>
       Sign in
     </Button>
   );

@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 const Home = () => {
   return (
     <div className="relative min-h-screen">
-      <div className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 py-3">
-        <div className="flex w-full max-w-7xl justify-end">
+      <div className="fixed inset-x-0 top-0 z-50 flex justify-center border-b border-border bg-background/90 px-4 py-3 backdrop-blur">
+        <div className="flex w-full max-w-5xl justify-end">
           <PrivySignInButton />
         </div>
       </div>
