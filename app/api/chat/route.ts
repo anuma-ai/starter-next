@@ -15,38 +15,12 @@ export async function POST(req: Request) {
     webSearch: boolean;
   } = await req.json();
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL || "https://ai-portal-dev.zetachain.com";
-
-  const authorizationToken =
-    process.env.REVERBIA_API_KEY ??
-    process.env.REVERBIA_PORTAL_API_KEY ??
-    process.env.REVERBIA_TOKEN;
-
-  const headers =
-    authorizationToken != null && authorizationToken.length > 0
-      ? {
-          Authorization: authorizationToken.startsWith("Bearer ")
-            ? authorizationToken
-            : `Bearer ${authorizationToken}`,
-        }
-      : undefined;
-
-  const systemPrompt =
-    "You are a helpful assistant that can answer questions and help with tasks";
-
-  const requestMessages = [
-    { role: "system", content: systemPrompt },
-    ...mapMessagesToCompletionPayload(messages),
-  ];
-
   const completion = await postApiV1ChatCompletions({
-    baseUrl,
-    headers,
+    baseUrl: "https://ai-portal-dev.zetachain.com",
     body: {
       model: webSearch ? "perplexity/sonar" : model,
       stream: false,
-      messages: requestMessages,
+      messages: mapMessagesToCompletionPayload(messages),
     },
   });
 

@@ -1057,17 +1057,17 @@
   resolved "https://registry.npmjs.org/@radix-ui/rect/-/rect-1.1.1.tgz#78244efe12930c56fd255d7923865857c41ac8cb"
   integrity sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==
 
-"@reverbia/portal@1.0.0-next.20251112":
-  version "1.0.0-next.20251112"
-  resolved "https://registry.npmjs.org/@reverbia/portal/-/portal-1.0.0-next.20251112.tgz#3e9bacb3d77ac6eaaeb78710a52e49f158121661"
-  integrity sha512-tet6SRzhl9ZbLmylZNA9KZ2Gbkk4EU/8G+7dyJJAXH6p4W2DgBx2CqfoWqFVdky6UqrPMvqZJKsiHC5sPHeuPg==
+"@reverbia/portal@^1.0.0-next.20251113192414":
+  version "1.0.0"
+  resolved "https://registry.npmjs.org/@reverbia/portal/-/portal-1.0.0.tgz#a6f968f8c04eec7395226cbab9b10ae2c16b8281"
+  integrity sha512-bpBqn/3v4IG5Df+ltdudWX0ebT3TTN/uKaHmKbxQ6fdU4HsOkkWuN5JIZxEq2tJhDlKA2w8BNMsRP/krmABhXQ==
 
-"@reverbia/sdk@^1.0.0-next.20251113133026":
-  version "1.0.0-next.20251113133026"
-  resolved "https://registry.npmjs.org/@reverbia/sdk/-/sdk-1.0.0-next.20251113133026.tgz#cb3fb2f9dde2f594de9bfc347a72ba1a2d0cf2dc"
-  integrity sha512-E0qXmTmMuw28UvK1FyTNtR9dpvA+d2v642ADhj6TBBD/CBIb7ZSP1l5NfDo8lm7lJt70edeehr2oPJS0QJzIBQ==
+"@reverbia/sdk@^1.0.0-next.20251113193348":
+  version "1.0.0-next.20251113193348"
+  resolved "https://registry.npmjs.org/@reverbia/sdk/-/sdk-1.0.0-next.20251113193348.tgz#b170ed02c1d58b3d6e9ee8e65736c91738111266"
+  integrity sha512-jzNwSO46a5czNnukUlgOAVF9hBjVfDtYpzie4DLS/H/M6QgL7AdWixrzr7U2N4Qic/hJ31BqiGdcrzRYjmkb+g==
   dependencies:
-    "@reverbia/portal" "1.0.0-next.20251112"
+    "@reverbia/portal" "^1.0.0-next.20251113192414"
 
 "@rtsao/scc@^1.1.0":
   version "1.1.0"
