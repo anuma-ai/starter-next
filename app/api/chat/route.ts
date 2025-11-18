@@ -13,25 +13,21 @@ export async function POST(req: Request) {
   const {
     messages,
     model,
-    webSearch,
   }: {
     messages: UIMessage[];
     model: string;
-    webSearch: boolean;
   } = await req.json();
 
   const completion = await postApiV1ChatCompletions({
-    baseUrl: "https://ai-portal-dev.zetachain.com",
     body: {
-      model: webSearch ? "perplexity/sonar" : model,
-      stream: false,
+      model,
       messages: mapMessagesToCompletionPayload(messages),
     },
   });
 
   if (!completion.data) {
     const errorMessage =
-      completion.error?.error ?? "The Reverbia API did not return a response.";
+      completion.error?.error ?? "API did not return a response.";
 
     return createUIMessageStreamResponse({
       stream: createErrorStream(errorMessage),
