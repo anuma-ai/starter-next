@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { CopyIcon, GlobeIcon, RefreshCcwIcon } from "lucide-react";
-import { useChat } from "@ai-sdk/react";
+import { useState, useCallback } from "react";
+import { CopyIcon, GlobeIcon } from "lucide-react";
+import { usePrivy } from "@privy-io/react-auth";
+import { useVercelChat } from "@/hooks/useVercelChat";
 
 import {
   Conversation,
@@ -63,33 +64,21 @@ const models = [
 ];
 
 const ChatBotDemo = () => {
-  const [input, setInput] = useState("");
+  const { getAccessToken } = usePrivy();
   const [model, setModel] = useState<string>(models[0]!.value);
   const [webSearch, setWebSearch] = useState(false);
-  const { messages, sendMessage, status, regenerate } = useChat();
+  const { messages, input, setInput, handleSubmit, isLoading, status } =
+    useVercelChat({
+      model: models[0]!.value,
+      getToken: getAccessToken,
+    });
 
-  const handleSubmit = (message: PromptInputMessage) => {
-    const hasText = Boolean(message.text);
-    const hasAttachments = Boolean(message.files?.length);
-
-    if (!(hasText || hasAttachments)) {
-      return;
-    }
-
-    sendMessage(
-      {
-        text: message.text || "Sent with attachments",
-        files: message.files,
-      },
-      {
-        body: {
-          model,
-          webSearch,
-        },
-      }
-    );
-    setInput("");
-  };
+  const onSubmit = useCallback(
+    async (message: PromptInputMessage) => {
+      await handleSubmit(message, { model });
+    },
+    [model, handleSubmit]
+  );
 
   return (
     <div className="mx-auto size-full h-screen max-w-4xl p-14">
@@ -134,12 +123,6 @@ const ChatBotDemo = () => {
                             i === message.parts.length - 1 && (
                               <MessageActions>
                                 <MessageAction
-                                  label="Retry"
-                                  onClick={() => regenerate()}
-                                >
-                                  <RefreshCcwIcon className="size-3" />
-                                </MessageAction>
-                                <MessageAction
                                   label="Copy"
                                   onClick={() =>
                                     navigator.clipboard.writeText(part.text)
@@ -156,11 +139,7 @@ const ChatBotDemo = () => {
                         <Reasoning
                           key={`${message.id}-${i}`}
                           className="w-full"
-                          isStreaming={
-                            status === "streaming" &&
-                            i === message.parts.length - 1 &&
-                            message.id === messages.at(-1)?.id
-                          }
+                          isStreaming={false}
                         >
                           <ReasoningTrigger />
                           <ReasoningContent>{part.text}</ReasoningContent>
@@ -172,17 +151,12 @@ const ChatBotDemo = () => {
                 })}
               </div>
             ))}
-            {status === "submitted" && <Loader />}
+            {isLoading && <Loader />}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
 
-        <PromptInput
-          className="mt-4"
-          globalDrop
-          multiple
-          onSubmit={handleSubmit}
-        >
+        <PromptInput className="mt-4" globalDrop multiple onSubmit={onSubmit}>
           <PromptInputHeader>
             <PromptInputAttachments>
               {(attachment) => (
@@ -232,7 +206,7 @@ const ChatBotDemo = () => {
                 </PromptInputSelectContent>
               </PromptInputSelect>
             </PromptInputTools>
-            <PromptInputSubmit disabled={!input && !status} status={status} />
+            <PromptInputSubmit disabled={!input || isLoading} status={status} />
           </PromptInputFooter>
         </PromptInput>
       </div>
