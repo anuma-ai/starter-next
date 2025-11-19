@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import type { UIMessage, ChatStatus, FileUIPart } from "ai";
-// import { useChat } from "@reverbia/sdk/react";
-import { useChatWithMemory } from "./useChatWithMemory";
+import { useChat } from "@reverbia/sdk/react";
+import { useMemory } from "./useMemory";
 import { mapMessagesToCompletionPayload } from "@reverbia/sdk/vercel";
 
 type SendMessageOptions = {
@@ -40,10 +40,14 @@ export function useVercelChat(initialOptions?: {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { sendMessage: baseSendMessage, isLoading } = useChatWithMemory({
+  const { sendMessage: baseSendMessage, isLoading } = useChat({
+    getToken: initialOptions?.getToken,
+  });
+  const { extractFromMessage } = useMemory({
     getToken: initialOptions?.getToken,
   });
   const [defaultModel] = useState(initialOptions?.model);
+  const lastProcessedMessageRef = useRef<string | null>(null);
 
   const sendMessage = useCallback(
     async (
@@ -128,6 +132,18 @@ export function useVercelChat(initialOptions?: {
         // Add assistant message to messages
         setMessages((prev) => [...prev, assistantMessage]);
         setError(null);
+
+        // Extract facts from user message if it's new
+        const userMessageText = message.text || "";
+        if (
+          userMessageText &&
+          userMessageText !== lastProcessedMessageRef.current
+        ) {
+          lastProcessedMessageRef.current = userMessageText;
+          extractFromMessage(userMessageText).catch((error) => {
+            console.error("Error in automatic fact extraction:", error);
+          });
+        }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to send message.";
@@ -136,7 +152,7 @@ export function useVercelChat(initialOptions?: {
         throw err;
       }
     },
-    [messages, baseSendMessage, defaultModel]
+    [messages, baseSendMessage, defaultModel, extractFromMessage]
   );
 
   const handleSubmit = useCallback(
