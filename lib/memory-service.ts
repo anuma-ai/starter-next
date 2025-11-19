@@ -78,9 +78,9 @@ export interface ExtractFactsOptions {
 /**
  * Extracts facts from a user message using an LLM
  */
-export async function extractFacts(
+export const extractFacts = async (
   options: ExtractFactsOptions
-): Promise<MemoryExtractionResult | null> {
+): Promise<MemoryExtractionResult | null> => {
   const { api, model, message, conversationHistory = [], getToken } = options;
 
   try {
@@ -207,4 +207,4 @@ Extract facts from the user message above. Return only valid JSON.`;
     console.error("Error extracting facts:", error);
     return null;
   }
-}
+};

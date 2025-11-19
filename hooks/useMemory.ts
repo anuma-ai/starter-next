@@ -3,6 +3,7 @@
 import { useCallback, useRef } from "react";
 import { postApiV1ChatCompletions } from "@reverbia/sdk";
 import type { MemoryExtractionResult } from "@/lib/memory-service";
+import { saveMemories } from "@/lib/memory-db";
 
 const FACT_EXTRACTION_PROMPT = `You extract durable user memories from chat messages.
 
@@ -169,6 +170,16 @@ export function useMemory(options: UseMemoryOptions = {}): UseMemoryResult {
 
         // Console log the result as requested
         console.log("Extracted memories:", JSON.stringify(result, null, 2));
+
+        // Save memories to IndexedDB
+        if (result.items && result.items.length > 0) {
+          try {
+            await saveMemories(result.items);
+            console.log(`Saved ${result.items.length} memories to IndexedDB`);
+          } catch (error) {
+            console.error("Failed to save memories to IndexedDB:", error);
+          }
+        }
 
         if (onFactsExtracted) {
           onFactsExtracted(result);
