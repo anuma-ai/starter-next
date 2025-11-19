@@ -2,7 +2,8 @@
 
 import { useCallback, useState } from "react";
 import type { UIMessage, ChatStatus, FileUIPart } from "ai";
-import { useChat } from "@reverbia/sdk/react";
+// import { useChat } from "@reverbia/sdk/react";
+import { useChatWithMemory } from "./useChatWithMemory";
 import { mapMessagesToCompletionPayload } from "@reverbia/sdk/vercel";
 
 type SendMessageOptions = {
@@ -39,7 +40,7 @@ export function useVercelChat(initialOptions?: {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { sendMessage: baseSendMessage, isLoading } = useChat({
+  const { sendMessage: baseSendMessage, isLoading } = useChatWithMemory({
     getToken: initialOptions?.getToken,
   });
   const [defaultModel] = useState(initialOptions?.model);
