@@ -38,11 +38,8 @@ export function useVercelChat(initialOptions?: {
 }): UseVercelChatResult {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
-  const {
-    sendMessage: baseSendMessage,
-    isLoading,
-    error,
-  } = useChat({
+  const [error, setError] = useState<string | null>(null);
+  const { sendMessage: baseSendMessage, isLoading } = useChat({
     getToken: initialOptions?.getToken,
   });
   const [defaultModel] = useState(initialOptions?.model);
@@ -54,9 +51,10 @@ export function useVercelChat(initialOptions?: {
     ) => {
       const model = options?.model || defaultModel;
       if (!model) {
-        throw new Error(
-          "Model is required. Provide it in options or initialOptions."
-        );
+        const error =
+          "Model is required. Provide it in options or initialOptions.";
+        setError(error);
+        throw new Error(error);
       }
 
       const hasText = Boolean(message.text);
@@ -86,6 +84,7 @@ export function useVercelChat(initialOptions?: {
       // Add user message to messages
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages);
+      setError(null);
 
       try {
         // Convert UIMessages to LlmapiMessages
@@ -97,9 +96,21 @@ export function useVercelChat(initialOptions?: {
           model,
         });
 
+        // Check for errors in the response
+        if (response.error) {
+          setError(response.error);
+          throw new Error(response.error);
+        }
+
+        if (!response.data) {
+          const error = "API did not return a completion response.";
+          setError(error);
+          throw new Error(error);
+        }
+
         // Extract assistant response
         const assistantContent =
-          response.choices?.[0]?.message?.content?.trim() ?? "";
+          response.data.choices?.[0]?.message?.content?.trim() ?? "";
 
         // Create assistant message
         const assistantMessage: UIMessage = {
@@ -115,8 +126,11 @@ export function useVercelChat(initialOptions?: {
 
         // Add assistant message to messages
         setMessages((prev) => [...prev, assistantMessage]);
+        setError(null);
       } catch (err) {
-        // Error is already handled by base useChat hook
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to send message.";
+        setError(errorMessage);
         // Re-throw to allow component to handle if needed
         throw err;
       }
