@@ -16,7 +16,7 @@ export interface MemoryExtractionResult {
   items: MemoryItem[];
 }
 
-const FACT_EXTRACTION_PROMPT = `You extract durable user memories from chat messages.
+export const FACT_EXTRACTION_PROMPT = `You extract durable user memories from chat messages.
 
 Only extract facts that will be useful in future conversations, such as identity, stable preferences, ongoing projects, skills, and constraints.
 
@@ -74,6 +74,74 @@ export interface ExtractFactsOptions {
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
   getToken?: () => Promise<string | null>;
 }
+
+/**
+ * Pre-processes memory items to filter broken entries and deduplicate
+ * @param items Array of memory items to preprocess
+ * @param minConfidence Minimum confidence threshold (default: 0.6)
+ * @returns Preprocessed array of memory items
+ */
+export const preprocessMemories = (
+  items: MemoryItem[],
+  minConfidence: number = 0.6
+): MemoryItem[] => {
+  if (!items || !Array.isArray(items)) {
+    return [];
+  }
+
+  // Step 1: Filter out broken entries
+  const validItems = items.filter((item) => {
+    // Check for missing namespace, key, or value
+    if (
+      !item.namespace ||
+      !item.key ||
+      !item.value ||
+      item.namespace.trim() === "" ||
+      item.key.trim() === "" ||
+      item.value.trim() === ""
+    ) {
+      console.warn(
+        "Dropping memory item with missing namespace, key, or value:",
+        item
+      );
+      return false;
+    }
+
+    // Check confidence threshold
+    if (
+      typeof item.confidence !== "number" ||
+      item.confidence < minConfidence
+    ) {
+      console.warn(
+        `Dropping memory item with confidence ${item.confidence} below threshold ${minConfidence}:`,
+        item
+      );
+      return false;
+    }
+
+    return true;
+  });
+
+  // Step 2: Deduplicate entries with same namespace + key + value
+  // Keep the entry with the highest confidence
+  const deduplicatedMap = new Map<string, MemoryItem>();
+
+  for (const item of validItems) {
+    const uniqueKey = `${item.namespace}:${item.key}:${item.value}`;
+    const existing = deduplicatedMap.get(uniqueKey);
+
+    if (!existing || item.confidence > existing.confidence) {
+      deduplicatedMap.set(uniqueKey, item);
+    } else {
+      console.debug(
+        `Deduplicating memory item: keeping entry with higher confidence (${existing.confidence} > ${item.confidence})`,
+        { namespace: item.namespace, key: item.key, value: item.value }
+      );
+    }
+  }
+
+  return Array.from(deduplicatedMap.values());
+};
 
 /**
  * Extracts facts from a user message using an LLM
@@ -193,6 +261,21 @@ Extract facts from the user message above. Return only valid JSON.`;
 
     try {
       const result: MemoryExtractionResult = JSON.parse(jsonContent);
+
+      // Preprocess memories: filter broken entries and deduplicate
+      if (result.items && Array.isArray(result.items)) {
+        const originalCount = result.items.length;
+        result.items = preprocessMemories(result.items);
+        const filteredCount = result.items.length;
+
+        if (originalCount !== filteredCount) {
+          console.log(
+            `Preprocessed memories: ${originalCount} -> ${filteredCount} (dropped ${
+              originalCount - filteredCount
+            } entries)`
+          );
+        }
+      }
 
       // Console log the result as requested
       console.log("Extracted memories:", JSON.stringify(result, null, 2));

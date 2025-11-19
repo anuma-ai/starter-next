@@ -3,58 +3,9 @@
 import { useCallback, useRef } from "react";
 import { postApiV1ChatCompletions } from "@reverbia/sdk";
 import type { MemoryExtractionResult } from "@/lib/memory-service";
+import { preprocessMemories } from "@/lib/memory-service";
 import { saveMemories } from "@/lib/memory-db";
-
-const FACT_EXTRACTION_PROMPT = `You extract durable user memories from chat messages.
-
-Only extract facts that will be useful in future conversations, such as identity, stable preferences, ongoing projects, skills, and constraints.
-
-Do not extract sensitive attributes, temporary things, or single-use instructions.
-
-Return a JSON object with a "items" array.
-
-Example:
-
-{
-  "items": [
-    {
-      "type": "identity",
-      "namespace": "identity",
-      "key": "name",
-      "value": "Charlie",
-      "rawEvidence": "I'm Charlie",
-      "confidence": 0.98,
-      "pii": true
-    },
-    {
-      "type": "identity",
-      "namespace": "work",
-      "key": "company",
-      "value": "ZetaChain",
-      "rawEvidence": "called ZetaChain",
-      "confidence": 0.99,
-      "pii": false
-    },
-    {
-      "type": "preference",
-      "namespace": "answer_style",
-      "key": "verbosity",
-      "value": "concise_direct",
-      "rawEvidence": "I prefer concise, direct answers",
-      "confidence": 0.96,
-      "pii": false
-    },
-    {
-      "type": "identity",
-      "namespace": "timezone",
-      "key": "tz",
-      "value": "America/Los_Angeles",
-      "rawEvidence": "I'm in PST",
-      "confidence": 0.9,
-      "pii": false
-    }
-  ]
-}`;
+import { FACT_EXTRACTION_PROMPT } from "@/lib/memory-service";
 
 export type UseMemoryOptions = {
   /**
@@ -168,7 +119,20 @@ export function useMemory(options: UseMemoryOptions = {}): UseMemoryResult {
 
         const result: MemoryExtractionResult = JSON.parse(jsonContent);
 
-        // Console log the result as requested
+        if (result.items && Array.isArray(result.items)) {
+          const originalCount = result.items.length;
+          result.items = preprocessMemories(result.items);
+          const filteredCount = result.items.length;
+
+          if (originalCount !== filteredCount) {
+            console.log(
+              `Preprocessed memories: ${originalCount} -> ${filteredCount} (dropped ${
+                originalCount - filteredCount
+              } entries)`
+            );
+          }
+        }
+
         console.log("Extracted memories:", JSON.stringify(result, null, 2));
 
         // Save memories to IndexedDB
