@@ -75,9 +75,6 @@ export type UseMemoryOptions = {
 };
 
 export type UseMemoryResult = {
-  /**
-   * Extract facts from a user message
-   */
   extractFromMessage: (
     message: string
   ) => Promise<MemoryExtractionResult | null>;
@@ -112,20 +109,16 @@ export function useMemory(options: UseMemoryOptions = {}): UseMemoryResult {
           return null;
         }
 
-        const fullPrompt = `${FACT_EXTRACTION_PROMPT}
-
-User message to extract facts from:
-${message}
-
-Extract facts from the user message above. Return only valid JSON.`;
-
-        // Call postApiV1ChatCompletions directly
         const completion = await postApiV1ChatCompletions({
           body: {
             messages: [
               {
+                role: "system",
+                content: FACT_EXTRACTION_PROMPT,
+              },
+              {
                 role: "user",
-                content: fullPrompt,
+                content: message,
               },
             ],
             model: memoryModel,

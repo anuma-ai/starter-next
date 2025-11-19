@@ -40,14 +40,15 @@ export function useVercelChat(initialOptions?: {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const getToken = initialOptions?.getToken;
   const { sendMessage: baseSendMessage, isLoading } = useChat({
-    getToken: initialOptions?.getToken,
+    getToken,
   });
   const { extractFromMessage } = useMemory({
-    getToken: initialOptions?.getToken,
+    getToken,
   });
   const [defaultModel] = useState(initialOptions?.model);
-  const lastProcessedMessageRef = useRef<string | null>(null);
+  const processedMessageIdsRef = useRef<Set<string>>(new Set());
 
   const sendMessage = useCallback(
     async (
@@ -133,13 +134,13 @@ export function useVercelChat(initialOptions?: {
         setMessages((prev) => [...prev, assistantMessage]);
         setError(null);
 
-        // Extract facts from user message if it's new
+        // Extract facts from user message if it hasn't been processed yet
         const userMessageText = message.text || "";
         if (
           userMessageText &&
-          userMessageText !== lastProcessedMessageRef.current
+          !processedMessageIdsRef.current.has(userMessage.id)
         ) {
-          lastProcessedMessageRef.current = userMessageText;
+          processedMessageIdsRef.current.add(userMessage.id);
           extractFromMessage(userMessageText).catch((error) => {
             console.error("Error in automatic fact extraction:", error);
           });
