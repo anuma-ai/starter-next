@@ -3,8 +3,12 @@
 import { useCallback, useState, useRef } from "react";
 import type { UIMessage, ChatStatus, FileUIPart } from "ai";
 import { useChat } from "@reverbia/sdk/react";
-import { useMemory } from "./useMemory";
+import { useMemory } from "@reverbia/sdk/react";
 import { mapMessagesToCompletionPayload } from "@reverbia/sdk/vercel";
+import {
+  extractConversationContext,
+  formatMemoriesForChat,
+} from "@reverbia/sdk/react";
 
 type SendMessageOptions = {
   model: string;
@@ -36,6 +40,11 @@ type UseVercelChatResult = {
 export function useVercelChat(initialOptions?: {
   model?: string;
   getToken?: () => Promise<string | null>;
+  embeddingModel?: string;
+  memorySearchLimit?: number;
+  memoryMinSimilarity?: number;
+  memoryUseFallbackThreshold?: boolean;
+  memoryFallbackThreshold?: number;
 }): UseVercelChatResult {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
@@ -44,11 +53,20 @@ export function useVercelChat(initialOptions?: {
   const { sendMessage: baseSendMessage, isLoading } = useChat({
     getToken,
   });
-  const { extractFromMessage } = useMemory({
+  const { extractMemoriesFromMessage, searchMemories } = useMemory({
     getToken,
+    generateEmbeddings: true,
+    embeddingModel:
+      initialOptions?.embeddingModel || "openai/text-embedding-3-small",
   });
   const [defaultModel] = useState(initialOptions?.model);
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
+  const memorySearchLimit = initialOptions?.memorySearchLimit ?? 5;
+  const memoryMinSimilarity = initialOptions?.memoryMinSimilarity ?? 0.5;
+  const memoryUseFallbackThreshold =
+    initialOptions?.memoryUseFallbackThreshold ?? true;
+  const memoryFallbackThreshold =
+    initialOptions?.memoryFallbackThreshold ?? 0.3;
 
   const sendMessage = useCallback(
     async (
@@ -93,12 +111,84 @@ export function useVercelChat(initialOptions?: {
       setError(null);
 
       try {
-        // Convert UIMessages to LlmapiMessages
+        // 1. Extract context from recent conversation for memory search
+        const conversationHistory = updatedMessages
+          .map((msg) => {
+            const textPart = msg.parts?.find((p) => p.type === "text");
+            return {
+              role: msg.role,
+              content: textPart?.type === "text" ? textPart.text : "",
+            };
+          })
+          .filter((msg) => msg.content);
+
+        const context = extractConversationContext(conversationHistory, 3);
+
+        // 2. Search for relevant memories
+        let memoryContext: string | null = null;
+        if (context && searchMemories) {
+          try {
+            // First try with the main threshold
+            let relevantMemories = await searchMemories(
+              context,
+              memorySearchLimit,
+              memoryMinSimilarity
+            );
+
+            // If no memories found and fallback is enabled, try with lower threshold
+            if (
+              (!relevantMemories || relevantMemories.length === 0) &&
+              memoryUseFallbackThreshold
+            ) {
+              console.log(
+                `[Memory Lookup] No memories above threshold ${memoryMinSimilarity}, trying fallback threshold ${memoryFallbackThreshold}`
+              );
+              relevantMemories = await searchMemories(
+                context,
+                memorySearchLimit,
+                memoryFallbackThreshold
+              );
+            }
+
+            // 3. Format memories for chat context
+            if (relevantMemories && relevantMemories.length > 0) {
+              memoryContext = formatMemoriesForChat(
+                relevantMemories,
+                "compact"
+              );
+              const topSimilarity =
+                relevantMemories[0]?.similarity?.toFixed(3) || "N/A";
+              console.log(
+                `[Memory Lookup] Found ${relevantMemories.length} relevant memories (top similarity: ${topSimilarity})`
+              );
+            } else {
+              console.log(
+                `[Memory Lookup] No memories found above similarity threshold ${memoryMinSimilarity}`
+              );
+            }
+          } catch (memoryError) {
+            console.error("Error searching memories:", memoryError);
+            // Continue without memory context if search fails
+          }
+        }
+
+        // 4. Convert UIMessages to LlmapiMessages and include memory context
         const llmMessages = mapMessagesToCompletionPayload(updatedMessages);
+
+        // 5. Include memory context as system message if available
+        const messagesWithContext = memoryContext
+          ? [
+              {
+                role: "system" as const,
+                content: `User context:\n${memoryContext}`,
+              },
+              ...llmMessages,
+            ]
+          : llmMessages;
 
         // Call the API
         const response = await baseSendMessage({
-          messages: llmMessages,
+          messages: messagesWithContext,
           model,
         });
 
@@ -141,7 +231,10 @@ export function useVercelChat(initialOptions?: {
           !processedMessageIdsRef.current.has(userMessage.id)
         ) {
           processedMessageIdsRef.current.add(userMessage.id);
-          extractFromMessage(userMessageText).catch((error) => {
+          extractMemoriesFromMessage({
+            messages: [{ role: "user", content: userMessageText }],
+            model,
+          }).catch((error) => {
             console.error("Error in automatic fact extraction:", error);
           });
         }
@@ -153,7 +246,17 @@ export function useVercelChat(initialOptions?: {
         throw err;
       }
     },
-    [messages, baseSendMessage, defaultModel, extractFromMessage]
+    [
+      messages,
+      baseSendMessage,
+      defaultModel,
+      extractMemoriesFromMessage,
+      searchMemories,
+      memorySearchLimit,
+      memoryMinSimilarity,
+      memoryUseFallbackThreshold,
+      memoryFallbackThreshold,
+    ]
   );
 
   const handleSubmit = useCallback(
