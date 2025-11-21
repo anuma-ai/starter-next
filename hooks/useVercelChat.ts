@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import type { UIMessage, ChatStatus, FileUIPart } from "ai";
 import { useChat } from "@reverbia/sdk/react";
 import { useMemory } from "@reverbia/sdk/react";
@@ -53,12 +53,14 @@ export function useVercelChat(initialOptions?: {
   const { sendMessage: baseSendMessage, isLoading } = useChat({
     getToken,
   });
+  const embeddingModelConfig =
+    initialOptions?.embeddingModel || "openai/text-embedding-3-small";
   const { extractMemoriesFromMessage, searchMemories } = useMemory({
     getToken,
     generateEmbeddings: true,
-    embeddingModel:
-      initialOptions?.embeddingModel || "openai/text-embedding-3-small",
+    embeddingModel: embeddingModelConfig,
   });
+
   const [defaultModel] = useState(initialOptions?.model);
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
   const memorySearchLimit = initialOptions?.memorySearchLimit ?? 5;
@@ -234,9 +236,22 @@ export function useVercelChat(initialOptions?: {
           extractMemoriesFromMessage({
             messages: [{ role: "user", content: userMessageText }],
             model,
-          }).catch((error) => {
-            console.error("Error in automatic fact extraction:", error);
-          });
+          })
+            .then((result) => {
+              if (result && result.items && result.items.length > 0) {
+                console.log(
+                  `[Memory Extraction] Extracted ${result.items.length} memories with embeddings enabled`
+                );
+              } else {
+                console.log("[Memory Extraction] No memories extracted");
+              }
+            })
+            .catch((error) => {
+              console.error(
+                "[Memory Extraction] Error in automatic fact extraction:",
+                error
+              );
+            });
         }
       } catch (err) {
         const errorMessage =
