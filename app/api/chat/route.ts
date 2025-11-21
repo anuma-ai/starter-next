@@ -35,6 +35,13 @@ export async function POST(req: Request) {
     });
   }
 
+  // Handle case where data might be a string (streaming response)
+  if (typeof completion.data === "string") {
+    return createUIMessageStreamResponse({
+      stream: createAssistantStream(completion.data),
+    });
+  }
+
   const responseText =
     completion.data.choices?.[0]?.message?.content?.trim() ?? "";
 
