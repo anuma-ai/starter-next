@@ -57,6 +57,15 @@ export function useVercelChat(initialOptions?: {
     stop,
   } = useChat({
     getToken,
+    onFinish: (response) => {
+      console.log("Chat finished:", response);
+    },
+    onError: (error) => {
+      console.error("Chat error:", error);
+    },
+    onData: (chunk) => {
+      console.log("Chat data chunk:", chunk);
+    },
   });
   const embeddingModelConfig =
     initialOptions?.embeddingModel || "openai/text-embedding-3-small";
