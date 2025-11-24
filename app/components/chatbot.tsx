@@ -67,7 +67,7 @@ const ChatBotDemo = () => {
   const { getAccessToken } = usePrivy();
   const [model, setModel] = useState<string>(models[0]!.value);
   const [webSearch, setWebSearch] = useState(false);
-  const { messages, input, setInput, handleSubmit, isLoading, status } =
+  const { messages, input, setInput, handleSubmit, isLoading, status, stop } =
     useVercelChat({
       model: models[0]!.value,
       getToken: getAccessToken,
@@ -206,7 +206,16 @@ const ChatBotDemo = () => {
                 </PromptInputSelectContent>
               </PromptInputSelect>
             </PromptInputTools>
-            <PromptInputSubmit disabled={!input || isLoading} status={status} />
+            <PromptInputSubmit
+              disabled={isLoading ? false : !input}
+              onClick={(e) => {
+                if (isLoading) {
+                  e.preventDefault();
+                  stop();
+                }
+              }}
+              status={status}
+            />
           </PromptInputFooter>
         </PromptInput>
       </div>

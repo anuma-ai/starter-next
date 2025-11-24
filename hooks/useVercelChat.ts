@@ -34,6 +34,7 @@ type UseVercelChatResult = {
     options?: SendMessageOptions
   ) => Promise<void>;
   setMessages: React.Dispatch<React.SetStateAction<UIMessage[]>>;
+  stop: () => void;
   status: ChatStatus | undefined;
 };
 
@@ -50,7 +51,11 @@ export function useVercelChat(initialOptions?: {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const getToken = initialOptions?.getToken;
-  const { sendMessage: baseSendMessage, isLoading } = useChat({
+  const {
+    sendMessage: baseSendMessage,
+    isLoading,
+    stop,
+  } = useChat({
     getToken,
   });
   const embeddingModelConfig =
@@ -313,7 +318,7 @@ export function useVercelChat(initialOptions?: {
     [sendMessage]
   );
 
-  const status: ChatStatus | undefined = isLoading ? "submitted" : undefined;
+  const status: ChatStatus | undefined = isLoading ? "streaming" : undefined;
 
   return {
     error,
@@ -324,6 +329,7 @@ export function useVercelChat(initialOptions?: {
     handleSubmit,
     sendMessage,
     setMessages,
+    stop,
     status,
   };
 }
