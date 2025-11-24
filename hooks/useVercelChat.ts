@@ -209,7 +209,7 @@ export function useVercelChat(initialOptions?: {
         const response = await baseSendMessage({
           messages: messagesWithContext,
           model,
-          onChunk: (chunk) => {
+          onData: (chunk) => {
             accumulatedContent += chunk;
             setMessages((prev) =>
               prev.map((msg) => {
