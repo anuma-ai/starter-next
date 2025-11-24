@@ -64,11 +64,11 @@ export function useVercelChat(initialOptions?: {
   const [defaultModel] = useState(initialOptions?.model);
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
   const memorySearchLimit = initialOptions?.memorySearchLimit ?? 5;
-  const memoryMinSimilarity = initialOptions?.memoryMinSimilarity ?? 0.5;
+  const memoryMinSimilarity = initialOptions?.memoryMinSimilarity ?? 0.2;
   const memoryUseFallbackThreshold =
     initialOptions?.memoryUseFallbackThreshold ?? true;
   const memoryFallbackThreshold =
-    initialOptions?.memoryFallbackThreshold ?? 0.3;
+    initialOptions?.memoryFallbackThreshold ?? 0.1;
 
   const sendMessage = useCallback(
     async (
