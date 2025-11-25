@@ -64,7 +64,7 @@ const models = [
 ];
 
 const ChatBotDemo = () => {
-  const { getAccessToken } = usePrivy();
+  const { getAccessToken, authenticated } = usePrivy();
   const [model, setModel] = useState<string>(models[0]!.value);
   const [webSearch, setWebSearch] = useState(false);
   const { messages, input, setInput, handleSubmit, isLoading, status, stop } =
@@ -166,7 +166,13 @@ const ChatBotDemo = () => {
           </PromptInputHeader>
           <PromptInputBody>
             <PromptInputTextarea
+              disabled={!authenticated}
               onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                authenticated
+                  ? "What would you like to know?"
+                  : "Please sign in to chat"
+              }
               value={input}
             />
           </PromptInputBody>
@@ -207,13 +213,7 @@ const ChatBotDemo = () => {
               </PromptInputSelect>
             </PromptInputTools>
             <PromptInputSubmit
-              disabled={isLoading ? false : !input}
-              onClick={(e) => {
-                if (isLoading) {
-                  e.preventDefault();
-                  stop();
-                }
-              }}
+              disabled={!input || isLoading || !authenticated}
               status={status}
             />
           </PromptInputFooter>
