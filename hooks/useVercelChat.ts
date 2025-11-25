@@ -53,12 +53,9 @@ export function useVercelChat(initialOptions?: {
   const { sendMessage: baseSendMessage, isLoading } = useChat({
     getToken,
   });
-  const embeddingModelConfig =
-    initialOptions?.embeddingModel || "openai/text-embedding-3-small";
   const { extractMemoriesFromMessage, searchMemories } = useMemory({
     getToken,
     generateEmbeddings: true,
-    embeddingModel: embeddingModelConfig,
   });
 
   const [defaultModel] = useState(initialOptions?.model);
