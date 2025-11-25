@@ -67,7 +67,7 @@ const ChatBotDemo = () => {
   const { getAccessToken, authenticated } = usePrivy();
   const [model, setModel] = useState<string>(models[0]!.value);
   const [webSearch, setWebSearch] = useState(false);
-  const { messages, input, setInput, handleSubmit, isLoading, status } =
+  const { messages, input, setInput, handleSubmit, isLoading, status, stop } =
     useVercelChat({
       model: models[0]!.value,
       getToken: getAccessToken,

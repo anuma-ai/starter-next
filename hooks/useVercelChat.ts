@@ -34,6 +34,7 @@ type UseVercelChatResult = {
     options?: SendMessageOptions
   ) => Promise<void>;
   setMessages: React.Dispatch<React.SetStateAction<UIMessage[]>>;
+  stop: () => void;
   status: ChatStatus | undefined;
 };
 
@@ -50,8 +51,21 @@ export function useVercelChat(initialOptions?: {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const getToken = initialOptions?.getToken;
-  const { sendMessage: baseSendMessage, isLoading } = useChat({
+  const {
+    sendMessage: baseSendMessage,
+    isLoading,
+    stop,
+  } = useChat({
     getToken,
+    onFinish: (response) => {
+      console.log("Chat finished:", response);
+    },
+    onError: (error) => {
+      console.error("Chat error:", error);
+    },
+    onData: (chunk) => {
+      console.log("Chat data chunk:", chunk);
+    },
   });
   const embeddingModelConfig =
     initialOptions?.embeddingModel || "openai/text-embedding-3-small";
@@ -188,42 +202,67 @@ export function useVercelChat(initialOptions?: {
             ]
           : llmMessages;
 
+        // Create assistant message placeholder
+        const assistantMessageId = `assistant-${Date.now()}`;
+        const assistantMessage: UIMessage = {
+          id: assistantMessageId,
+          role: "assistant",
+          parts: [
+            {
+              type: "text",
+              text: "",
+            },
+          ],
+        };
+
+        // Add assistant message to messages immediately
+        setMessages((prev) => [...prev, assistantMessage]);
+        let accumulatedContent = "";
+
         // Call the API
         const response = await baseSendMessage({
           messages: messagesWithContext,
           model,
+          onData: (chunk) => {
+            accumulatedContent += chunk;
+            setMessages((prev) =>
+              prev.map((msg) => {
+                if (msg.id === assistantMessageId) {
+                  return {
+                    ...msg,
+                    parts: [
+                      {
+                        type: "text",
+                        text: accumulatedContent,
+                      },
+                    ],
+                  };
+                }
+                return msg;
+              })
+            );
+          },
         });
 
         // Check for errors in the response
         if (response.error) {
           setError(response.error);
+          // Remove the placeholder message on error
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== assistantMessageId)
+          );
           throw new Error(response.error);
         }
 
         if (!response.data) {
           const error = "API did not return a completion response.";
           setError(error);
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== assistantMessageId)
+          );
           throw new Error(error);
         }
 
-        // Extract assistant response
-        const assistantContent =
-          response.data.choices?.[0]?.message?.content?.trim() ?? "";
-
-        // Create assistant message
-        const assistantMessage: UIMessage = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          parts: [
-            {
-              type: "text",
-              text: assistantContent,
-            },
-          ],
-        };
-
-        // Add assistant message to messages
-        setMessages((prev) => [...prev, assistantMessage]);
         setError(null);
 
         // Extract facts from user message if it hasn't been processed yet
@@ -288,7 +327,7 @@ export function useVercelChat(initialOptions?: {
     [sendMessage]
   );
 
-  const status: ChatStatus | undefined = isLoading ? "submitted" : undefined;
+  const status: ChatStatus | undefined = isLoading ? "streaming" : undefined;
 
   return {
     error,
@@ -299,6 +338,7 @@ export function useVercelChat(initialOptions?: {
     handleSubmit,
     sendMessage,
     setMessages,
+    stop,
     status,
   };
 }
