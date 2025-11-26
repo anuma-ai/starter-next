@@ -38,7 +38,7 @@ type UseVercelChatResult = {
   status: ChatStatus | undefined;
 };
 
-export function useVercelChat(initialOptions?: {
+export function useVercelChat(options?: {
   model?: string;
   getToken?: () => Promise<string | null>;
   embeddingModel?: string;
@@ -50,13 +50,13 @@ export function useVercelChat(initialOptions?: {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const getToken = initialOptions?.getToken;
+
   const {
     sendMessage: baseSendMessage,
     isLoading,
     stop,
   } = useChat({
-    getToken,
+    getToken: options?.getToken,
     onFinish: (response) => {
       console.log("Chat finished:", response);
     },
@@ -67,29 +67,30 @@ export function useVercelChat(initialOptions?: {
       console.log("Chat data chunk:", chunk);
     },
   });
+
   const embeddingModelConfig =
-    initialOptions?.embeddingModel || "openai/text-embedding-3-small";
+    options?.embeddingModel || "openai/text-embedding-3-small";
   const { extractMemoriesFromMessage, searchMemories } = useMemory({
-    getToken,
+    getToken: options?.getToken,
     generateEmbeddings: true,
     embeddingModel: embeddingModelConfig,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
 
-  const [defaultModel] = useState(initialOptions?.model);
+  const defaultModel = options?.model;
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
-  const memorySearchLimit = initialOptions?.memorySearchLimit ?? 5;
-  const memoryMinSimilarity = initialOptions?.memoryMinSimilarity ?? 0.2;
+  const memorySearchLimit = options?.memorySearchLimit ?? 5;
+  const memoryMinSimilarity = options?.memoryMinSimilarity ?? 0.2;
   const memoryUseFallbackThreshold =
-    initialOptions?.memoryUseFallbackThreshold ?? true;
-  const memoryFallbackThreshold =
-    initialOptions?.memoryFallbackThreshold ?? 0.1;
+    options?.memoryUseFallbackThreshold ?? true;
+  const memoryFallbackThreshold = options?.memoryFallbackThreshold ?? 0.1;
 
   const sendMessage = useCallback(
     async (
       message: { text?: string; files?: UIMessage["parts"] },
-      options?: SendMessageOptions
+      sendOptions?: SendMessageOptions
     ) => {
-      const model = options?.model || defaultModel;
+      const model = sendOptions?.model || defaultModel;
       if (!model) {
         const error =
           "Model is required. Provide it in options or initialOptions.";
