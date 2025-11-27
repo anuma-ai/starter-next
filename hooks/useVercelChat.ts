@@ -22,6 +22,7 @@ type PromptInputMessage = {
 type UseVercelChatResult = {
   error: string | null;
   isLoading: boolean;
+  isSelectingTool?: boolean;
   messages: UIMessage[];
   input: string;
   setInput: (value: string) => void;
@@ -32,7 +33,7 @@ type UseVercelChatResult = {
   sendMessage: (
     message: { text?: string; files?: UIMessage["parts"] },
     options?: SendMessageOptions
-  ) => Promise<void>;
+  ) => Promise<any>;
   setMessages: React.Dispatch<React.SetStateAction<UIMessage[]>>;
   stop: () => void;
   status: ChatStatus | undefined;
@@ -56,11 +57,11 @@ export function useVercelChat(options?: {
   const {
     sendMessage: baseSendMessage,
     isLoading,
+    isSelectingTool,
     stop,
   } = useChat({
     getToken: options?.getToken,
     chatProvider: options?.chatProvider,
-    localModel: options?.localModel,
     onFinish: (response) => {
       console.log("Chat finished:", response);
     },
@@ -69,6 +70,50 @@ export function useVercelChat(options?: {
     },
     onData: (chunk) => {
       console.log("Chat data chunk:", chunk);
+    },
+    tools: [
+      {
+        name: "get_weather",
+        description: "Get the current weather for a location",
+        parameters: [
+          {
+            name: "location",
+            type: "string",
+            description: "City name",
+            required: true,
+          },
+        ],
+        execute: async (args) => {
+          const { location } = args as { location: string };
+          // Mock weather response
+          return { temperature: 72, condition: "sunny", location };
+        },
+      },
+      {
+        name: "calculate",
+        description: "Perform a mathematical calculation",
+        parameters: [
+          {
+            name: "expression",
+            type: "string",
+            description: "Math expression",
+            required: true,
+          },
+        ],
+        execute: (args) => {
+          const { expression } = args as { expression: string };
+          try {
+            // Safe evaluation for demo purposes
+            // eslint-disable-next-line no-eval
+            return eval(expression);
+          } catch (e) {
+            return "Error calculating";
+          }
+        },
+      },
+    ],
+    onToolExecution: (result) => {
+      console.log("Tool executed:", result.toolName, result.result);
     },
   });
 
@@ -297,6 +342,8 @@ export function useVercelChat(options?: {
               );
             });
         }
+
+        return response;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to send message.";
@@ -337,6 +384,7 @@ export function useVercelChat(options?: {
   return {
     error,
     isLoading,
+    isSelectingTool,
     messages,
     input,
     setInput,
