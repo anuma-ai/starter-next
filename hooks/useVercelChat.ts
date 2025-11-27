@@ -86,7 +86,11 @@ export function useVercelChat(options?: {
         execute: async (args) => {
           const { location } = args as { location: string };
           // Mock weather response
-          return { temperature: 72, condition: "sunny", location };
+          return {
+            temperature: Math.floor(Math.random() * 100),
+            condition: "sunny",
+            location,
+          };
         },
       },
       {
@@ -114,6 +118,10 @@ export function useVercelChat(options?: {
     ],
     onToolExecution: (result) => {
       console.log("Tool executed:", result.toolName, result.result);
+      return {
+        toolName: result.toolName,
+        result: result.result,
+      };
     },
   });
 
