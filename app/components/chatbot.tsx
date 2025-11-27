@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { CopyIcon, GlobeIcon } from "lucide-react";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import { useVercelChat } from "@/hooks/useVercelChat";
 
 import {
@@ -64,13 +64,19 @@ const models = [
 ];
 
 const ChatBotDemo = () => {
-  const { getAccessToken, authenticated } = usePrivy();
+  const { authenticated } = usePrivy();
+  const { identityToken } = useIdentityToken();
   const [model, setModel] = useState<string>(models[0]!.value);
   const [webSearch, setWebSearch] = useState(false);
+
+  const getIdentityToken = async (): Promise<string | null> => {
+    return identityToken ?? null;
+  };
+
   const { messages, input, setInput, handleSubmit, isLoading, status } =
     useVercelChat({
       model: models[0]!.value,
-      getToken: getAccessToken,
+      getToken: getIdentityToken,
     });
 
   const onSubmit = useCallback(

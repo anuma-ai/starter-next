@@ -34,10 +34,11 @@ type UseVercelChatResult = {
     options?: SendMessageOptions
   ) => Promise<void>;
   setMessages: React.Dispatch<React.SetStateAction<UIMessage[]>>;
+  stop: () => void;
   status: ChatStatus | undefined;
 };
 
-export function useVercelChat(initialOptions?: {
+export function useVercelChat(options?: {
   model?: string;
   getToken?: () => Promise<string | null>;
   embeddingModel?: string;
@@ -49,30 +50,47 @@ export function useVercelChat(initialOptions?: {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const getToken = initialOptions?.getToken;
-  const { sendMessage: baseSendMessage, isLoading } = useChat({
-    getToken,
-  });
-  const { extractMemoriesFromMessage, searchMemories } = useMemory({
-    getToken,
-    generateEmbeddings: true,
+
+  const {
+    sendMessage: baseSendMessage,
+    isLoading,
+    stop,
+  } = useChat({
+    getToken: options?.getToken,
+    onFinish: (response) => {
+      console.log("Chat finished:", response);
+    },
+    onError: (error) => {
+      console.error("Chat error:", error);
+    },
+    onData: (chunk) => {
+      console.log("Chat data chunk:", chunk);
+    },
   });
 
-  const [defaultModel] = useState(initialOptions?.model);
+  const embeddingModelConfig =
+    options?.embeddingModel || "openai/text-embedding-3-small";
+  const { extractMemoriesFromMessage, searchMemories } = useMemory({
+    getToken: options?.getToken,
+    generateEmbeddings: true,
+    embeddingModel: embeddingModelConfig,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+  });
+
+  const defaultModel = options?.model;
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
-  const memorySearchLimit = initialOptions?.memorySearchLimit ?? 5;
-  const memoryMinSimilarity = initialOptions?.memoryMinSimilarity ?? 0.2;
+  const memorySearchLimit = options?.memorySearchLimit ?? 5;
+  const memoryMinSimilarity = options?.memoryMinSimilarity ?? 0.2;
   const memoryUseFallbackThreshold =
-    initialOptions?.memoryUseFallbackThreshold ?? true;
-  const memoryFallbackThreshold =
-    initialOptions?.memoryFallbackThreshold ?? 0.1;
+    options?.memoryUseFallbackThreshold ?? true;
+  const memoryFallbackThreshold = options?.memoryFallbackThreshold ?? 0.1;
 
   const sendMessage = useCallback(
     async (
       message: { text?: string; files?: UIMessage["parts"] },
-      options?: SendMessageOptions
+      sendOptions?: SendMessageOptions
     ) => {
-      const model = options?.model || defaultModel;
+      const model = sendOptions?.model || defaultModel;
       if (!model) {
         const error =
           "Model is required. Provide it in options or initialOptions.";
@@ -185,42 +203,67 @@ export function useVercelChat(initialOptions?: {
             ]
           : llmMessages;
 
+        // Create assistant message placeholder
+        const assistantMessageId = `assistant-${Date.now()}`;
+        const assistantMessage: UIMessage = {
+          id: assistantMessageId,
+          role: "assistant",
+          parts: [
+            {
+              type: "text",
+              text: "",
+            },
+          ],
+        };
+
+        // Add assistant message to messages immediately
+        setMessages((prev) => [...prev, assistantMessage]);
+        let accumulatedContent = "";
+
         // Call the API
         const response = await baseSendMessage({
           messages: messagesWithContext,
           model,
+          onData: (chunk) => {
+            accumulatedContent += chunk;
+            setMessages((prev) =>
+              prev.map((msg) => {
+                if (msg.id === assistantMessageId) {
+                  return {
+                    ...msg,
+                    parts: [
+                      {
+                        type: "text",
+                        text: accumulatedContent,
+                      },
+                    ],
+                  };
+                }
+                return msg;
+              })
+            );
+          },
         });
 
         // Check for errors in the response
         if (response.error) {
           setError(response.error);
+          // Remove the placeholder message on error
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== assistantMessageId)
+          );
           throw new Error(response.error);
         }
 
         if (!response.data) {
           const error = "API did not return a completion response.";
           setError(error);
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== assistantMessageId)
+          );
           throw new Error(error);
         }
 
-        // Extract assistant response
-        const assistantContent =
-          response.data.choices?.[0]?.message?.content?.trim() ?? "";
-
-        // Create assistant message
-        const assistantMessage: UIMessage = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          parts: [
-            {
-              type: "text",
-              text: assistantContent,
-            },
-          ],
-        };
-
-        // Add assistant message to messages
-        setMessages((prev) => [...prev, assistantMessage]);
         setError(null);
 
         // Extract facts from user message if it hasn't been processed yet
@@ -285,7 +328,7 @@ export function useVercelChat(initialOptions?: {
     [sendMessage]
   );
 
-  const status: ChatStatus | undefined = isLoading ? "submitted" : undefined;
+  const status: ChatStatus | undefined = isLoading ? "streaming" : undefined;
 
   return {
     error,
@@ -296,6 +339,7 @@ export function useVercelChat(initialOptions?: {
     handleSubmit,
     sendMessage,
     setMessages,
+    stop,
     status,
   };
 }
