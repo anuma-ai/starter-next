@@ -733,6 +733,8 @@ export const PromptInput = ({
         // Don't clear on error - user may want to retry
       }
     });
+    // Always clear attachments immediately after submission is triggered
+    clear();
   };
 
   // Render with or without local provider
