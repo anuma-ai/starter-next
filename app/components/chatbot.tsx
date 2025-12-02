@@ -77,6 +77,7 @@ const ChatBotDemo = () => {
     useVercelChat({
       model: models[0]!.value,
       getToken: getIdentityToken,
+      chatProvider: "api",
     });
 
   const onSubmit = useCallback(

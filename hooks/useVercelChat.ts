@@ -46,6 +46,8 @@ export function useVercelChat(options?: {
   memoryMinSimilarity?: number;
   memoryUseFallbackThreshold?: boolean;
   memoryFallbackThreshold?: number;
+  chatProvider?: "api" | "local";
+  localModel?: string;
 }): UseVercelChatResult {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
@@ -57,6 +59,8 @@ export function useVercelChat(options?: {
     stop,
   } = useChat({
     getToken: options?.getToken,
+    chatProvider: options?.chatProvider,
+    localModel: options?.localModel,
     onFinish: (response) => {
       console.log("Chat finished:", response);
     },
