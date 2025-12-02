@@ -13,15 +13,19 @@ export async function POST(req: Request) {
   const {
     messages,
     model,
+    tools,
   }: {
     messages: UIMessage[];
     model: string;
+    tools?: any[];
   } = await req.json();
 
   const completion = await postApiV1ChatCompletions({
     body: {
       model,
       messages: mapMessagesToCompletionPayload(messages),
+      // @ts-expect-error - tools is not yet in the type definition
+      tools,
     },
   });
 

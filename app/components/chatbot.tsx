@@ -1,9 +1,19 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { CopyIcon, GlobeIcon } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { ChevronDown, CopyIcon } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
+import { useModels } from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
+
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import {
   Conversation,
@@ -20,14 +30,9 @@ import {
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuTrigger,
   PromptInputAttachment,
   PromptInputAttachments,
   PromptInputBody,
-  PromptInputButton,
   PromptInputFooter,
   PromptInputHeader,
   type PromptInputMessage,
@@ -52,32 +57,48 @@ import {
   SourcesTrigger,
 } from "@/components/ai-elements/sources";
 
-const models = [
-  {
-    name: "GPT 4o",
-    value: "openai/gpt-4o",
-  },
-  {
-    name: "Deepseek R1",
-    value: "deepseek/deepseek-r1",
-  },
-];
-
 const ChatBotDemo = () => {
   const { authenticated } = usePrivy();
   const { identityToken } = useIdentityToken();
-  const [model, setModel] = useState<string>(models[0]!.value);
-  const [webSearch, setWebSearch] = useState(false);
 
-  const getIdentityToken = async (): Promise<string | null> => {
+  const getIdentityToken = useCallback(async (): Promise<string | null> => {
     return identityToken ?? null;
-  };
+  }, [identityToken]);
+
+  const { models, refetch } = useModels({
+    getToken: getIdentityToken,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+  });
+
+  useEffect(() => {
+    if (authenticated && identityToken) {
+      refetch();
+    }
+  }, [authenticated, identityToken, refetch]);
+
+  const [model, setModel] = useState<string>("openai/gpt-4o");
+
+  const [localModels, setLocalModels] = useState({
+    chat: false,
+    embeddings: false,
+    tools: false,
+  });
+
+  const displayModels =
+    models && models.length > 0
+      ? models
+      : [{ id: "openai/gpt-4o", name: "openai/gpt-4o" }];
+
+  const selectedModel = displayModels.find((m: any) => m.id === model);
+  const selectedLabel =
+    selectedModel?.name ?? selectedModel?.id ?? "openai/gpt-4o";
 
   const { messages, input, setInput, handleSubmit, isLoading, status } =
     useVercelChat({
-      model: models[0]!.value,
+      model: "openai/gpt-4o",
       getToken: getIdentityToken,
-      chatProvider: "api",
+      chatProvider: localModels.chat ? "local" : "api",
+      enableLocalModels: localModels,
     });
 
   const onSubmit = useCallback(
@@ -185,19 +206,6 @@ const ChatBotDemo = () => {
           </PromptInputBody>
           <PromptInputFooter>
             <PromptInputTools>
-              <PromptInputActionMenu>
-                <PromptInputActionMenuTrigger />
-                <PromptInputActionMenuContent>
-                  <PromptInputActionAddAttachments />
-                </PromptInputActionMenuContent>
-              </PromptInputActionMenu>
-              <PromptInputButton
-                onClick={() => setWebSearch(!webSearch)}
-                variant={webSearch ? "default" : "ghost"}
-              >
-                <GlobeIcon size={16} />
-                <span>Search</span>
-              </PromptInputButton>
               <PromptInputSelect
                 onValueChange={(value) => {
                   setModel(value);
@@ -205,19 +213,60 @@ const ChatBotDemo = () => {
                 value={model}
               >
                 <PromptInputSelectTrigger>
-                  <PromptInputSelectValue />
+                  <PromptInputSelectValue placeholder="openai/gpt-4o">
+                    {selectedLabel}
+                  </PromptInputSelectValue>
                 </PromptInputSelectTrigger>
                 <PromptInputSelectContent>
-                  {models.map((option) => (
-                    <PromptInputSelectItem
-                      key={option.value}
-                      value={option.value}
-                    >
-                      {option.name}
+                  {displayModels.map((option: any) => (
+                    <PromptInputSelectItem key={option.id} value={option.id}>
+                      {option.name ?? option.id}
                     </PromptInputSelectItem>
                   ))}
                 </PromptInputSelectContent>
               </PromptInputSelect>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground">
+                    Local models <ChevronDown className="size-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel>Enable Local Models</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={localModels.chat}
+                    onSelect={(e) => e.preventDefault()}
+                    onCheckedChange={(checked) =>
+                      setLocalModels((prev) => ({ ...prev, chat: !!checked }))
+                    }
+                  >
+                    Chat
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={localModels.embeddings}
+                    onSelect={(e) => e.preventDefault()}
+                    onCheckedChange={(checked) =>
+                      setLocalModels((prev) => ({
+                        ...prev,
+                        embeddings: !!checked,
+                      }))
+                    }
+                  >
+                    Embeddings
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={localModels.tools}
+                    onSelect={(e) => e.preventDefault()}
+                    onCheckedChange={(checked) =>
+                      setLocalModels((prev) => ({ ...prev, tools: !!checked }))
+                    }
+                  >
+                    Tools
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </PromptInputTools>
             <PromptInputSubmit
               disabled={!input || isLoading || !authenticated}

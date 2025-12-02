@@ -22,6 +22,7 @@ type PromptInputMessage = {
 type UseVercelChatResult = {
   error: string | null;
   isLoading: boolean;
+  isSelectingTool?: boolean;
   messages: UIMessage[];
   input: string;
   setInput: (value: string) => void;
@@ -32,7 +33,7 @@ type UseVercelChatResult = {
   sendMessage: (
     message: { text?: string; files?: UIMessage["parts"] },
     options?: SendMessageOptions
-  ) => Promise<void>;
+  ) => Promise<any>;
   setMessages: React.Dispatch<React.SetStateAction<UIMessage[]>>;
   stop: () => void;
   status: ChatStatus | undefined;
@@ -48,19 +49,80 @@ export function useVercelChat(options?: {
   memoryFallbackThreshold?: number;
   chatProvider?: "api" | "local";
   localModel?: string;
+  enableLocalModels?: {
+    chat?: boolean;
+    embeddings?: boolean;
+    tools?: boolean;
+  };
 }): UseVercelChatResult {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const enableLocalModels = options?.enableLocalModels || {};
+  const chatProvider = enableLocalModels.chat
+    ? "local"
+    : options?.chatProvider || "api";
+
+  const tools = enableLocalModels.tools
+    ? [
+        {
+          name: "get_weather",
+          description: "Get the current weather for a location",
+          parameters: [
+            {
+              name: "location",
+              type: "string" as const,
+              description: "City name",
+              required: true,
+            },
+          ],
+          execute: async (args: any) => {
+            const { location } = args as { location: string };
+            // Mock weather response
+            return {
+              temperature: Math.floor(Math.random() * 100),
+              condition: "sunny",
+              location,
+            };
+          },
+        },
+        {
+          name: "calculate",
+          description: "Perform a mathematical calculation",
+          parameters: [
+            {
+              name: "expression",
+              type: "string" as const,
+              description: "Math expression",
+              required: true,
+            },
+          ],
+          execute: (args: any) => {
+            const { expression } = args as { expression: string };
+            try {
+              // Safe evaluation for demo purposes
+              // eslint-disable-next-line no-eval
+              return eval(expression);
+            } catch (e) {
+              return "Error calculating";
+            }
+          },
+        },
+      ]
+    : undefined;
+
   const {
     sendMessage: baseSendMessage,
     isLoading,
     stop,
+    // @ts-ignore
+    isSelectingTool,
   } = useChat({
     getToken: options?.getToken,
-    chatProvider: options?.chatProvider,
-    localModel: options?.localModel,
+    // @ts-ignore
+    chatProvider,
+    tools,
     onFinish: (response) => {
       console.log("Chat finished:", response);
     },
@@ -70,13 +132,24 @@ export function useVercelChat(options?: {
     onData: (chunk) => {
       console.log("Chat data chunk:", chunk);
     },
+    onToolExecution: (result: any) => {
+      console.log("Tool executed:", result.toolName, result.result);
+      return {
+        toolName: result.toolName,
+        result: result.result,
+      };
+    },
   });
 
-  const embeddingModelConfig =
-    options?.embeddingModel || "openai/text-embedding-3-small";
+  const embeddingProvider = enableLocalModels.embeddings ? "local" : "api";
+  const embeddingModelConfig = enableLocalModels.embeddings
+    ? "Snowflake/snowflake-arctic-embed-xs"
+    : options?.embeddingModel || "openai/text-embedding-3-small";
+
   const { extractMemoriesFromMessage, searchMemories } = useMemory({
     getToken: options?.getToken,
     generateEmbeddings: true,
+    embeddingProvider,
     embeddingModel: embeddingModelConfig,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
@@ -297,6 +370,8 @@ export function useVercelChat(options?: {
               );
             });
         }
+
+        return response;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to send message.";
@@ -337,6 +412,7 @@ export function useVercelChat(options?: {
   return {
     error,
     isLoading,
+    isSelectingTool,
     messages,
     input,
     setInput,
