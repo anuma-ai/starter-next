@@ -51,8 +51,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.6)(react@19.2.0)
       '@reverbia/sdk':
-        specifier: 1.0.0-next.20251202095402
-        version: 1.0.0-next.20251202095402(@privy-io/react-auth@3.7.0(@solana-program/system@0.8.1(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana-program/token@0.6.0(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@solana/sysvars@3.0.3(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.10)(@tanstack/react-query@5.90.10(react@19.2.0))(@types/react@19.2.6)(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.0))(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@4.1.12))(dexie@4.2.1)(react@19.2.0)(zod@4.1.12)
+        specifier: 1.0.0-next.20251202130234
+        version: 1.0.0-next.20251202130234(@privy-io/react-auth@3.7.0(@solana-program/system@0.8.1(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana-program/token@0.6.0(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@solana/sysvars@3.0.3(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.10)(@tanstack/react-query@5.90.10(react@19.2.0))(@types/react@19.2.6)(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.0))(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@4.1.12))(dexie@4.2.1)(react@19.2.0)(zod@4.1.12)
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.9.3(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -1437,11 +1437,11 @@ packages:
   '@reown/appkit@1.8.9':
     resolution: {integrity: sha512-e3N2DAzf3Xv3jnoD8IsUo0/Yfwuhk7npwJBe1+9rDJIRwgPsyYcCLD4gKPDFC5IUIfOLqK7YtGOh9oPEUnIWpw==}
 
-  '@reverbia/portal@1.0.0-next.20251126175613':
-    resolution: {integrity: sha512-J1pmni4+sjpQCtAq4WoFdAmti/057w5nQAPI6IYsxTHihDc5FOTwfwfAmP6U5AAqy1HJgA1XQk85vfbMRYzZBA==}
+  '@reverbia/portal@1.0.0-next.20251201184846':
+    resolution: {integrity: sha512-IhvyP5XyaMghxBVkMqWLZmqZDr/7WuPE+GB5TjN4MgiAcXlbZskX43Kgo6VjWZfZ/D98cvVP8SqXZ08DYVCjzA==}
 
-  '@reverbia/sdk@1.0.0-next.20251202095402':
-    resolution: {integrity: sha512-gLMPEDz6bZ44GjUBcovKZXix3rBLfBeZBVruosbrGS0OPNMmDd956oKma3rts/nq2zTNv4qP5RIuUQVLwy3xQQ==}
+  '@reverbia/sdk@1.0.0-next.20251202130234':
+    resolution: {integrity: sha512-TOtEiB2qXsKe0JvrCvtdDnbhAh0aHDXM96uspyPpPIKUbY6OPhZSE29Q/5tkHmY47VMRTimuNh59GA4wZTSJQw==}
     peerDependencies:
       '@privy-io/react-auth': ^3.7.0
       dexie: ^4.2.1
@@ -8169,13 +8169,13 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reverbia/portal@1.0.0-next.20251126175613': {}
+  '@reverbia/portal@1.0.0-next.20251201184846': {}
 
-  '@reverbia/sdk@1.0.0-next.20251202095402(@privy-io/react-auth@3.7.0(@solana-program/system@0.8.1(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana-program/token@0.6.0(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@solana/sysvars@3.0.3(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.10)(@tanstack/react-query@5.90.10(react@19.2.0))(@types/react@19.2.6)(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.0))(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@4.1.12))(dexie@4.2.1)(react@19.2.0)(zod@4.1.12)':
+  '@reverbia/sdk@1.0.0-next.20251202130234(@privy-io/react-auth@3.7.0(@solana-program/system@0.8.1(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana-program/token@0.6.0(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@solana/sysvars@3.0.3(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.10)(@tanstack/react-query@5.90.10(react@19.2.0))(@types/react@19.2.6)(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.0))(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@4.1.12))(dexie@4.2.1)(react@19.2.0)(zod@4.1.12)':
     dependencies:
       '@huggingface/transformers': 3.8.0
       '@privy-io/react-auth': 3.7.0(@solana-program/system@0.8.1(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana-program/token@0.6.0(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))))(@solana/kit@2.3.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@solana/sysvars@3.0.3(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.10)(@tanstack/react-query@5.90.10(react@19.2.0))(@types/react@19.2.6)(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.0))(utf-8-validate@5.0.10)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@4.1.12)
-      '@reverbia/portal': 1.0.0-next.20251126175613
+      '@reverbia/portal': 1.0.0-next.20251201184846
       ai: 5.0.93(zod@4.1.12)
       dexie: 4.2.1
       react: 19.2.0
