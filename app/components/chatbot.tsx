@@ -30,6 +30,7 @@ import {
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
+  PromptInputAttachButton,
   PromptInputAttachment,
   PromptInputAttachments,
   PromptInputBody,
@@ -184,7 +185,13 @@ const ChatBotDemo = () => {
           <ConversationScrollButton />
         </Conversation>
 
-        <PromptInput className="mt-4" globalDrop multiple onSubmit={onSubmit}>
+        <PromptInput
+          accept="image/*"
+          className="mt-4"
+          globalDrop
+          multiple
+          onSubmit={onSubmit}
+        >
           <PromptInputHeader>
             <PromptInputAttachments>
               {(attachment) => (
@@ -206,6 +213,7 @@ const ChatBotDemo = () => {
           </PromptInputBody>
           <PromptInputFooter>
             <PromptInputTools>
+              <PromptInputAttachButton />
               <PromptInputSelect
                 onValueChange={(value) => {
                   setModel(value);

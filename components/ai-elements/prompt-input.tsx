@@ -941,6 +941,32 @@ export const PromptInputButton = ({
   );
 };
 
+export type PromptInputAttachButtonProps = PromptInputButtonProps;
+
+export const PromptInputAttachButton = ({
+  className,
+  variant = "ghost",
+  size,
+  children,
+  ...props
+}: PromptInputAttachButtonProps) => {
+  const attachments = usePromptInputAttachments();
+  const newSize = size ?? (children ? "sm" : "icon-sm");
+
+  return (
+    <PromptInputButton
+      className={className}
+      onClick={() => attachments.openFileDialog()}
+      size={newSize}
+      type="button"
+      variant={variant}
+      {...props}
+    >
+      {children ?? <PaperclipIcon className="size-4" />}
+    </PromptInputButton>
+  );
+};
+
 export type PromptInputActionMenuProps = ComponentProps<typeof DropdownMenu>;
 export const PromptInputActionMenu = (props: PromptInputActionMenuProps) => (
   <DropdownMenu {...props} />
