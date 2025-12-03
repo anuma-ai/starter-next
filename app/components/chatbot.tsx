@@ -6,6 +6,7 @@ import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 // @ts-ignore
 import { useModels, useImageGeneration } from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
+import { extractTextFromPdf } from "@/lib/pdf-utils";
 
 import {
   DropdownMenu,
@@ -159,7 +160,51 @@ const ChatBotDemo = () => {
           console.error("Failed to generate image:", error);
         }
       } else {
-        await handleSubmit(message, { model });
+        let enhancedText = message.text;
+        const pdfFiles = message.files.filter(
+          (f) =>
+            f.mediaType === "application/pdf" ||
+            f.filename?.toLowerCase().endsWith(".pdf")
+        );
+
+        if (pdfFiles.length > 0) {
+          try {
+            const pdfResults = await Promise.all(
+              pdfFiles.map(async (file) => {
+                if (!file.url) return null;
+                try {
+                  console.log(`Extracting text from PDF: ${file.filename}`);
+                  const text = await extractTextFromPdf(file.url);
+                  console.log(`Extracted text from ${file.filename}:`, text);
+
+                  if (!text.trim()) {
+                    console.warn(`No text found in PDF ${file.filename}`);
+                    return null;
+                  }
+
+                  return `[Context from PDF attachment ${file.filename}]:\n${text}`;
+                } catch (err) {
+                  console.error(`Failed to process PDF ${file.filename}:`, err);
+                  return null;
+                }
+              })
+            );
+
+            const validResults = pdfResults.filter(Boolean).join("\n\n");
+            if (validResults) {
+              enhancedText = enhancedText
+                ? `${enhancedText}\n\n${validResults}`
+                : validResults;
+            }
+          } catch (error) {
+            console.error("Error processing PDF attachments:", error);
+          }
+        }
+
+        await handleSubmit(
+          { ...message, text: enhancedText, displayText: message.text },
+          { model }
+        );
       }
     },
     [model, handleSubmit, isImageMode, generateImage, setMessages, setInput]
@@ -221,6 +266,30 @@ const ChatBotDemo = () => {
                             )}
                         </Message>
                       );
+                    case "file":
+                      return (
+                        <Message key={`${message.id}-${i}`} from={message.role}>
+                          <MessageContent>
+                            <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
+                              <div className="flex size-8 items-center justify-center rounded-sm bg-background">
+                                <span className="text-xs font-bold text-muted-foreground">
+                                  PDF
+                                </span>
+                              </div>
+                              <div className="flex flex-col overflow-hidden">
+                                <span className="truncate font-medium">
+                                  {/* @ts-ignore */}
+                                  {part.filename}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {/* @ts-ignore */}
+                                  {part.mediaType}
+                                </span>
+                              </div>
+                            </div>
+                          </MessageContent>
+                        </Message>
+                      );
                     case "image_url":
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
@@ -272,7 +341,7 @@ const ChatBotDemo = () => {
         </Conversation>
 
         <PromptInput
-          accept="image/*"
+          accept="image/*,application/pdf"
           className="mt-4"
           globalDrop
           multiple

@@ -276,7 +276,7 @@ export function PromptInputAttachment({
   const filename = data.filename || "";
 
   const mediaType =
-    data.mediaType?.startsWith("image/") && data.url ? "image" : "file";
+    (data.mediaType?.startsWith("image/") || data.mediaType === "application/pdf") && data.url ? (data.mediaType?.startsWith("image/") ? "image" : "file") : "file";
   const isImage = mediaType === "image";
 
   const attachmentLabel = filename || (isImage ? "Image" : "Attachment");
@@ -414,6 +414,7 @@ export const PromptInputActionAddAttachments = ({
 
 export type PromptInputMessage = {
   text: string;
+  displayText?: string;
   files: FileUIPart[];
 };
 
@@ -483,11 +484,15 @@ export const PromptInput = ({
       if (!accept || accept.trim() === "") {
         return true;
       }
-      if (accept.includes("image/*")) {
-        return f.type.startsWith("image/");
-      }
-      // NOTE: keep simple; expand as needed
-      return true;
+      
+      const acceptedTypes = accept.split(",").map((t) => t.trim());
+      return acceptedTypes.some((type) => {
+        if (type.endsWith("/*")) {
+          const prefix = type.slice(0, -2);
+          return f.type.startsWith(prefix);
+        }
+        return f.type === type;
+      });
     },
     [accept]
   );

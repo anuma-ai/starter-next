@@ -1,12 +1,16 @@
-import type { Metadata } from "next";
+"use client";
 
-import ChatBotDemo from "./components/chatbot";
+import dynamic from "next/dynamic";
 import { PrivySignInButton } from "./components/sign-in";
 
-export const metadata: Metadata = {
-  title: "Chatbot",
-  description: "An example of how to use the AI Elements to build a chatbot.",
-};
+const ChatBotDemo = dynamic(() => import("./components/chatbot"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-screen items-center justify-center">
+      <div className="text-muted-foreground">Loading...</div>
+    </div>
+  ),
+});
 
 const Home = () => {
   return (
