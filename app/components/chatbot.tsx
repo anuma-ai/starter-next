@@ -31,6 +31,7 @@ import {
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
+  PromptInputAttachButton,
   PromptInputAttachment,
   PromptInputAttachments,
   PromptInputBody,
@@ -200,9 +201,8 @@ const ChatBotDemo = () => {
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
-                            <MessageResponse>
-                              {(part as any).text}
-                            </MessageResponse>
+                            {/* @ts-ignore */}
+                            <MessageResponse>{part.text}</MessageResponse>
                           </MessageContent>
                           {message.role === "assistant" &&
                             message.id === messages.at(-1)?.id &&
@@ -211,15 +211,28 @@ const ChatBotDemo = () => {
                                 <MessageAction
                                   label="Copy"
                                   onClick={() =>
-                                    navigator.clipboard.writeText(
-                                      (part as any).text
-                                    )
+                                    /* @ts-ignore */
+                                    navigator.clipboard.writeText(part.text)
                                   }
                                 >
                                   <CopyIcon className="size-3" />
                                 </MessageAction>
                               </MessageActions>
                             )}
+                        </Message>
+                      );
+                    case "image_url":
+                      return (
+                        <Message key={`${message.id}-${i}`} from={message.role}>
+                          <MessageContent>
+                            {/* @ts-ignore */}
+                            <img
+                              /* @ts-ignore */
+                              src={part.image_url?.url}
+                              alt="Uploaded image"
+                              className="max-h-60 max-w-[300px] rounded-lg object-contain"
+                            />
+                          </MessageContent>
                         </Message>
                       );
                     case "reasoning":
@@ -230,9 +243,8 @@ const ChatBotDemo = () => {
                           isStreaming={false}
                         >
                           <ReasoningTrigger />
-                          <ReasoningContent>
-                            {(part as any).text}
-                          </ReasoningContent>
+                          {/* @ts-ignore */}
+                          <ReasoningContent>{part.text}</ReasoningContent>
                         </Reasoning>
                       );
                     case "image":
@@ -259,7 +271,13 @@ const ChatBotDemo = () => {
           <ConversationScrollButton />
         </Conversation>
 
-        <PromptInput className="mt-4" globalDrop multiple onSubmit={onSubmit}>
+        <PromptInput
+          accept="image/*"
+          className="mt-4"
+          globalDrop
+          multiple
+          onSubmit={onSubmit}
+        >
           <PromptInputHeader>
             <PromptInputAttachments>
               {(attachment) => (
@@ -281,6 +299,7 @@ const ChatBotDemo = () => {
           </PromptInputBody>
           <PromptInputFooter>
             <PromptInputTools>
+              <PromptInputAttachButton />
               <PromptInputSelect
                 onValueChange={(value) => {
                   setModel(value);

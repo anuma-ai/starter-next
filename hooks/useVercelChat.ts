@@ -195,8 +195,18 @@ export function useVercelChat(options?: {
                 },
               ]
             : []),
-          ...(message.files || []),
-        ],
+          ...(message.files || []).map((file: any) => {
+            if (file.mediaType?.startsWith("image/")) {
+              return {
+                type: "image_url",
+                image_url: {
+                  url: file.url,
+                },
+              };
+            }
+            return file;
+          }),
+        ] as any,
       };
 
       // Add user message to messages
@@ -267,11 +277,26 @@ export function useVercelChat(options?: {
         }
 
         // 4. Convert UIMessages to LlmapiMessages and include memory context
-        const llmMessages = mapMessagesToCompletionPayload(updatedMessages);
+        let llmMessages = mapMessagesToCompletionPayload(updatedMessages);
+
+        // Restore image_url parts if mapMessagesToCompletionPayload stripped them
+        llmMessages = llmMessages.map((msg, i) => {
+          const original = updatedMessages[i];
+          if (
+            original.role === "user" &&
+            original.parts?.some((p: any) => p.type === "image_url")
+          ) {
+            return {
+              ...msg,
+              content: original.parts as any,
+            };
+          }
+          return msg;
+        });
 
         // 5. Include memory context as system message if available
         const messagesWithContext = memoryContext
-          ? [
+          ? ([
               {
                 role: "system",
                 content: [
@@ -282,7 +307,7 @@ export function useVercelChat(options?: {
                 ],
               },
               ...llmMessages,
-            ]
+            ] as any[])
           : llmMessages;
 
         // Create assistant message placeholder
