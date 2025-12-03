@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { ChevronDown, CopyIcon } from "lucide-react";
+import { ChevronDown, CopyIcon, ImageIcon } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
-import { useModels } from "@reverbia/sdk/react";
+// @ts-ignore
+import { useModels, useImageGeneration } from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
 
 import {
@@ -85,6 +86,13 @@ const ChatBotDemo = () => {
     tools: false,
   });
 
+  const [isImageMode, setIsImageMode] = useState(false);
+
+  const { generateImage, isLoading: isGeneratingImage } = useImageGeneration({
+    getToken: getIdentityToken,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+  });
+
   const displayModels =
     models && models.length > 0
       ? models
@@ -94,19 +102,67 @@ const ChatBotDemo = () => {
   const selectedLabel =
     selectedModel?.name ?? selectedModel?.id ?? "openai/gpt-4o";
 
-  const { messages, input, setInput, handleSubmit, isLoading, status } =
-    useVercelChat({
-      model: "openai/gpt-4o",
-      getToken: getIdentityToken,
-      chatProvider: localModels.chat ? "local" : "api",
-      enableLocalModels: localModels,
-    });
+  const {
+    messages,
+    input,
+    setInput,
+    handleSubmit,
+    isLoading,
+    status,
+    setMessages,
+  } = useVercelChat({
+    model: "openai/gpt-4o",
+    getToken: getIdentityToken,
+    chatProvider: localModels.chat ? "local" : "api",
+    enableLocalModels: localModels,
+  });
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
-      await handleSubmit(message, { model });
+      if (isImageMode) {
+        const userMessage = {
+          id: `user-${Date.now()}`,
+          role: "user" as const,
+          parts: [
+            {
+              type: "text" as const,
+              text: message.text,
+            },
+          ],
+        };
+        setMessages((prev) => [...prev, userMessage]);
+        setInput("");
+
+        try {
+          const result = await generateImage({
+            prompt: message.text,
+            model: "openai-dall-e-3",
+            response_format: "url",
+          });
+
+          if (result.data?.images?.[0]?.url) {
+            const assistantMessage = {
+              id: `assistant-${Date.now()}`,
+              role: "assistant" as const,
+              parts: [
+                {
+                  type: "image",
+                  url: result.data.images[0].url,
+                  text: "Generated image",
+                },
+              ],
+            };
+            // @ts-ignore
+            setMessages((prev) => [...prev, assistantMessage]);
+          }
+        } catch (error) {
+          console.error("Failed to generate image:", error);
+        }
+      } else {
+        await handleSubmit(message, { model });
+      }
     },
-    [model, handleSubmit]
+    [model, handleSubmit, isImageMode, generateImage, setMessages, setInput]
   );
 
   return (
@@ -191,13 +247,26 @@ const ChatBotDemo = () => {
                           <ReasoningContent>{part.text}</ReasoningContent>
                         </Reasoning>
                       );
+                    case "image":
+                      return (
+                        <Message key={`${message.id}-${i}`} from={message.role}>
+                          <MessageContent>
+                            {/* @ts-ignore */}
+                            <img
+                              src={(part as any).url}
+                              alt="Generated image"
+                              className="rounded-lg max-w-full"
+                            />
+                          </MessageContent>
+                        </Message>
+                      );
                     default:
                       return null;
                   }
                 })}
               </div>
             ))}
-            {isLoading && <Loader />}
+            {isLoading || isGeneratingImage ? <Loader /> : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -251,6 +320,19 @@ const ChatBotDemo = () => {
                 </PromptInputSelectContent>
               </PromptInputSelect>
 
+              <button
+                type="button"
+                onClick={() => setIsImageMode(!isImageMode)}
+                className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                  isImageMode
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+                title="Toggle Image Generation"
+              >
+                <ImageIcon className="size-4" />
+              </button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground">
@@ -294,8 +376,10 @@ const ChatBotDemo = () => {
               </DropdownMenu>
             </PromptInputTools>
             <PromptInputSubmit
-              disabled={!input || isLoading || !authenticated}
-              status={status}
+              disabled={
+                !input || isLoading || isGeneratingImage || !authenticated
+              }
+              status={isGeneratingImage ? "submitted" : status}
             />
           </PromptInputFooter>
         </PromptInput>
