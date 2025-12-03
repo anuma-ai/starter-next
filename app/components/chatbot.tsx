@@ -6,7 +6,7 @@ import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 // @ts-ignore
 import { useModels, useImageGeneration } from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
-import { usePdfContext } from "@/hooks/usePdfContext";
+import { usePdf } from "@/hooks/usePdf";
 
 import {
   DropdownMenu,
@@ -94,7 +94,7 @@ const ChatBotDemo = () => {
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
 
-  const { extractPdfContext, isProcessing: isProcessingPdf } = usePdfContext();
+  const { extractPdfContext, isProcessing: isProcessingPdf } = usePdf();
 
   const displayModels =
     models && models.length > 0

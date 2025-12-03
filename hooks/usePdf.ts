@@ -5,7 +5,7 @@ import { extractTextFromPdf } from "@/lib/pdf-utils";
 
 const PDF_MIME_TYPE = "application/pdf";
 
-export function usePdfContext() {
+export function usePdf() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -67,3 +67,4 @@ export function usePdfContext() {
     error,
   };
 }
+
