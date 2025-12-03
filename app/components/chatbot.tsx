@@ -6,7 +6,7 @@ import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 // @ts-ignore
 import { useModels, useImageGeneration } from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
-import { extractTextFromPdf } from "@/lib/pdf-utils";
+import { usePdfContext } from "@/hooks/usePdfContext";
 
 import {
   DropdownMenu,
@@ -94,6 +94,8 @@ const ChatBotDemo = () => {
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
 
+  const { extractPdfContext, isProcessing: isProcessingPdf } = usePdfContext();
+
   const displayModels =
     models && models.length > 0
       ? models
@@ -161,44 +163,16 @@ const ChatBotDemo = () => {
         }
       } else {
         let enhancedText = message.text;
-        const pdfFiles = message.files.filter(
-          (f) =>
-            f.mediaType === "application/pdf" ||
-            f.filename?.toLowerCase().endsWith(".pdf")
-        );
 
-        if (pdfFiles.length > 0) {
-          try {
-            const pdfResults = await Promise.all(
-              pdfFiles.map(async (file) => {
-                if (!file.url) return null;
-                try {
-                  console.log(`Extracting text from PDF: ${file.filename}`);
-                  const text = await extractTextFromPdf(file.url);
-                  console.log(`Extracted text from ${file.filename}:`, text);
-
-                  if (!text.trim()) {
-                    console.warn(`No text found in PDF ${file.filename}`);
-                    return null;
-                  }
-
-                  return `[Context from PDF attachment ${file.filename}]:\n${text}`;
-                } catch (err) {
-                  console.error(`Failed to process PDF ${file.filename}:`, err);
-                  return null;
-                }
-              })
-            );
-
-            const validResults = pdfResults.filter(Boolean).join("\n\n");
-            if (validResults) {
-              enhancedText = enhancedText
-                ? `${enhancedText}\n\n${validResults}`
-                : validResults;
-            }
-          } catch (error) {
-            console.error("Error processing PDF attachments:", error);
+        try {
+          const pdfContext = await extractPdfContext(message.files);
+          if (pdfContext) {
+            enhancedText = enhancedText
+              ? `${enhancedText}\n\n${pdfContext}`
+              : pdfContext;
           }
+        } catch (error) {
+          console.error("Error processing PDF attachments:", error);
         }
 
         await handleSubmit(
@@ -207,7 +181,15 @@ const ChatBotDemo = () => {
         );
       }
     },
-    [model, handleSubmit, isImageMode, generateImage, setMessages, setInput]
+    [
+      model,
+      handleSubmit,
+      isImageMode,
+      generateImage,
+      setMessages,
+      setInput,
+      extractPdfContext,
+    ]
   );
 
   return (
@@ -335,7 +317,9 @@ const ChatBotDemo = () => {
                 })}
               </div>
             ))}
-            {isLoading || isGeneratingImage ? <Loader /> : null}
+            {isLoading || isGeneratingImage || isProcessingPdf ? (
+              <Loader />
+            ) : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -446,7 +430,11 @@ const ChatBotDemo = () => {
             </PromptInputTools>
             <PromptInputSubmit
               disabled={
-                !input || isLoading || isGeneratingImage || !authenticated
+                !input ||
+                isLoading ||
+                isGeneratingImage ||
+                isProcessingPdf ||
+                !authenticated
               }
               status={isGeneratingImage ? "submitted" : status}
             />
