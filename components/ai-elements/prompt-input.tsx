@@ -667,14 +667,25 @@ export const PromptInput = ({
   };
 
   const convertBlobUrlToDataUrl = async (url: string): Promise<string> => {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    // Only attempt conversion for blob URLs. Otherwise return as-is.
+    if (!url.startsWith("blob:")) {
+      return url;
+    }
+
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      console.error("Failed to convert blob URL to data URL:", err);
+      // Fallback to original URL so attachment can still be sent.
+      return url;
+    }
   };
 
   const ctx = useMemo<AttachmentsContext>(

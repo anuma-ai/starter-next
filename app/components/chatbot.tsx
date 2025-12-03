@@ -4,9 +4,8 @@ import { useState, useCallback, useEffect } from "react";
 import { ChevronDown, CopyIcon, ImageIcon } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 // @ts-ignore
-import { useModels, useImageGeneration } from "@reverbia/sdk/react";
+import { useModels, useImageGeneration, usePdf } from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
-import { usePdf } from "@/hooks/usePdf";
 
 import {
   DropdownMenu,
