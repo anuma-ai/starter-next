@@ -276,7 +276,13 @@ export function PromptInputAttachment({
   const filename = data.filename || "";
 
   const mediaType =
-    (data.mediaType?.startsWith("image/") || data.mediaType === "application/pdf") && data.url ? (data.mediaType?.startsWith("image/") ? "image" : "file") : "file";
+    (data.mediaType?.startsWith("image/") ||
+      data.mediaType === "application/pdf") &&
+    data.url
+      ? data.mediaType?.startsWith("image/")
+        ? "image"
+        : "file"
+      : "file";
   const isImage = mediaType === "image";
 
   const attachmentLabel = filename || (isImage ? "Image" : "Attachment");
@@ -484,7 +490,7 @@ export const PromptInput = ({
       if (!accept || accept.trim() === "") {
         return true;
       }
-      
+
       const acceptedTypes = accept.split(",").map((t) => t.trim());
       return acceptedTypes.some((type) => {
         if (type.endsWith("/*")) {
