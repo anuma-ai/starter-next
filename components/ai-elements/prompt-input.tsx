@@ -733,6 +733,8 @@ export const PromptInput = ({
         // Don't clear on error - user may want to retry
       }
     });
+    // Always clear attachments immediately after submission is triggered
+    clear();
   };
 
   // Render with or without local provider
@@ -938,6 +940,32 @@ export const PromptInputButton = ({
       variant={variant}
       {...props}
     />
+  );
+};
+
+export type PromptInputAttachButtonProps = PromptInputButtonProps;
+
+export const PromptInputAttachButton = ({
+  className,
+  variant = "ghost",
+  size,
+  children,
+  ...props
+}: PromptInputAttachButtonProps) => {
+  const attachments = usePromptInputAttachments();
+  const newSize = size ?? (children ? "sm" : "icon-sm");
+
+  return (
+    <PromptInputButton
+      className={className}
+      onClick={() => attachments.openFileDialog()}
+      size={newSize}
+      type="button"
+      variant={variant}
+      {...props}
+    >
+      {children ?? <PaperclipIcon className="size-4" />}
+    </PromptInputButton>
   );
 };
 
