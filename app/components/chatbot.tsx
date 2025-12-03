@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { ChevronDown, CopyIcon, ImageIcon } from "lucide-react";
+import { ChevronDown, CopyIcon, ImageIcon, Globe } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 // @ts-ignore
-import { useModels, useImageGeneration } from "@reverbia/sdk/react";
+import { useModels, useImageGeneration, useSearch } from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
 
 import {
@@ -87,8 +87,14 @@ const ChatBotDemo = () => {
   });
 
   const [isImageMode, setIsImageMode] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
   const { generateImage, isLoading: isGeneratingImage } = useImageGeneration({
+    getToken: getIdentityToken,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+  });
+
+  const { search, isLoading: isSearching } = useSearch({
     getToken: getIdentityToken,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
@@ -119,7 +125,60 @@ const ChatBotDemo = () => {
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
-      if (isImageMode) {
+      if (isSearchMode) {
+        const userMessage = {
+          id: `user-${Date.now()}`,
+          role: "user" as const,
+          parts: [
+            {
+              type: "text" as const,
+              text: message.text,
+            },
+          ],
+        };
+        setMessages((prev) => [...prev, userMessage]);
+        setInput("");
+
+        try {
+          const result = await search(message.text, {
+            search_tool_name: "google-pse",
+          });
+
+          if (result?.results) {
+            const assistantMessage = {
+              id: `assistant-${Date.now()}`,
+              role: "assistant" as const,
+              parts: [
+                {
+                  type: "text",
+                  text:
+                    result.results
+                      .map(
+                        (r: any) => `#### [${r.title}](${r.url})\n${r.snippet}`
+                      )
+                      .join("\n\n") || "No results found.",
+                },
+              ],
+            };
+            // @ts-ignore
+            setMessages((prev) => [...prev, assistantMessage]);
+          }
+        } catch (error) {
+          console.error("Failed to perform search:", error);
+          const errorMessage = {
+            id: `assistant-${Date.now()}`,
+            role: "assistant" as const,
+            parts: [
+              {
+                type: "text",
+                text: "Failed to perform search. Please try again.",
+              },
+            ],
+          };
+          // @ts-ignore
+          setMessages((prev) => [...prev, errorMessage]);
+        }
+      } else if (isImageMode) {
         const userMessage = {
           id: `user-${Date.now()}`,
           role: "user" as const,
@@ -162,7 +221,16 @@ const ChatBotDemo = () => {
         await handleSubmit(message, { model });
       }
     },
-    [model, handleSubmit, isImageMode, generateImage, setMessages, setInput]
+    [
+      model,
+      handleSubmit,
+      isImageMode,
+      isSearchMode,
+      generateImage,
+      search,
+      setMessages,
+      setInput,
+    ]
   );
 
   return (
@@ -172,29 +240,6 @@ const ChatBotDemo = () => {
           <ConversationContent>
             {messages.map((message) => (
               <div key={message.id}>
-                {message.role === "assistant" &&
-                  message.parts.filter((part) => part.type === "source-url")
-                    .length > 0 && (
-                    <Sources>
-                      <SourcesTrigger
-                        count={
-                          message.parts.filter(
-                            (part) => part.type === "source-url"
-                          ).length
-                        }
-                      />
-                      {message.parts
-                        .filter((part) => part.type === "source-url")
-                        .map((part, i) => (
-                          <SourcesContent key={`${message.id}-${i}`}>
-                            <Source
-                              href={"url" in part ? part.url : undefined}
-                              title={"url" in part ? part.url : ""}
-                            />
-                          </SourcesContent>
-                        ))}
-                    </Sources>
-                  )}
                 {message.parts.map((part, i) => {
                   switch ((part as any).type) {
                     case "text":
@@ -202,7 +247,22 @@ const ChatBotDemo = () => {
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
                             {/* @ts-ignore */}
-                            <MessageResponse>{part.text}</MessageResponse>
+                            <MessageResponse
+                              components={{
+                                a: ({ href, children }) => (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline"
+                                  >
+                                    {children}
+                                  </a>
+                                ),
+                              }}
+                            >
+                              {(part as any).text}
+                            </MessageResponse>
                           </MessageContent>
                           {message.role === "assistant" &&
                             message.id === messages.at(-1)?.id &&
@@ -266,7 +326,7 @@ const ChatBotDemo = () => {
                 })}
               </div>
             ))}
-            {isLoading || isGeneratingImage ? <Loader /> : null}
+            {isLoading || isGeneratingImage || isSearching ? <Loader /> : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -322,7 +382,10 @@ const ChatBotDemo = () => {
 
               <button
                 type="button"
-                onClick={() => setIsImageMode(!isImageMode)}
+                onClick={() => {
+                  setIsImageMode(!isImageMode);
+                  setIsSearchMode(false);
+                }}
                 className={`flex items-center justify-center rounded-md p-2 transition-colors ${
                   isImageMode
                     ? "bg-primary text-primary-foreground"
@@ -331,6 +394,22 @@ const ChatBotDemo = () => {
                 title="Toggle Image Generation"
               >
                 <ImageIcon className="size-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSearchMode(!isSearchMode);
+                  setIsImageMode(false);
+                }}
+                className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                  isSearchMode
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+                title="Toggle Web Search"
+              >
+                <Globe className="size-4" />
               </button>
 
               <DropdownMenu>
@@ -377,9 +456,13 @@ const ChatBotDemo = () => {
             </PromptInputTools>
             <PromptInputSubmit
               disabled={
-                !input || isLoading || isGeneratingImage || !authenticated
+                !input ||
+                isLoading ||
+                isGeneratingImage ||
+                isSearching ||
+                !authenticated
               }
-              status={isGeneratingImage ? "submitted" : status}
+              status={isGeneratingImage || isSearching ? "submitted" : status}
             />
           </PromptInputFooter>
         </PromptInput>
