@@ -273,8 +273,13 @@ export function useVercelChat(options?: {
         const messagesWithContext = memoryContext
           ? [
               {
-                role: "system" as const,
-                content: `User context:\n${memoryContext}`,
+                role: "system",
+                content: [
+                  {
+                    type: "text",
+                    text: `User context:\n${memoryContext}`,
+                  },
+                ],
               },
               ...llmMessages,
             ]

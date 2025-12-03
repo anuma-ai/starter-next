@@ -46,8 +46,17 @@ export async function POST(req: Request) {
     });
   }
 
-  const responseText =
-    completion.data.choices?.[0]?.message?.content?.trim() ?? "";
+  const messageContent = completion.data.choices?.[0]?.message?.content as any;
+  let responseText = "";
+
+  if (typeof messageContent === "string") {
+    responseText = messageContent.trim();
+  } else if (Array.isArray(messageContent)) {
+    responseText = messageContent
+      .map((part: any) => part.text ?? "")
+      .join("")
+      .trim();
+  }
 
   return createUIMessageStreamResponse({
     stream: createAssistantStream(responseText),
