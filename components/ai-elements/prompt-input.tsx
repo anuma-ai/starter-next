@@ -800,7 +800,7 @@ export const PromptInput = ({
         <InputGroup
           className={cn(
             "overflow-hidden transition-colors duration-200",
-            isDragging && "border-primary bg-muted/50 ring-2 ring-primary/20"
+            isDragging && "border-gray-600 bg-muted/50 ring-2 ring-gray-600/20 dark:border-gray-500 dark:ring-gray-500/20"
           )}
         >
           {children}
