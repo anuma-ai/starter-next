@@ -16,6 +16,7 @@ type SendMessageOptions = {
 
 type PromptInputMessage = {
   text: string;
+  displayText?: string;
   files: FileUIPart[];
 };
 
@@ -164,7 +165,11 @@ export function useVercelChat(options?: {
 
   const sendMessage = useCallback(
     async (
-      message: { text?: string; files?: UIMessage["parts"] },
+      message: {
+        text?: string;
+        displayText?: string;
+        files?: UIMessage["parts"];
+      },
       sendOptions?: SendMessageOptions
     ) => {
       const model = sendOptions?.model || defaultModel;
@@ -191,11 +196,12 @@ export function useVercelChat(options?: {
             ? [
                 {
                   type: "text" as const,
-                  text: message.text || "",
+                  text: message.displayText || message.text || "",
                 },
               ]
             : []),
           ...(message.files || []).map((file: any) => {
+            // Always use image_url for images for better rendering
             if (file.mediaType?.startsWith("image/")) {
               return {
                 type: "image_url",
@@ -204,7 +210,13 @@ export function useVercelChat(options?: {
                 },
               };
             }
-            return file;
+            // For other files like PDFs, keep them as is
+            return {
+              type: "file",
+              url: file.url,
+              filename: file.filename,
+              mediaType: file.mediaType,
+            };
           }),
         ] as any,
       };
@@ -293,6 +305,31 @@ export function useVercelChat(options?: {
           }
           return msg;
         });
+
+        // If displayText was used for UI, replace with full text for API
+        if (
+          message.displayText &&
+          message.text &&
+          message.displayText !== message.text
+        ) {
+          const lastIndex = llmMessages.length - 1;
+          if (llmMessages[lastIndex]?.role === "user") {
+            const content = llmMessages[lastIndex].content;
+            if (Array.isArray(content)) {
+              llmMessages[lastIndex] = {
+                ...llmMessages[lastIndex],
+                content: content.map((part: any) =>
+                  part.type === "text" ? { ...part, text: message.text } : part
+                ),
+              };
+            } else if (typeof content === "string") {
+              llmMessages[lastIndex] = {
+                ...llmMessages[lastIndex],
+                content: [{ type: "text", text: message.text }] as any,
+              };
+            }
+          }
+        }
 
         // 5. Include memory context as system message if available
         const messagesWithContext = memoryContext
@@ -429,6 +466,7 @@ export function useVercelChat(options?: {
       await sendMessage(
         {
           text: message.text || "Sent with attachments",
+          displayText: message.displayText,
           files: message.files,
         },
         options

@@ -3,8 +3,12 @@
 import { useState, useCallback, useEffect } from "react";
 import { ChevronDown, CopyIcon, ImageIcon, Globe } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
-// @ts-ignore
-import { useModels, useImageGeneration, useSearch } from "@reverbia/sdk/react";
+import {
+  useModels,
+  useImageGeneration,
+  usePdf,
+  useSearch,
+} from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
 
 import {
@@ -94,6 +98,7 @@ const ChatBotDemo = () => {
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
 
+  const { extractPdfContext, isProcessing: isProcessingPdf } = usePdf();
   const { search, isLoading: isSearching } = useSearch({
     getToken: getIdentityToken,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
@@ -218,18 +223,35 @@ const ChatBotDemo = () => {
           console.error("Failed to generate image:", error);
         }
       } else {
-        await handleSubmit(message, { model });
+        let enhancedText = message.text;
+
+        try {
+          const pdfContext = await extractPdfContext(message.files);
+          if (pdfContext) {
+            enhancedText = enhancedText
+              ? `${enhancedText}\n\n${pdfContext}`
+              : pdfContext;
+          }
+        } catch (error) {
+          console.error("Error processing PDF attachments:", error);
+        }
+
+        await handleSubmit(
+          { ...message, text: enhancedText, displayText: message.text },
+          { model }
+        );
       }
     },
     [
       model,
       handleSubmit,
       isImageMode,
-      isSearchMode,
       generateImage,
-      search,
       setMessages,
       setInput,
+      extractPdfContext,
+      isSearchMode,
+      search,
     ]
   );
 
@@ -238,18 +260,23 @@ const ChatBotDemo = () => {
       <div className="flex h-full flex-col">
         <Conversation className="h-full">
           <ConversationContent>
-            {messages.map((message) => (
+            {messages.map((message: any) => (
               <div key={message.id}>
-                {message.parts.map((part, i) => {
+                {message.parts.map((part: any, i: number) => {
                   switch ((part as any).type) {
                     case "text":
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
-                            {/* @ts-ignore */}
                             <MessageResponse
                               components={{
-                                a: ({ href, children }) => (
+                                a: ({
+                                  href,
+                                  children,
+                                }: {
+                                  href?: string;
+                                  children?: React.ReactNode;
+                                }) => (
                                   <a
                                     href={href}
                                     target="_blank"
@@ -271,7 +298,6 @@ const ChatBotDemo = () => {
                                 <MessageAction
                                   label="Copy"
                                   onClick={() =>
-                                    /* @ts-ignore */
                                     navigator.clipboard.writeText(part.text)
                                   }
                                 >
@@ -281,13 +307,33 @@ const ChatBotDemo = () => {
                             )}
                         </Message>
                       );
+                    case "file":
+                      return (
+                        <Message key={`${message.id}-${i}`} from={message.role}>
+                          <MessageContent>
+                            <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
+                              <div className="flex size-8 items-center justify-center rounded-sm bg-background">
+                                <span className="text-xs font-bold text-muted-foreground">
+                                  PDF
+                                </span>
+                              </div>
+                              <div className="flex flex-col overflow-hidden">
+                                <span className="truncate font-medium">
+                                  {part.filename}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {part.mediaType}
+                                </span>
+                              </div>
+                            </div>
+                          </MessageContent>
+                        </Message>
+                      );
                     case "image_url":
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
-                            {/* @ts-ignore */}
                             <img
-                              /* @ts-ignore */
                               src={part.image_url?.url}
                               alt="Uploaded image"
                               className="max-h-60 max-w-[300px] rounded-lg object-contain"
@@ -303,7 +349,6 @@ const ChatBotDemo = () => {
                           isStreaming={false}
                         >
                           <ReasoningTrigger />
-                          {/* @ts-ignore */}
                           <ReasoningContent>{part.text}</ReasoningContent>
                         </Reasoning>
                       );
@@ -311,7 +356,6 @@ const ChatBotDemo = () => {
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
-                            {/* @ts-ignore */}
                             <img
                               src={(part as any).url}
                               alt="Generated image"
@@ -326,13 +370,16 @@ const ChatBotDemo = () => {
                 })}
               </div>
             ))}
+            {isLoading || isGeneratingImage || isProcessingPdf ? (
+              <Loader />
+            ) : null}
             {isLoading || isGeneratingImage || isSearching ? <Loader /> : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
 
         <PromptInput
-          accept="image/*"
+          accept="image/*,application/pdf"
           className="mt-4"
           globalDrop
           multiple
@@ -361,7 +408,7 @@ const ChatBotDemo = () => {
             <PromptInputTools>
               <PromptInputAttachButton />
               <PromptInputSelect
-                onValueChange={(value) => {
+                onValueChange={(value: string) => {
                   setModel(value);
                 }}
                 value={model}
@@ -424,7 +471,7 @@ const ChatBotDemo = () => {
                   <DropdownMenuCheckboxItem
                     checked={localModels.chat}
                     onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={(checked: boolean) =>
                       setLocalModels((prev) => ({ ...prev, chat: !!checked }))
                     }
                   >
@@ -433,7 +480,7 @@ const ChatBotDemo = () => {
                   <DropdownMenuCheckboxItem
                     checked={localModels.embeddings}
                     onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={(checked: boolean) =>
                       setLocalModels((prev) => ({
                         ...prev,
                         embeddings: !!checked,
@@ -445,7 +492,7 @@ const ChatBotDemo = () => {
                   <DropdownMenuCheckboxItem
                     checked={localModels.tools}
                     onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={(checked: boolean) =>
                       setLocalModels((prev) => ({ ...prev, tools: !!checked }))
                     }
                   >
@@ -459,6 +506,7 @@ const ChatBotDemo = () => {
                 !input ||
                 isLoading ||
                 isGeneratingImage ||
+                isProcessingPdf ||
                 isSearching ||
                 !authenticated
               }

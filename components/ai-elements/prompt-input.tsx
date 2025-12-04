@@ -276,7 +276,13 @@ export function PromptInputAttachment({
   const filename = data.filename || "";
 
   const mediaType =
-    data.mediaType?.startsWith("image/") && data.url ? "image" : "file";
+    (data.mediaType?.startsWith("image/") ||
+      data.mediaType === "application/pdf") &&
+    data.url
+      ? data.mediaType?.startsWith("image/")
+        ? "image"
+        : "file"
+      : "file";
   const isImage = mediaType === "image";
 
   const attachmentLabel = filename || (isImage ? "Image" : "Attachment");
@@ -414,6 +420,7 @@ export const PromptInputActionAddAttachments = ({
 
 export type PromptInputMessage = {
   text: string;
+  displayText?: string;
   files: FileUIPart[];
 };
 
@@ -483,11 +490,15 @@ export const PromptInput = ({
       if (!accept || accept.trim() === "") {
         return true;
       }
-      if (accept.includes("image/*")) {
-        return f.type.startsWith("image/");
-      }
-      // NOTE: keep simple; expand as needed
-      return true;
+
+      const acceptedTypes = accept.split(",").map((t) => t.trim());
+      return acceptedTypes.some((type) => {
+        if (type.endsWith("/*")) {
+          const prefix = type.slice(0, -2);
+          return f.type.startsWith(prefix);
+        }
+        return f.type === type;
+      });
     },
     [accept]
   );
@@ -656,14 +667,25 @@ export const PromptInput = ({
   };
 
   const convertBlobUrlToDataUrl = async (url: string): Promise<string> => {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    // Only attempt conversion for blob URLs. Otherwise return as-is.
+    if (!url.startsWith("blob:")) {
+      return url;
+    }
+
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      console.error("Failed to convert blob URL to data URL:", err);
+      // Fallback to original URL so attachment can still be sent.
+      return url;
+    }
   };
 
   const ctx = useMemo<AttachmentsContext>(
