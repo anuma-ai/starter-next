@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { ChevronDown, CopyIcon, ImageIcon, Globe } from "lucide-react";
+import { ChevronDown, ImageIcon, Globe } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import {
   useModels,
@@ -29,8 +29,6 @@ import {
 import { Loader } from "@/components/ai-elements/loader";
 import {
   Message,
-  MessageAction,
-  MessageActions,
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
@@ -289,44 +287,35 @@ const ChatBotDemo = () => {
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
                             {/* @ts-ignore */}
-                            <MessageResponse
-                              components={{
-                                a: ({
-                                  href,
-                                  children,
-                                }: {
-                                  href?: string;
-                                  children?: React.ReactNode;
-                                }) => (
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:underline"
-                                  >
-                                    {children}
-                                  </a>
-                                ),
-                              }}
-                            >
-                              {(part as any).text}
-                            </MessageResponse>
-                          </MessageContent>
-                          {message.role === "assistant" &&
-                            message.id === messages.at(-1)?.id &&
-                            i === message.parts.length - 1 && (
-                              <MessageActions>
-                                <MessageAction
-                                  label="Copy"
-                                  onClick={() =>
-                                    /* @ts-ignore */
-                                    navigator.clipboard.writeText(part.text)
-                                  }
-                                >
-                                  <CopyIcon className="size-3" />
-                                </MessageAction>
-                              </MessageActions>
+                            {message.role === "assistant" &&
+                            !part.text &&
+                            message.id === messages.at(-1)?.id ? (
+                              <Loader />
+                            ) : (
+                              <MessageResponse
+                                components={{
+                                  a: ({
+                                    href,
+                                    children,
+                                  }: {
+                                    href?: string;
+                                    children?: React.ReactNode;
+                                  }) => (
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline"
+                                    >
+                                      {children}
+                                    </a>
+                                  ),
+                                }}
+                              >
+                                {(part as any).text}
+                              </MessageResponse>
                             )}
+                          </MessageContent>
                         </Message>
                       );
                     case "file":
@@ -398,13 +387,16 @@ const ChatBotDemo = () => {
                 })}
               </div>
             ))}
-            {isLoading ||
-            isGeneratingImage ||
+            {isGeneratingImage ||
             isProcessingPdf ||
-            isProcessingOCR ? (
-              <Loader />
+            isProcessingOCR ||
+            isSearching ? (
+              <Message from="assistant">
+                <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
+                  <Loader />
+                </MessageContent>
+              </Message>
             ) : null}
-            {isLoading || isGeneratingImage || isSearching ? <Loader /> : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>

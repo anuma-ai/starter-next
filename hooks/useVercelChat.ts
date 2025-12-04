@@ -221,13 +221,27 @@ export function useVercelChat(options?: {
         ] as any,
       };
 
-      // Add user message to messages
+      // Create assistant message placeholder immediately
+      const assistantMessageId = `assistant-${Date.now()}`;
+      const assistantMessage: UIMessage = {
+        id: assistantMessageId,
+        role: "assistant",
+        parts: [
+          {
+            type: "text",
+            text: "",
+          },
+        ],
+      };
+
+      // Add both messages to state immediately
       const updatedMessages = [...messages, userMessage];
-      setMessages(updatedMessages);
+      setMessages([...updatedMessages, assistantMessage]);
       setError(null);
 
       try {
         // 1. Extract context from recent conversation for memory search
+        // Use updatedMessages which contains history + new user message
         const conversationHistory = updatedMessages
           .map((msg) => {
             const textPart = msg.parts?.find((p) => p.type === "text");
@@ -289,6 +303,7 @@ export function useVercelChat(options?: {
         }
 
         // 4. Convert UIMessages to LlmapiMessages and include memory context
+        // NOTE: updatedMessages excludes the assistant placeholder we just added, which is correct for the API
         let llmMessages = mapMessagesToCompletionPayload(updatedMessages);
 
         // Restore image_url parts if mapMessagesToCompletionPayload stripped them
@@ -347,21 +362,6 @@ export function useVercelChat(options?: {
             ] as any[])
           : llmMessages;
 
-        // Create assistant message placeholder
-        const assistantMessageId = `assistant-${Date.now()}`;
-        const assistantMessage: UIMessage = {
-          id: assistantMessageId,
-          role: "assistant",
-          parts: [
-            {
-              type: "text",
-              text: "",
-            },
-          ],
-        };
-
-        // Add assistant message to messages immediately
-        setMessages((prev) => [...prev, assistantMessage]);
         let accumulatedContent = "";
 
         // Call the API
