@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { ChevronDown, CopyIcon, ImageIcon, Globe } from "lucide-react";
+import { ChevronDown, ImageIcon, Globe } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import {
   useModels,
   useImageGeneration,
   usePdf,
+  useOCR,
   useSearch,
 } from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
@@ -28,8 +29,6 @@ import {
 import { Loader } from "@/components/ai-elements/loader";
 import {
   Message,
-  MessageAction,
-  MessageActions,
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
@@ -56,12 +55,6 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
-import {
-  Source,
-  Sources,
-  SourcesContent,
-  SourcesTrigger,
-} from "@/components/ai-elements/sources";
 
 const ChatBotDemo = () => {
   const { authenticated } = usePrivy();
@@ -99,6 +92,7 @@ const ChatBotDemo = () => {
   });
 
   const { extractPdfContext, isProcessing: isProcessingPdf } = usePdf();
+  const { extractOCRContext, isProcessing: isProcessingOCR } = useOCR();
   const { search, isLoading: isSearching } = useSearch({
     getToken: getIdentityToken,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
@@ -227,13 +221,36 @@ const ChatBotDemo = () => {
 
         try {
           const pdfContext = await extractPdfContext(message.files);
-          if (pdfContext) {
+          if (pdfContext && pdfContext.length > 100) {
             enhancedText = enhancedText
               ? `${enhancedText}\n\n${pdfContext}`
               : pdfContext;
+          } else if (message.files && message.files.length > 0) {
+            // Fallback to OCR if PDF extraction was unsuccessful or yielded too little text
+            console.log("PDF extraction insufficient, falling back to OCR...");
+            const ocrContext = await extractOCRContext(message.files);
+            if (ocrContext) {
+              enhancedText = enhancedText
+                ? `${enhancedText}\n\n${ocrContext}`
+                : ocrContext;
+            }
           }
         } catch (error) {
           console.error("Error processing PDF attachments:", error);
+          // Try OCR on error as well if appropriate, or just log
+          try {
+            if (message.files && message.files.length > 0) {
+              console.log("PDF extraction failed, trying OCR...");
+              const ocrContext = await extractOCRContext(message.files);
+              if (ocrContext) {
+                enhancedText = enhancedText
+                  ? `${enhancedText}\n\n${ocrContext}`
+                  : ocrContext;
+              }
+            }
+          } catch (ocrError) {
+            console.error("Error processing OCR fallback:", ocrError);
+          }
         }
 
         await handleSubmit(
@@ -250,6 +267,7 @@ const ChatBotDemo = () => {
       setMessages,
       setInput,
       extractPdfContext,
+      extractOCRContext,
       isSearchMode,
       search,
     ]
@@ -268,43 +286,36 @@ const ChatBotDemo = () => {
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
-                            <MessageResponse
-                              components={{
-                                a: ({
-                                  href,
-                                  children,
-                                }: {
-                                  href?: string;
-                                  children?: React.ReactNode;
-                                }) => (
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:underline"
-                                  >
-                                    {children}
-                                  </a>
-                                ),
-                              }}
-                            >
-                              {(part as any).text}
-                            </MessageResponse>
-                          </MessageContent>
-                          {message.role === "assistant" &&
-                            message.id === messages.at(-1)?.id &&
-                            i === message.parts.length - 1 && (
-                              <MessageActions>
-                                <MessageAction
-                                  label="Copy"
-                                  onClick={() =>
-                                    navigator.clipboard.writeText(part.text)
-                                  }
-                                >
-                                  <CopyIcon className="size-3" />
-                                </MessageAction>
-                              </MessageActions>
+                            {/* @ts-ignore */}
+                            {message.role === "assistant" &&
+                            !part.text &&
+                            message.id === messages.at(-1)?.id ? (
+                              <Loader />
+                            ) : (
+                              <MessageResponse
+                                components={{
+                                  a: ({
+                                    href,
+                                    children,
+                                  }: {
+                                    href?: string;
+                                    children?: React.ReactNode;
+                                  }) => (
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline"
+                                    >
+                                      {children}
+                                    </a>
+                                  ),
+                                }}
+                              >
+                                {(part as any).text}
+                              </MessageResponse>
                             )}
+                          </MessageContent>
                         </Message>
                       );
                     case "file":
@@ -319,9 +330,11 @@ const ChatBotDemo = () => {
                               </div>
                               <div className="flex flex-col overflow-hidden">
                                 <span className="truncate font-medium">
+                                  {/* @ts-ignore */}
                                   {part.filename}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
+                                  {/* @ts-ignore */}
                                   {part.mediaType}
                                 </span>
                               </div>
@@ -333,7 +346,9 @@ const ChatBotDemo = () => {
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
+                            {/* @ts-ignore */}
                             <img
+                              /* @ts-ignore */
                               src={part.image_url?.url}
                               alt="Uploaded image"
                               className="max-h-60 max-w-[300px] rounded-lg object-contain"
@@ -349,6 +364,7 @@ const ChatBotDemo = () => {
                           isStreaming={false}
                         >
                           <ReasoningTrigger />
+                          {/* @ts-ignore */}
                           <ReasoningContent>{part.text}</ReasoningContent>
                         </Reasoning>
                       );
@@ -356,6 +372,7 @@ const ChatBotDemo = () => {
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
+                            {/* @ts-ignore */}
                             <img
                               src={(part as any).url}
                               alt="Generated image"
@@ -370,10 +387,16 @@ const ChatBotDemo = () => {
                 })}
               </div>
             ))}
-            {isLoading || isGeneratingImage || isProcessingPdf ? (
-              <Loader />
+            {isGeneratingImage ||
+            isProcessingPdf ||
+            isProcessingOCR ||
+            isSearching ? (
+              <Message from="assistant">
+                <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
+                  <Loader />
+                </MessageContent>
+              </Message>
             ) : null}
-            {isLoading || isGeneratingImage || isSearching ? <Loader /> : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -397,9 +420,7 @@ const ChatBotDemo = () => {
               disabled={!authenticated}
               onChange={(e) => setInput(e.target.value)}
               placeholder={
-                authenticated
-                  ? "What would you like to know?"
-                  : "Please sign in to chat"
+                authenticated ? "Ask anything" : "Please sign in to chat"
               }
               value={input}
             />
@@ -408,7 +429,7 @@ const ChatBotDemo = () => {
             <PromptInputTools>
               <PromptInputAttachButton />
               <PromptInputSelect
-                onValueChange={(value: string) => {
+                onValueChange={(value) => {
                   setModel(value);
                 }}
                 value={model}
@@ -461,8 +482,9 @@ const ChatBotDemo = () => {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground">
-                    Local models <ChevronDown className="size-3" />
+                  <button className="flex items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground">
+                    Local models
+                    <ChevronDown className="size-4 text-muted-foreground opacity-50" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -471,7 +493,7 @@ const ChatBotDemo = () => {
                   <DropdownMenuCheckboxItem
                     checked={localModels.chat}
                     onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked: boolean) =>
+                    onCheckedChange={(checked) =>
                       setLocalModels((prev) => ({ ...prev, chat: !!checked }))
                     }
                   >
@@ -480,7 +502,7 @@ const ChatBotDemo = () => {
                   <DropdownMenuCheckboxItem
                     checked={localModels.embeddings}
                     onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked: boolean) =>
+                    onCheckedChange={(checked) =>
                       setLocalModels((prev) => ({
                         ...prev,
                         embeddings: !!checked,
@@ -492,7 +514,7 @@ const ChatBotDemo = () => {
                   <DropdownMenuCheckboxItem
                     checked={localModels.tools}
                     onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked: boolean) =>
+                    onCheckedChange={(checked) =>
                       setLocalModels((prev) => ({ ...prev, tools: !!checked }))
                     }
                   >
@@ -507,6 +529,7 @@ const ChatBotDemo = () => {
                 isLoading ||
                 isGeneratingImage ||
                 isProcessingPdf ||
+                isProcessingOCR ||
                 isSearching ||
                 !authenticated
               }

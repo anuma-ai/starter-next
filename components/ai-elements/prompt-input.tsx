@@ -600,30 +600,45 @@ export const PromptInput = ({
   }, [files, syncHiddenInput]);
 
   // Attach drop handlers on nearest form and document (opt-in)
-  useEffect(() => {
-    const form = formRef.current;
-    if (!form) return;
+  const [isDragging, setIsDragging] = useState(false);
 
-    const onDragOver = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDragging(true);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("Files")) {
+      e.preventDefault();
+      setIsDragging(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Prevent flickering when moving over children
+    if (e.currentTarget.contains(e.relatedTarget as Node)) {
+      return;
+    }
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (e.dataTransfer.types.includes("Files")) {
         e.preventDefault();
       }
-    };
-    const onDrop = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes("Files")) {
-        e.preventDefault();
-      }
-      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      setIsDragging(false);
+      if (
+        !globalDrop &&
+        e.dataTransfer.files &&
+        e.dataTransfer.files.length > 0
+      ) {
         add(e.dataTransfer.files);
       }
-    };
-    form.addEventListener("dragover", onDragOver);
-    form.addEventListener("drop", onDrop);
-    return () => {
-      form.removeEventListener("dragover", onDragOver);
-      form.removeEventListener("drop", onDrop);
-    };
-  }, [add]);
+    },
+    [add, globalDrop]
+  );
 
   useEffect(() => {
     if (!globalDrop) return;
@@ -776,9 +791,20 @@ export const PromptInput = ({
       <form
         className={cn("w-full", className)}
         onSubmit={handleSubmit}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         {...props}
       >
-        <InputGroup className="overflow-hidden">{children}</InputGroup>
+        <InputGroup
+          className={cn(
+            "overflow-hidden transition-colors duration-200",
+            isDragging && "border-gray-600 bg-muted/50 ring-2 ring-gray-600/20 dark:border-gray-500 dark:ring-gray-500/20"
+          )}
+        >
+          {children}
+        </InputGroup>
       </form>
     </>
   );
@@ -889,7 +915,7 @@ export const PromptInputTextarea = ({
 
   return (
     <InputGroupTextarea
-      className={cn("field-sizing-content max-h-48 min-h-16", className)}
+      className={cn("field-sizing-content max-h-48 min-h-10", className)}
       name="message"
       onCompositionEnd={() => setIsComposing(false)}
       onCompositionStart={() => setIsComposing(true)}

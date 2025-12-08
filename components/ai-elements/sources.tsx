@@ -35,7 +35,7 @@ export const SourcesTrigger = ({
     {children ?? (
       <>
         <p className="font-medium">Used {count} sources</p>
-        <ChevronDownIcon className="h-4 w-4" />
+        <ChevronDownIcon className="size-4 text-muted-foreground" />
       </>
     )}
   </CollapsibleTrigger>
