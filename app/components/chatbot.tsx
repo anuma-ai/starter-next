@@ -9,6 +9,7 @@ import {
   usePdf,
   useOCR,
   useSearch,
+  useModeration,
 } from "@reverbia/sdk/react";
 import { useVercelChat } from "@/hooks/useVercelChat";
 
@@ -98,6 +99,9 @@ const ChatBotDemo = () => {
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
 
+  const { classify, isLoading: isClassifying } = useModeration();
+  const [moderationError, setModerationError] = useState<string | null>(null);
+
   const displayModels =
     models && models.length > 0
       ? models
@@ -124,6 +128,23 @@ const ChatBotDemo = () => {
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
+      // Clear any previous moderation error
+      setModerationError(null);
+
+      // Check moderation before submitting
+      try {
+        const result = await classify(message.text);
+        console.log(result);
+        if (result && result.label === "toxic" && result.score > 0.5) {
+          setModerationError(
+            "Your message was flagged as potentially harmful and cannot be sent."
+          );
+        }
+      } catch (error) {
+        console.error("Moderation check failed:", error);
+        // Optionally allow the message through if moderation fails
+      }
+
       if (isSearchMode) {
         const userMessage = {
           id: `user-${Date.now()}`,
@@ -270,6 +291,7 @@ const ChatBotDemo = () => {
       extractOCRContext,
       isSearchMode,
       search,
+      classify,
     ]
   );
 
@@ -390,7 +412,8 @@ const ChatBotDemo = () => {
             {isGeneratingImage ||
             isProcessingPdf ||
             isProcessingOCR ||
-            isSearching ? (
+            isSearching ||
+            isClassifying ? (
               <Message from="assistant">
                 <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
                   <Loader />
@@ -400,6 +423,12 @@ const ChatBotDemo = () => {
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
+
+        {moderationError && (
+          <div className="mt-2 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
+            {moderationError}
+          </div>
+        )}
 
         <PromptInput
           accept="image/*,application/pdf"
@@ -531,9 +560,14 @@ const ChatBotDemo = () => {
                 isProcessingPdf ||
                 isProcessingOCR ||
                 isSearching ||
+                isClassifying ||
                 !authenticated
               }
-              status={isGeneratingImage || isSearching ? "submitted" : status}
+              status={
+                isGeneratingImage || isSearching || isClassifying
+                  ? "submitted"
+                  : status
+              }
             />
           </PromptInputFooter>
         </PromptInput>
