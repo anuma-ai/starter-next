@@ -2,13 +2,13 @@
 
 import { useCallback, useState, useRef, useEffect } from "react";
 import type { UIMessage, ChatStatus, FileUIPart } from "ai";
-import { useChat } from "@reverbia/sdk/react";
-import { useMemory } from "@reverbia/sdk/react";
-import { mapMessagesToCompletionPayload } from "@reverbia/sdk/vercel";
 import {
+  useChatStorage,
+  useMemory,
   extractConversationContext,
   formatMemoriesForChat,
 } from "@reverbia/sdk/react";
+import type { Database } from "@nozbe/watermelondb";
 
 type SendMessageOptions = {
   model: string;
@@ -38,9 +38,15 @@ type UseVercelChatResult = {
   setMessages: React.Dispatch<React.SetStateAction<UIMessage[]>>;
   stop: () => void;
   status: ChatStatus | undefined;
+  // Chat storage methods
+  conversationId: string | null;
+  conversations: any[];
+  createConversation: () => Promise<any>;
+  setConversationId: (id: string) => void;
 };
 
 export function useVercelChat(options?: {
+  database?: Database;
   model?: string;
   getToken?: () => Promise<string | null>;
   embeddingModel?: string;
@@ -59,6 +65,8 @@ export function useVercelChat(options?: {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const isSendingRef = useRef(false);
 
   const enableLocalModels = options?.enableLocalModels || {};
   const chatProvider = enableLocalModels.chat
@@ -113,34 +121,93 @@ export function useVercelChat(options?: {
       ]
     : undefined;
 
+  // Use useChatStorage for persistence
   const {
     sendMessage: baseSendMessage,
     isLoading,
-    stop,
-    // @ts-ignore
-    isSelectingTool,
-  } = useChat({
+    conversationId,
+    getMessages,
+    getConversations,
+    createConversation: baseCreateConversation,
+    setConversationId: baseSetConversationId,
+  } = useChatStorage({
+    database: options?.database!,
     getToken: options?.getToken,
-    // @ts-ignore
-    chatProvider,
-    tools,
-    onFinish: (response) => {
-      console.log("Chat finished:", response);
-    },
-    onError: (error) => {
-      console.error("Chat error:", error);
-    },
-    onData: (chunk) => {
-      console.log("Chat data chunk:", chunk);
-    },
-    onToolExecution: (result: any) => {
-      console.log("Tool executed:", result.toolName, result.result);
-      return {
-        toolName: result.toolName,
-        result: result.result,
-      };
-    },
+    autoCreateConversation: true,
   });
+
+  // Load conversations list with first message as title
+  useEffect(() => {
+    if (options?.database) {
+      getConversations().then(async (list) => {
+        // Load first message for each conversation to use as title
+        const conversationsWithTitles = await Promise.all(
+          list.map(async (conv: any) => {
+            // StoredConversation uses conversationId for the actual ID
+            const convId = conv.conversationId || conv.id;
+            if (!convId) {
+              return { ...conv, title: null };
+            }
+            try {
+              const msgs = await getMessages(convId);
+              const firstUserMessage = msgs.find((m: any) => m.role === "user");
+              const title = firstUserMessage?.content?.slice(0, 30) || null;
+              return {
+                ...conv,
+                // Normalize the id field for UI usage
+                id: convId,
+                title: title ? (title.length >= 30 ? `${title}...` : title) : null,
+              };
+            } catch {
+              return { ...conv, id: convId, title: null };
+            }
+          })
+        );
+        setConversations(conversationsWithTitles);
+      });
+    }
+  }, [getConversations, getMessages, conversationId, options?.database]);
+
+  // Load messages when conversation changes
+  useEffect(() => {
+    // Skip reloading messages if we're in the middle of sending
+    // This prevents race conditions where the reload overwrites optimistic UI
+    if (isSendingRef.current) {
+      return;
+    }
+    if (conversationId && options?.database) {
+      getMessages(conversationId).then((msgs) => {
+        const uiMessages: UIMessage[] = msgs.map((msg: any) => ({
+          id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
+          role: msg.role,
+          parts: [{ type: "text" as const, text: msg.content }],
+        }));
+        setMessages(uiMessages);
+      });
+    }
+  }, [conversationId, getMessages, options?.database]);
+
+  const createConversation = useCallback(async () => {
+    const newConv = await baseCreateConversation();
+    if (newConv) {
+      setMessages([]);
+    }
+    return newConv;
+  }, [baseCreateConversation]);
+
+  const setConversationId = useCallback(
+    (id: string) => {
+      baseSetConversationId(id);
+    },
+    [baseSetConversationId]
+  );
+
+  // Placeholder stop function (useChatStorage doesn't have streaming)
+  const stop = useCallback(() => {
+    // No-op for now
+  }, []);
+
+  const isSelectingTool = false;
 
   const embeddingProvider = enableLocalModels.embeddings ? "local" : "api";
   const embeddingModelConfig = enableLocalModels.embeddings
@@ -186,6 +253,9 @@ export function useVercelChat(options?: {
       if (!hasText && !hasFiles) {
         return;
       }
+
+      // Mark that we're sending to prevent message reload race condition
+      isSendingRef.current = true;
 
       // Create user message
       const userMessage: UIMessage = {
@@ -302,110 +372,73 @@ export function useVercelChat(options?: {
           }
         }
 
-        // 4. Convert UIMessages to LlmapiMessages and include memory context
-        // NOTE: updatedMessages excludes the assistant placeholder we just added, which is correct for the API
-        let llmMessages = mapMessagesToCompletionPayload(updatedMessages);
-
-        // Restore image_url parts if mapMessagesToCompletionPayload stripped them
-        llmMessages = llmMessages.map((msg, i) => {
-          const original = updatedMessages[i];
-          if (
-            original.role === "user" &&
-            original.parts?.some((p: any) => p.type === "image_url")
-          ) {
-            return {
-              ...msg,
-              content: original.parts as any,
-            };
-          }
-          return msg;
-        });
-
-        // If displayText was used for UI, replace with full text for API
-        if (
-          message.displayText &&
-          message.text &&
-          message.displayText !== message.text
-        ) {
-          const lastIndex = llmMessages.length - 1;
-          if (llmMessages[lastIndex]?.role === "user") {
-            const content = llmMessages[lastIndex].content;
-            if (Array.isArray(content)) {
-              llmMessages[lastIndex] = {
-                ...llmMessages[lastIndex],
-                content: content.map((part: any) =>
-                  part.type === "text" ? { ...part, text: message.text } : part
-                ),
-              };
-            } else if (typeof content === "string") {
-              llmMessages[lastIndex] = {
-                ...llmMessages[lastIndex],
-                content: [{ type: "text", text: message.text }] as any,
-              };
-            }
-          }
-        }
-
-        // 5. Include memory context as system message if available
-        const messagesWithContext = memoryContext
-          ? ([
+        // Build the messages array with memory context as system message
+        const messagesToSend: {
+          role: string;
+          content: { type: string; text: string }[];
+        }[] = [];
+        if (memoryContext) {
+          messagesToSend.push({
+            role: "system",
+            content: [
               {
-                role: "system",
-                content: [
-                  {
-                    type: "text",
-                    text: `User context:\n${memoryContext}`,
-                  },
-                ],
+                type: "text",
+                text: `Relevant context about the user: ${memoryContext}`,
               },
-              ...llmMessages,
-            ] as any[])
-          : llmMessages;
-
-        let accumulatedContent = "";
-
-        // Call the API
-        const response = await baseSendMessage({
-          messages: messagesWithContext,
-          model,
-          onData: (chunk) => {
-            accumulatedContent += chunk;
-            setMessages((prev) =>
-              prev.map((msg) => {
-                if (msg.id === assistantMessageId) {
-                  return {
-                    ...msg,
-                    parts: [
-                      {
-                        type: "text",
-                        text: accumulatedContent,
-                      },
-                    ],
-                  };
-                }
-                return msg;
-              })
-            );
-          },
-        });
-
-        // Check for errors in the response
-        if (response.error) {
-          setError(response.error);
-          // Remove the placeholder message on error
-          setMessages((prev) =>
-            prev.filter((msg) => msg.id !== assistantMessageId)
-          );
-          throw new Error(response.error);
+            ],
+          });
         }
 
-        if (!response.data) {
-          const error = "API did not return a completion response.";
-          setError(error);
+        // Call the API via useChatStorage
+        // Pass original message text as content (for storage), memory context via messages array
+        const response = await baseSendMessage({
+          content: message.text || "",
+          model,
+          includeHistory: true,
+          messages: messagesToSend.length > 0 ? messagesToSend : undefined,
+        });
+
+        // Check for error response
+        if (response?.error) {
+          console.error("[Chat] API error:", response.error);
+          setError(response.error);
           setMessages((prev) =>
             prev.filter((msg) => msg.id !== assistantMessageId)
           );
-          throw new Error(error);
+          return response;
+        }
+
+        // Update assistant message with response
+        if (response?.assistantMessage?.content) {
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id === assistantMessageId) {
+                return {
+                  ...msg,
+                  id: response.assistantMessage.uniqueId || msg.id,
+                  parts: [
+                    {
+                      type: "text",
+                      text: response.assistantMessage.content,
+                    },
+                  ],
+                };
+              }
+              // Also update user message ID to match stored one
+              if (msg.id === userMessage.id && response.userMessage?.uniqueId) {
+                return {
+                  ...msg,
+                  id: response.userMessage.uniqueId,
+                };
+              }
+              return msg;
+            })
+          );
+        } else {
+          // Remove placeholder if no response
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== assistantMessageId)
+          );
         }
 
         setError(null);
@@ -445,6 +478,9 @@ export function useVercelChat(options?: {
         setError(errorMessage);
         // Re-throw to allow component to handle if needed
         throw err;
+      } finally {
+        // Clear the sending flag so message reload can work again
+        isSendingRef.current = false;
       }
     },
     [
@@ -489,5 +525,10 @@ export function useVercelChat(options?: {
     setMessages,
     stop,
     status,
+    // Chat storage methods
+    conversationId,
+    conversations,
+    createConversation,
+    setConversationId,
   };
 }
