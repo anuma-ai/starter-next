@@ -66,6 +66,7 @@ export function useVercelChat(options?: {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<any[]>([]);
+  const [conversationRefreshKey, setConversationRefreshKey] = useState(0);
   const isSendingRef = useRef(false);
 
   const enableLocalModels = options?.enableLocalModels || {};
@@ -146,10 +147,14 @@ export function useVercelChat(options?: {
             // StoredConversation uses conversationId for the actual ID
             const convId = conv.conversationId || conv.id;
             if (!convId) {
-              return { ...conv, title: null };
+              return null; // Skip conversations without ID
             }
             try {
               const msgs = await getMessages(convId);
+              // Skip empty conversations (no messages)
+              if (!msgs || msgs.length === 0) {
+                return null;
+              }
               const firstUserMessage = msgs.find((m: any) => m.role === "user");
               const title = firstUserMessage?.content?.slice(0, 30) || null;
               return {
@@ -159,14 +164,15 @@ export function useVercelChat(options?: {
                 title: title ? (title.length >= 30 ? `${title}...` : title) : null,
               };
             } catch {
-              return { ...conv, id: convId, title: null };
+              return null; // Skip conversations that fail to load
             }
           })
         );
-        setConversations(conversationsWithTitles);
+        // Filter out null entries (empty conversations)
+        setConversations(conversationsWithTitles.filter(Boolean));
       });
     }
-  }, [getConversations, getMessages, conversationId, options?.database]);
+  }, [getConversations, getMessages, conversationId, conversationRefreshKey, options?.database]);
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -442,6 +448,9 @@ export function useVercelChat(options?: {
         }
 
         setError(null);
+
+        // Refresh conversations list to show new conversation with title
+        setConversationRefreshKey((prev) => prev + 1);
 
         // Extract facts from user message if it hasn't been processed yet
         const userMessageText = message.text || "";

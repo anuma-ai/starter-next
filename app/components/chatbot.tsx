@@ -367,7 +367,9 @@ const ChatBotDemo = () => {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex flex-1 flex-col p-14">
+      <div className="flex flex-1 flex-col items-center p-14">
+        <div className={`flex w-full max-w-3xl flex-1 flex-col ${messages.length === 0 ? "justify-center" : ""}`}>
+        {messages.length > 0 && (
         <Conversation className="h-full">
           <ConversationContent>
             {messages.map((message: any) => (
@@ -492,6 +494,7 @@ const ChatBotDemo = () => {
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
+        )}
 
         <PromptInput
           accept="image/*,application/pdf"
@@ -629,6 +632,7 @@ const ChatBotDemo = () => {
             />
           </PromptInputFooter>
         </PromptInput>
+        </div>
       </div>
     </div>
   );
