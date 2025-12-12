@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { ChevronDown, ImageIcon, Globe, Plus, MessageSquare, LogOut } from "lucide-react";
+import { ChevronDown, ImageIcon, Globe } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
-import { Button } from "@/components/ui/button";
 import {
   useModels,
   useImageGeneration,
@@ -13,6 +12,8 @@ import {
 } from "@reverbia/sdk/react";
 import { useDatabase } from "@/app/providers";
 import { useVercelChat } from "@/hooks/useVercelChat";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "./app-sidebar";
 
 import {
   DropdownMenu,
@@ -59,7 +60,7 @@ import {
 } from "@/components/ai-elements/reasoning";
 
 const ChatBotDemo = () => {
-  const { authenticated, user, login, logout, ready } = usePrivy();
+  const { authenticated } = usePrivy();
   const { identityToken } = useIdentityToken();
   const database = useDatabase();
 
@@ -301,73 +302,19 @@ const ChatBotDemo = () => {
   );
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <div className="flex w-64 flex-col border-r bg-muted/30">
-        <div className="p-4">
-          <button
-            onClick={handleNewConversation}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <Plus className="size-4" />
-            New Chat
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-2 pb-4">
-          {conversations.map((conv: any, index: number) => (
-            <button
-              key={conv.id ?? index}
-              onClick={() => handleSelectConversation(conv.id)}
-              className={`mb-1 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                conversationId === conv.id
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-              }`}
-            >
-              <MessageSquare className="size-4 shrink-0" />
-              <span className="truncate">
-                {conv.title || `Chat ${conv.id?.slice(0, 8) ?? index + 1}`}
-              </span>
-            </button>
-          ))}
-          {conversations.length === 0 && (
-            <p className="px-3 py-2 text-sm text-muted-foreground">
-              No conversations yet
-            </p>
-          )}
-        </div>
-
-        {/* User Profile Section */}
-        <div className="border-t p-4">
-          {!ready ? (
-            <Button disabled className="w-full">
-              Loading...
-            </Button>
-          ) : authenticated ? (
-            <div className="flex flex-col gap-2">
-              <span className="truncate text-sm text-muted-foreground">
-                {user?.email?.address ?? user?.id ?? "Signed in"}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => logout()}
-                className="w-full justify-start gap-2"
-              >
-                <LogOut className="size-4" />
-                Sign out
-              </Button>
-            </div>
-          ) : (
-            <Button onClick={() => login()} className="w-full">
-              Sign in
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Main Chat Area */}
-      <div className="flex flex-1 flex-col items-center p-14">
+    <SidebarProvider>
+      <AppSidebar
+        conversations={conversations}
+        conversationId={conversationId}
+        onNewConversation={handleNewConversation}
+        onSelectConversation={handleSelectConversation}
+      />
+      <SidebarInset>
+        <header className="flex h-14 items-center gap-2 border-b px-4">
+          <SidebarTrigger />
+        </header>
+        {/* Main Chat Area */}
+        <div className="flex flex-1 flex-col items-center p-14">
         <div className={`flex w-full max-w-3xl flex-1 flex-col ${messages.length === 0 ? "justify-center" : ""}`}>
         {messages.length > 0 && (
         <Conversation className="h-full">
@@ -634,7 +581,8 @@ const ChatBotDemo = () => {
         </PromptInput>
         </div>
       </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 };
 
