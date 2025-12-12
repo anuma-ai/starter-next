@@ -74,7 +74,7 @@ export function AppSidebar({
                         onClick={() => onDeleteConversation(conv.id)}
                         className="text-destructive focus:text-destructive"
                       >
-                        <Trash2 className="mr-2 size-4" />
+                        <Trash2 className="mr-2 size-4 text-destructive" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
