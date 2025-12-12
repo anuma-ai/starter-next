@@ -9,8 +9,9 @@ import {
   usePdf,
   useOCR,
   useSearch,
+  useChatStorage,
 } from "@reverbia/sdk/react";
-import { useVercelChat } from "@/hooks/useVercelChat";
+import { useDatabase } from "@/app/providers";
 
 import {
   DropdownMenu,
@@ -59,6 +60,7 @@ import {
 const ChatBotDemo = () => {
   const { authenticated } = usePrivy();
   const { identityToken } = useIdentityToken();
+  const database = useDatabase();
 
   const getIdentityToken = useCallback(async (): Promise<string | null> => {
     return identityToken ?? null;
@@ -76,6 +78,8 @@ const ChatBotDemo = () => {
   }, [authenticated, identityToken, refetch]);
 
   const [model, setModel] = useState<string>("openai/gpt-4o");
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<any[]>([]);
 
   const [localModels, setLocalModels] = useState({
     chat: false,
@@ -107,20 +111,27 @@ const ChatBotDemo = () => {
   const selectedLabel =
     selectedModel?.name ?? selectedModel?.id ?? "openai/gpt-4o";
 
-  const {
-    messages,
-    input,
-    setInput,
-    handleSubmit,
-    isLoading,
-    status,
-    setMessages,
-  } = useVercelChat({
-    model: "openai/gpt-4o",
+  const { isLoading, sendMessage, conversationId, getMessages } = useChatStorage({
+    database,
     getToken: getIdentityToken,
-    chatProvider: localModels.chat ? "local" : "api",
-    enableLocalModels: localModels,
+    autoCreateConversation: true,
   });
+
+  // Load messages when conversation changes
+  useEffect(() => {
+    if (conversationId) {
+      getMessages(conversationId).then((msgs) => {
+        const uiMessages = msgs.map((msg: any) => ({
+          id: msg.id,
+          role: msg.role,
+          parts: [{ type: "text", text: msg.content }],
+        }));
+        setMessages(uiMessages);
+      });
+    }
+  }, [conversationId, getMessages]);
+
+  const status = isLoading ? "streaming" : undefined;
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
@@ -253,15 +264,47 @@ const ChatBotDemo = () => {
           }
         }
 
-        await handleSubmit(
-          { ...message, text: enhancedText, displayText: message.text },
-          { model }
-        );
+        setInput("");
+
+        // Add user message to UI immediately
+        const userMessage = {
+          id: `user-${Date.now()}`,
+          role: "user" as const,
+          parts: [
+            {
+              type: "text" as const,
+              text: message.text,
+            },
+          ],
+        };
+        setMessages((prev) => [...prev, userMessage]);
+
+        // Send message using useChatStorage
+        const result = await sendMessage({
+          content: enhancedText,
+          model,
+          includeHistory: true,
+        });
+
+        // Add assistant response to UI
+        if (result?.assistantMessage) {
+          const assistantMessage = {
+            id: `assistant-${Date.now()}`,
+            role: "assistant" as const,
+            parts: [
+              {
+                type: "text" as const,
+                text: result.assistantMessage.content,
+              },
+            ],
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        }
       }
     },
     [
       model,
-      handleSubmit,
+      sendMessage,
       isImageMode,
       generateImage,
       setMessages,

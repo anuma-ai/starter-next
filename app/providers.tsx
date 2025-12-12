@@ -1,11 +1,47 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  createContext,
+  useContext,
+  type ReactNode,
+} from "react";
 import { PrivyProvider } from "@privy-io/react-auth";
+import type { Database } from "@nozbe/watermelondb";
+import { getDatabase } from "@/lib/database";
 
 type Props = {
   children: ReactNode;
 };
+
+const DatabaseContext = createContext<Database | null>(null);
+
+export function useDatabase(): Database {
+  const database = useContext(DatabaseContext);
+  if (!database) {
+    throw new Error("useDatabase must be used within a DatabaseProvider");
+  }
+  return database;
+}
+
+export function DatabaseProvider({ children }: Props) {
+  const [database, setDatabase] = useState<Database | null>(null);
+
+  useEffect(() => {
+    setDatabase(getDatabase());
+  }, []);
+
+  if (!database) {
+    return null;
+  }
+
+  return (
+    <DatabaseContext.Provider value={database}>
+      {children}
+    </DatabaseContext.Provider>
+  );
+}
 
 const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 const privyClientId = process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID;
