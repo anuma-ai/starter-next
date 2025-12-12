@@ -123,6 +123,7 @@ const ChatBotDemo = () => {
     conversations,
     createConversation,
     setConversationId,
+    deleteConversation,
   } = useVercelChat({
     database,
     model: "openai/gpt-4o",
@@ -308,13 +309,14 @@ const ChatBotDemo = () => {
         conversationId={conversationId}
         onNewConversation={handleNewConversation}
         onSelectConversation={handleSelectConversation}
+        onDeleteConversation={deleteConversation}
       />
       <SidebarInset>
-        <header className="flex h-14 items-center gap-2 border-b px-4">
+        <header className="flex h-14 items-center gap-2 px-4">
           <SidebarTrigger />
         </header>
         {/* Main Chat Area */}
-        <div className="flex flex-1 flex-col items-center p-14">
+        <div className="flex flex-1 flex-col items-center px-14 py-4">
         <div className={`flex w-full max-w-3xl flex-1 flex-col ${messages.length === 0 ? "justify-center" : ""}`}>
         {messages.length > 0 && (
         <Conversation className="h-full">
@@ -468,7 +470,7 @@ const ChatBotDemo = () => {
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <PromptInputTools>
+            <PromptInputTools className="flex-wrap">
               <PromptInputAttachButton />
               <PromptInputSelect
                 onValueChange={(value) => {
@@ -524,7 +526,7 @@ const ChatBotDemo = () => {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground">
+                  <button className="hidden items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground sm:flex">
                     Local models
                     <ChevronDown className="size-4 text-muted-foreground opacity-50" />
                   </button>

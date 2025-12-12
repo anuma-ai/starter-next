@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, MessageSquare, LogOut } from "lucide-react";
+import { Plus, MessageSquare, LogOut, MoreHorizontal, Trash2 } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,15 +11,23 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type AppSidebarProps = {
   conversations: any[];
   conversationId: string | null;
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
+  onDeleteConversation: (id: string) => void;
 };
 
 export function AppSidebar({
@@ -27,6 +35,7 @@ export function AppSidebar({
   conversationId,
   onNewConversation,
   onSelectConversation,
+  onDeleteConversation,
 }: AppSidebarProps) {
   const { authenticated, user, login, logout, ready } = usePrivy();
 
@@ -54,6 +63,22 @@ export function AppSidebar({
                       {conv.title || `Chat ${conv.id?.slice(0, 8) ?? index + 1}`}
                     </span>
                   </SidebarMenuButton>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuAction showOnHover>
+                        <MoreHorizontal className="size-4" />
+                      </SidebarMenuAction>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start">
+                      <DropdownMenuItem
+                        onClick={() => onDeleteConversation(conv.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 size-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </SidebarMenuItem>
               ))}
               {conversations.length === 0 && (

@@ -43,6 +43,7 @@ type UseVercelChatResult = {
   conversations: any[];
   createConversation: () => Promise<any>;
   setConversationId: (id: string) => void;
+  deleteConversation: (id: string) => Promise<void>;
 };
 
 export function useVercelChat(options?: {
@@ -131,6 +132,7 @@ export function useVercelChat(options?: {
     getConversations,
     createConversation: baseCreateConversation,
     setConversationId: baseSetConversationId,
+    deleteConversation: baseDeleteConversation,
   } = useChatStorage({
     database: options?.database!,
     getToken: options?.getToken,
@@ -206,6 +208,19 @@ export function useVercelChat(options?: {
       baseSetConversationId(id);
     },
     [baseSetConversationId]
+  );
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      await baseDeleteConversation(id);
+      // If we deleted the current conversation, clear messages
+      if (conversationId === id) {
+        setMessages([]);
+      }
+      // Refresh the conversations list
+      setConversationRefreshKey((prev) => prev + 1);
+    },
+    [baseDeleteConversation, conversationId]
   );
 
   // Placeholder stop function (useChatStorage doesn't have streaming)
@@ -539,5 +554,6 @@ export function useVercelChat(options?: {
     conversations,
     createConversation,
     setConversationId,
+    deleteConversation,
   };
 }
