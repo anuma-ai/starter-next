@@ -4,7 +4,7 @@ import { useCallback, useState, useRef, useEffect } from "react";
 import type { UIMessage, ChatStatus, FileUIPart } from "ai";
 import {
   useChatStorage,
-  useMemory,
+  useMemoryStorage,
   extractConversationContext,
   formatMemoriesForChat,
 } from "@reverbia/sdk/react";
@@ -235,7 +235,8 @@ export function useVercelChat(options?: {
     ? "Snowflake/snowflake-arctic-embed-xs"
     : options?.embeddingModel || "openai/text-embedding-3-small";
 
-  const { extractMemoriesFromMessage, searchMemories } = useMemory({
+  const { extractMemoriesFromMessage, searchMemories } = useMemoryStorage({
+    database: options?.database as Database,
     getToken: options?.getToken,
     generateEmbeddings: true,
     embeddingProvider,
