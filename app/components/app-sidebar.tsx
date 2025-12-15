@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, MessageSquare, LogOut, MoreHorizontal, Trash2 } from "lucide-react";
+import { SquarePen, LogOut, MoreHorizontal, Trash2 } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,10 +42,14 @@ export function AppSidebar({
   return (
     <Sidebar>
       <SidebarHeader>
-        <Button onClick={onNewConversation} className="w-full gap-2">
-          <Plus className="size-4" />
-          New Chat
-        </Button>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={onNewConversation}>
+              <SquarePen className="size-4" />
+              <span>New chat</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
@@ -58,9 +62,9 @@ export function AppSidebar({
                     isActive={conversationId === conv.id}
                     onClick={() => onSelectConversation(conv.id)}
                   >
-                    <MessageSquare className="size-4" />
                     <span className="truncate">
-                      {conv.title || `Chat ${conv.id?.slice(0, 8) ?? index + 1}`}
+                      {conv.title ||
+                        `Chat ${conv.id?.slice(0, 8) ?? index + 1}`}
                     </span>
                   </SidebarMenuButton>
                   <DropdownMenu>
@@ -97,20 +101,28 @@ export function AppSidebar({
             Loading...
           </Button>
         ) : authenticated ? (
-          <div className="flex flex-col gap-2">
-            <span className="truncate px-2 text-sm text-muted-foreground">
-              {user?.email?.address ?? user?.id ?? "Signed in"}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => logout()}
-              className="w-full justify-start gap-2"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex w-full items-center gap-2 rounded-md p-2 text-sm hover:bg-accent cursor-pointer">
+                <span className="truncate text-muted-foreground">
+                  {user?.email?.address ?? user?.id ?? "Signed in"}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="top"
+              align="start"
+              className="w-[--radix-dropdown-menu-trigger-width]"
             >
-              <LogOut className="size-4" />
-              Sign out
-            </Button>
-          </div>
+              <DropdownMenuItem
+                onClick={() => logout()}
+                className="text-destructive focus:text-destructive"
+              >
+                <LogOut className="mr-2 size-4 text-destructive" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
           <Button onClick={() => login()} className="w-full">
             Sign in
