@@ -10,7 +10,10 @@ import {
   useOCR,
   useSearch,
 } from "@reverbia/sdk/react";
+import { useDatabase } from "@/app/providers";
 import { useVercelChat } from "@/hooks/useVercelChat";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "./app-sidebar";
 
 import {
   DropdownMenu,
@@ -59,6 +62,7 @@ import {
 const ChatBotDemo = () => {
   const { authenticated } = usePrivy();
   const { identityToken } = useIdentityToken();
+  const database = useDatabase();
 
   const getIdentityToken = useCallback(async (): Promise<string | null> => {
     return identityToken ?? null;
@@ -115,12 +119,37 @@ const ChatBotDemo = () => {
     isLoading,
     status,
     setMessages,
+    conversationId,
+    conversations,
+    createConversation,
+    setConversationId,
+    deleteConversation,
   } = useVercelChat({
+    database,
     model: "openai/gpt-4o",
     getToken: getIdentityToken,
     chatProvider: localModels.chat ? "local" : "api",
     enableLocalModels: localModels,
   });
+
+  const handleNewConversation = useCallback(async () => {
+    // Don't create a new conversation if the current one is empty
+    if (messages.length === 0) {
+      return;
+    }
+    const newConversation = await createConversation();
+    if (newConversation) {
+      // StoredConversation uses conversationId as the actual ID
+      setConversationId((newConversation as any).conversationId);
+    }
+  }, [createConversation, setConversationId, messages.length]);
+
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      setConversationId(id);
+    },
+    [setConversationId]
+  );
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
@@ -274,8 +303,22 @@ const ChatBotDemo = () => {
   );
 
   return (
-    <div className="mx-auto size-full h-screen max-w-4xl p-14">
-      <div className="flex h-full flex-col">
+    <SidebarProvider>
+      <AppSidebar
+        conversations={conversations}
+        conversationId={conversationId}
+        onNewConversation={handleNewConversation}
+        onSelectConversation={handleSelectConversation}
+        onDeleteConversation={deleteConversation}
+      />
+      <SidebarInset>
+        <header className="flex h-14 items-center gap-2 px-4">
+          <SidebarTrigger />
+        </header>
+        {/* Main Chat Area */}
+        <div className="flex flex-1 flex-col items-center px-14 py-4">
+        <div className={`flex w-full max-w-3xl flex-1 flex-col ${messages.length === 0 ? "justify-center" : ""}`}>
+        {messages.length > 0 && (
         <Conversation className="h-full">
           <ConversationContent>
             {messages.map((message: any) => (
@@ -400,6 +443,7 @@ const ChatBotDemo = () => {
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
+        )}
 
         <PromptInput
           accept="image/*,application/pdf"
@@ -426,7 +470,7 @@ const ChatBotDemo = () => {
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <PromptInputTools>
+            <PromptInputTools className="flex-wrap">
               <PromptInputAttachButton />
               <PromptInputSelect
                 onValueChange={(value) => {
@@ -482,7 +526,7 @@ const ChatBotDemo = () => {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground">
+                  <button className="hidden items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground sm:flex">
                     Local models
                     <ChevronDown className="size-4 text-muted-foreground opacity-50" />
                   </button>
@@ -537,8 +581,10 @@ const ChatBotDemo = () => {
             />
           </PromptInputFooter>
         </PromptInput>
+        </div>
       </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 };
 
