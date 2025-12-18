@@ -6,12 +6,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
-import { Shimmer } from "./shimmer";
 
 type ReasoningContextValue = {
   isStreaming: boolean;
@@ -96,7 +96,7 @@ export const Reasoning = memo(
 
     return (
       <ReasoningContext.Provider
-        value={{ isStreaming, isOpen, setIsOpen, duration }}
+        value={{ isStreaming, isOpen: isOpen ?? false, setIsOpen, duration }}
       >
         <Collapsible
           className={cn("not-prose mb-4", className)}
@@ -113,9 +113,16 @@ export const Reasoning = memo(
 
 export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger>;
 
+const ThinkingShimmer = () => (
+  <span className="inline-flex items-center gap-1">
+    <span>Thinking</span>
+    <Skeleton className="h-3 w-8 inline-block" />
+  </span>
+);
+
 const getThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return <Shimmer duration={1}>Thinking...</Shimmer>;
+    return <ThinkingShimmer />;
   }
   if (duration === undefined) {
     return <p>Thought for a few seconds</p>;

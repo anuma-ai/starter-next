@@ -28,13 +28,13 @@ import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from "@/components/ai-elements/conversation";
-import { Loader } from "@/components/ai-elements/loader";
+} from "@/components/chat/conversation";
+import { Loader } from "@/components/chat/loader";
 import {
   Message,
   MessageContent,
   MessageResponse,
-} from "@/components/ai-elements/message";
+} from "@/components/chat/message";
 import {
   PromptInput,
   PromptInputAttachButton,
@@ -52,12 +52,12 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
-} from "@/components/ai-elements/prompt-input";
+} from "@/components/chat/prompt-input";
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
-} from "@/components/ai-elements/reasoning";
+} from "@/components/chat/reasoning";
 
 const ChatBotDemo = () => {
   const { authenticated } = usePrivy();
@@ -79,7 +79,15 @@ const ChatBotDemo = () => {
     }
   }, [authenticated, identityToken, refetch]);
 
-  const [model, setModel] = useState<string>("openai/gpt-4o");
+  const [model, setModel] = useState<string>("fireworks/accounts/fireworks/models/gpt-oss-120b");
+
+  // Helper function to get display name from model ID
+  const getModelDisplayName = (modelId: string) => {
+    if (modelId.includes("/")) {
+      return modelId.split("/").pop() || modelId;
+    }
+    return modelId;
+  };
 
   const [localModels, setLocalModels] = useState({
     chat: false,
@@ -105,11 +113,12 @@ const ChatBotDemo = () => {
   const displayModels =
     models && models.length > 0
       ? models
-      : [{ id: "openai/gpt-4o", name: "openai/gpt-4o" }];
+      : [{ id: "fireworks/accounts/fireworks/models/gpt-oss-120b", name: "fireworks/accounts/fireworks/models/gpt-oss-120b" }];
 
   const selectedModel = displayModels.find((m: any) => m.id === model);
-  const selectedLabel =
-    selectedModel?.name ?? selectedModel?.id ?? "openai/gpt-4o";
+  const selectedLabel = getModelDisplayName(
+    selectedModel?.name ?? selectedModel?.id ?? "fireworks/accounts/fireworks/models/gpt-oss-120b"
+  );
 
   const {
     messages,
@@ -126,7 +135,7 @@ const ChatBotDemo = () => {
     deleteConversation,
   } = useVercelChat({
     database,
-    model: "openai/gpt-4o",
+    model: "fireworks/accounts/fireworks/models/gpt-oss-120b",
     getToken: getIdentityToken,
     chatProvider: localModels.chat ? "local" : "api",
     enableLocalModels: localModels,
@@ -479,14 +488,14 @@ const ChatBotDemo = () => {
                 value={model}
               >
                 <PromptInputSelectTrigger>
-                  <PromptInputSelectValue placeholder="openai/gpt-4o">
+                  <PromptInputSelectValue placeholder="gpt-oss-120b">
                     {selectedLabel}
                   </PromptInputSelectValue>
                 </PromptInputSelectTrigger>
                 <PromptInputSelectContent>
                   {displayModels.map((option: any) => (
                     <PromptInputSelectItem key={option.id} value={option.id}>
-                      {option.name ?? option.id}
+                      {getModelDisplayName(option.name ?? option.id)}
                     </PromptInputSelectItem>
                   ))}
                 </PromptInputSelectContent>

@@ -1,13 +1,31 @@
-import { createUIMessageStreamResponse, type UIMessage } from "ai";
 import { postApiV1ChatCompletions } from "@reverbia/sdk";
 import {
-  mapMessagesToCompletionPayload,
   createAssistantStream,
   createErrorStream,
 } from "@reverbia/sdk/vercel";
+import { createUIMessageStreamResponse } from "@/lib/stream";
+import type { UIMessage, MessagePart } from "@/types/chat";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
+
+// Convert our UIMessage format to the Portal API format
+function mapMessagesToCompletionPayload(messages: UIMessage[]) {
+  return messages
+    .filter((msg) => ["user", "assistant", "system"].includes(msg.role))
+    .map((msg) => {
+      const textParts = msg.parts
+        .filter((part): part is MessagePart & { type: "text" } => part.type === "text")
+        .map((part) => part.text)
+        .join("\n\n");
+
+      return {
+        role: msg.role,
+        content: [{ type: "text", text: textParts }],
+      };
+    })
+    .filter((msg) => msg.content[0].text);
+}
 
 export async function POST(req: Request) {
   const {

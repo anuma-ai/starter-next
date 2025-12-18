@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useRef, useEffect } from "react";
-import type { UIMessage, ChatStatus, FileUIPart } from "ai";
+import type { UIMessage, ChatStatus, FileUIPart } from "@/types/chat";
 import {
   useChatStorage,
   useMemoryStorage,
@@ -163,7 +163,11 @@ export function useVercelChat(options?: {
                 ...conv,
                 // Normalize the id field for UI usage
                 id: convId,
-                title: title ? (title.length >= 30 ? `${title}...` : title) : null,
+                title: title
+                  ? title.length >= 30
+                    ? `${title}...`
+                    : title
+                  : null,
               };
             } catch {
               return null; // Skip conversations that fail to load
@@ -174,7 +178,13 @@ export function useVercelChat(options?: {
         setConversations(conversationsWithTitles.filter(Boolean));
       });
     }
-  }, [getConversations, getMessages, conversationId, conversationRefreshKey, options?.database]);
+  }, [
+    getConversations,
+    getMessages,
+    conversationId,
+    conversationRefreshKey,
+    options?.database,
+  ]);
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -223,9 +233,9 @@ export function useVercelChat(options?: {
     [baseDeleteConversation, conversationId]
   );
 
-  // Placeholder stop function (useChatStorage doesn't have streaming)
+  // Placeholder stop function
   const stop = useCallback(() => {
-    // No-op for now
+    // TODO: Implement stop by exposing abort controller from useChatStorage
   }, []);
 
   const isSelectingTool = false;
@@ -411,13 +421,35 @@ export function useVercelChat(options?: {
           });
         }
 
-        // Call the API via useChatStorage
+        // Call the API via useChatStorage with streaming callback
         // Pass original message text as content (for storage), memory context via messages array
         const response = await baseSendMessage({
           content: message.text || "",
           model,
           includeHistory: true,
           messages: messagesToSend.length > 0 ? messagesToSend : undefined,
+          onData: (chunk: string) => {
+            console.log("chunk", chunk);
+            // Update assistant message with each streaming chunk
+            setMessages((prev) =>
+              prev.map((msg) => {
+                if (msg.id === assistantMessageId) {
+                  const currentText =
+                    msg.parts?.[0]?.type === "text" ? msg.parts[0].text : "";
+                  return {
+                    ...msg,
+                    parts: [
+                      {
+                        type: "text",
+                        text: currentText + chunk,
+                      },
+                    ],
+                  };
+                }
+                return msg;
+              })
+            );
+          },
         });
 
         // Check for error response
@@ -430,20 +462,20 @@ export function useVercelChat(options?: {
           return response;
         }
 
-        // Update assistant message with response
-        if (response?.assistantMessage?.content) {
+        // Update assistant message IDs to match stored ones after completion
+        if (
+          response?.assistantMessage?.uniqueId ||
+          response?.userMessage?.uniqueId
+        ) {
           setMessages((prev) =>
             prev.map((msg) => {
-              if (msg.id === assistantMessageId) {
+              if (
+                msg.id === assistantMessageId &&
+                response.assistantMessage?.uniqueId
+              ) {
                 return {
                   ...msg,
-                  id: response.assistantMessage.uniqueId || msg.id,
-                  parts: [
-                    {
-                      type: "text",
-                      text: response.assistantMessage.content,
-                    },
-                  ],
+                  id: response.assistantMessage.uniqueId,
                 };
               }
               // Also update user message ID to match stored one
@@ -455,11 +487,6 @@ export function useVercelChat(options?: {
               }
               return msg;
             })
-          );
-        } else {
-          // Remove placeholder if no response
-          setMessages((prev) =>
-            prev.filter((msg) => msg.id !== assistantMessageId)
           );
         }
 
