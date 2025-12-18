@@ -347,9 +347,8 @@ const ChatBotDemo = () => {
           }`}
         >
           {messages.length > 0 && (
-            <div className="flex min-h-0 flex-1 flex-col items-center px-14">
-              <Conversation className="w-full max-w-3xl">
-                <ConversationContent>
+            <Conversation className="min-h-0 flex-1">
+              <ConversationContent className="mx-auto max-w-3xl px-14">
                   {messages.map((message: any) => (
                     <div key={message.id}>
                       {message.parts.map((part: any, i: number) => {
@@ -468,10 +467,9 @@ const ChatBotDemo = () => {
                       </MessageContent>
                     </Message>
                   ) : null}
-                </ConversationContent>
-                <ConversationScrollButton />
-              </Conversation>
-            </div>
+              </ConversationContent>
+              <ConversationScrollButton />
+            </Conversation>
           )}
 
           {/* Fixed prompt input at bottom */}
