@@ -363,17 +363,13 @@ const ChatBotDemo = () => {
                                 <MessageContent>
                                   {/* @ts-ignore */}
                                   {message.role === "assistant" &&
-                                  !part.text &&
-                                  message.id === messages.at(-1)?.id &&
-                                  isLoading ? (
-                                    <Loader />
-                                  ) : message.role === "assistant" &&
-                                    message.id === messages.at(-1)?.id ? (
+                                  message.id === messages.at(-1)?.id ? (
                                     // For the last assistant message, use StreamingMessage
-                                    // It handles both streaming and completed states
+                                    // It handles both streaming (empty text) and completed states
                                     <StreamingMessage
                                       subscribe={subscribeToStreaming}
                                       initialText={(part as any).text || ""}
+                                      isLoading={isLoading}
                                     />
                                   ) : (
                                     <MessageResponse>

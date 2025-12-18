@@ -64,12 +64,14 @@ export type StreamingMessageProps = {
   subscribe: (callback: (text: string) => void) => () => void;
   className?: string;
   initialText?: string;
+  isLoading?: boolean;
 };
 
 export const StreamingMessage = ({
   subscribe,
   className,
   initialText = "",
+  isLoading = false,
 }: StreamingMessageProps) => {
   const [text, setText] = useState(initialText);
   const textRef = useRef(initialText);
@@ -104,6 +106,13 @@ export const StreamingMessage = ({
       setText(initialText);
     }
   }, [initialText]);
+
+  // Show loading indicator when loading and no text yet
+  if (!text && isLoading) {
+    return (
+      <span className="inline-block size-2 animate-pulse rounded-full bg-current opacity-50" />
+    );
+  }
 
   return (
     <Streamdown
