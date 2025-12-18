@@ -38,6 +38,7 @@ import {
   Message,
   MessageContent,
   MessageResponse,
+  StreamingMessage,
 } from "@/components/chat/message";
 import {
   PromptInput,
@@ -155,17 +156,6 @@ const ChatBotDemo = () => {
     enableLocalModels: localModels,
   });
 
-  // Subscribe to streaming updates for direct DOM manipulation
-  useEffect(() => {
-    const unsubscribe = subscribeToStreaming((text) => {
-      // Find the streaming element by ID instead of ref (ref might not be set yet)
-      const el = document.getElementById("streaming-message");
-      if (el) {
-        el.textContent = text;
-      }
-    });
-    return unsubscribe;
-  }, [subscribeToStreaming]);
 
   const handleNewConversation = useCallback(async () => {
     // Don't create a new conversation if the current one is empty
@@ -365,11 +355,6 @@ const ChatBotDemo = () => {
                       {message.parts.map((part: any, i: number) => {
                         switch ((part as any).type) {
                           case "text": {
-                            const isStreamingMessage =
-                              message.role === "assistant" &&
-                              message.id === messages.at(-1)?.id &&
-                              isLoading;
-
                             return (
                               <Message
                                 key={`${message.id}-${i}`}
@@ -377,20 +362,23 @@ const ChatBotDemo = () => {
                               >
                                 <MessageContent>
                                   {/* @ts-ignore */}
-                                  {isStreamingMessage ? (
-                                    // During streaming, use a div with ID for direct DOM updates
-                                    <div
-                                      id="streaming-message"
-                                      className="whitespace-pre-wrap"
-                                    />
-                                  ) : message.role === "assistant" &&
-                                    !part.text &&
-                                    message.id === messages.at(-1)?.id ? (
+                                  {message.role === "assistant" &&
+                                  !part.text &&
+                                  message.id === messages.at(-1)?.id &&
+                                  isLoading ? (
                                     <Loader />
+                                  ) : message.role === "assistant" &&
+                                    message.id === messages.at(-1)?.id ? (
+                                    // For the last assistant message, use StreamingMessage
+                                    // It handles both streaming and completed states
+                                    <StreamingMessage
+                                      subscribe={subscribeToStreaming}
+                                      initialText={(part as any).text || ""}
+                                    />
                                   ) : (
-                                    <div className="whitespace-pre-wrap">
+                                    <MessageResponse>
                                       {(part as any).text}
-                                    </div>
+                                    </MessageResponse>
                                   )}
                                 </MessageContent>
                               </Message>

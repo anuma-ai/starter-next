@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import type { MessageRole } from "@/types/chat";
 import type { ComponentProps, HTMLAttributes } from "react";
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
@@ -57,3 +57,62 @@ export const MessageResponse = memo(
 );
 
 MessageResponse.displayName = "MessageResponse";
+
+// Streaming message component that subscribes to text updates
+// Uses throttled updates with Streamdown for markdown rendering
+export type StreamingMessageProps = {
+  subscribe: (callback: (text: string) => void) => () => void;
+  className?: string;
+  initialText?: string;
+};
+
+export const StreamingMessage = ({
+  subscribe,
+  className,
+  initialText = "",
+}: StreamingMessageProps) => {
+  const [text, setText] = useState(initialText);
+  const textRef = useRef(initialText);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const updateText = () => {
+      setText(textRef.current);
+      rafRef.current = null;
+    };
+
+    const unsubscribe = subscribe((newText) => {
+      textRef.current = newText;
+      // Throttle updates to once per animation frame (~60fps)
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(updateText);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [subscribe]);
+
+  // Update if initialText changes (e.g., when streaming completes and state syncs)
+  useEffect(() => {
+    if (initialText && initialText !== textRef.current) {
+      textRef.current = initialText;
+      setText(initialText);
+    }
+  }, [initialText]);
+
+  return (
+    <Streamdown
+      className={cn(
+        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+        className
+      )}
+    >
+      {text}
+    </Streamdown>
+  );
+};

@@ -480,33 +480,9 @@ export function useChat(options?: {
           return response;
         }
 
-        // Update assistant message IDs to match stored ones after completion
-        if (
-          response?.assistantMessage?.uniqueId ||
-          response?.userMessage?.uniqueId
-        ) {
-          setMessages((prev) =>
-            prev.map((msg) => {
-              if (
-                msg.id === assistantMessageId &&
-                response.assistantMessage?.uniqueId
-              ) {
-                return {
-                  ...msg,
-                  id: response.assistantMessage.uniqueId,
-                };
-              }
-              // Also update user message ID to match stored one
-              if (msg.id === userMessage.id && response.userMessage?.uniqueId) {
-                return {
-                  ...msg,
-                  id: response.userMessage.uniqueId,
-                };
-              }
-              return msg;
-            })
-          );
-        }
+        // Note: We intentionally don't update message IDs to match database IDs
+        // Changing IDs causes React to unmount/remount components (flicker)
+        // The temporary IDs work fine for UI purposes
 
         setError(null);
 
