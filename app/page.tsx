@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-const ChatBotDemo = dynamic(() => import("./components/chatbot"), {
+const AppLayout = dynamic(() => import("./components/app-layout").then(mod => ({ default: mod.AppLayout })), {
   ssr: false,
   loading: () => (
     <div className="flex h-screen items-center justify-center">
@@ -11,8 +11,16 @@ const ChatBotDemo = dynamic(() => import("./components/chatbot"), {
   ),
 });
 
+const ChatBotDemo = dynamic(() => import("./components/chatbot"), {
+  ssr: false,
+});
+
 const Home = () => {
-  return <ChatBotDemo />;
+  return (
+    <AppLayout>
+      <ChatBotDemo />
+    </AppLayout>
+  );
 };
 
 export default Home;

@@ -1,7 +1,15 @@
 "use client";
 
-import { SquarePen, LogOut, MoreHorizontal, Trash2 } from "lucide-react";
+import {
+  SquarePen,
+  LogOut,
+  MoreHorizontal,
+  Trash2,
+  SlidersHorizontal,
+} from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -38,6 +46,7 @@ export function AppSidebar({
   onDeleteConversation,
 }: AppSidebarProps) {
   const { authenticated, user, login, logout, ready } = usePrivy();
+  const pathname = usePathname();
 
   return (
     <Sidebar>
@@ -96,6 +105,16 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === "/settings"}>
+              <Link href="/settings">
+                <SlidersHorizontal className="size-4" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         {!ready ? (
           <Button disabled className="w-full">
             Loading...

@@ -12,12 +12,6 @@ import {
 } from "@reverbia/sdk/react";
 import { useDatabase } from "@/app/providers";
 import { useChat } from "@/hooks/useChat";
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { AppSidebar } from "./app-sidebar";
 
 import {
   DropdownMenu,
@@ -142,11 +136,6 @@ const ChatBotDemo = () => {
     isLoading,
     status,
     setMessages,
-    conversationId,
-    conversations,
-    createConversation,
-    setConversationId,
-    deleteConversation,
     subscribeToStreaming,
   } = useChat({
     database,
@@ -157,24 +146,6 @@ const ChatBotDemo = () => {
   });
 
 
-  const handleNewConversation = useCallback(async () => {
-    // Don't create a new conversation if the current one is empty
-    if (messages.length === 0) {
-      return;
-    }
-    const newConversation = await createConversation();
-    if (newConversation) {
-      // StoredConversation uses conversationId as the actual ID
-      setConversationId((newConversation as any).conversationId);
-    }
-  }, [createConversation, setConversationId, messages.length]);
-
-  const handleSelectConversation = useCallback(
-    (id: string) => {
-      setConversationId(id);
-    },
-    [setConversationId]
-  );
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
@@ -328,24 +299,11 @@ const ChatBotDemo = () => {
   );
 
   return (
-    <SidebarProvider>
-      <AppSidebar
-        conversations={conversations}
-        conversationId={conversationId}
-        onNewConversation={handleNewConversation}
-        onSelectConversation={handleSelectConversation}
-        onDeleteConversation={deleteConversation}
-      />
-      <SidebarInset className="h-dvh max-h-dvh">
-        <header className="flex h-14 shrink-0 items-center gap-2 px-4">
-          <SidebarTrigger />
-        </header>
-        {/* Main Chat Area */}
-        <div
-          className={`flex min-h-0 flex-1 flex-col ${
-            messages.length === 0 ? "justify-center" : ""
-          }`}
-        >
+    <div
+      className={`flex min-h-0 flex-1 flex-col ${
+        messages.length === 0 ? "justify-center" : ""
+      }`}
+    >
           {messages.length > 0 && (
             <Conversation className="min-h-0 flex-1">
               <ConversationContent className="mx-auto max-w-3xl px-14">
@@ -626,9 +584,7 @@ const ChatBotDemo = () => {
             </PromptInput>
             </div>
           </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 };
 
