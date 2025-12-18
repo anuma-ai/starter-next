@@ -336,19 +336,19 @@ const ChatBotDemo = () => {
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={deleteConversation}
       />
-      <SidebarInset>
-        <header className="flex h-14 items-center gap-2 px-4">
+      <SidebarInset className="h-dvh max-h-dvh">
+        <header className="flex h-14 shrink-0 items-center gap-2 px-4">
           <SidebarTrigger />
         </header>
         {/* Main Chat Area */}
-        <div className="flex flex-1 flex-col items-center px-14 py-4">
-          <div
-            className={`flex w-full max-w-3xl flex-1 flex-col ${
-              messages.length === 0 ? "justify-center" : ""
-            }`}
-          >
-            {messages.length > 0 && (
-              <Conversation className="h-full">
+        <div
+          className={`flex min-h-0 flex-1 flex-col ${
+            messages.length === 0 ? "justify-center" : ""
+          }`}
+        >
+          {messages.length > 0 && (
+            <div className="flex min-h-0 flex-1 flex-col items-center px-14">
+              <Conversation className="w-full max-w-3xl">
                 <ConversationContent>
                   {messages.map((message: any) => (
                     <div key={message.id}>
@@ -471,15 +471,18 @@ const ChatBotDemo = () => {
                 </ConversationContent>
                 <ConversationScrollButton />
               </Conversation>
-            )}
+            </div>
+          )}
 
-            <PromptInput
-              accept="image/*,application/pdf"
-              className="mt-4"
-              globalDrop
-              multiple
-              onSubmit={onSubmit}
-            >
+          {/* Fixed prompt input at bottom */}
+          <div className="shrink-0 px-14 pb-4">
+            <div className="mx-auto w-full max-w-3xl">
+              <PromptInput
+                accept="image/*,application/pdf"
+                globalDrop
+                multiple
+                onSubmit={onSubmit}
+              >
               <PromptInputHeader>
                 <PromptInputAttachments>
                   {(attachment) => (
@@ -623,6 +626,7 @@ const ChatBotDemo = () => {
                 />
               </PromptInputFooter>
             </PromptInput>
+            </div>
           </div>
         </div>
       </SidebarInset>
