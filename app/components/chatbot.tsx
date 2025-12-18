@@ -11,7 +11,7 @@ import {
   useSearch,
 } from "@reverbia/sdk/react";
 import { useDatabase } from "@/app/providers";
-import { useVercelChat } from "@/hooks/useVercelChat";
+import { useChat } from "@/hooks/useChat";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 
@@ -133,7 +133,7 @@ const ChatBotDemo = () => {
     createConversation,
     setConversationId,
     deleteConversation,
-  } = useVercelChat({
+  } = useChat({
     database,
     model: "fireworks/accounts/fireworks/models/gpt-oss-120b",
     getToken: getIdentityToken,

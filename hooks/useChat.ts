@@ -20,7 +20,7 @@ type PromptInputMessage = {
   files: FileUIPart[];
 };
 
-type UseVercelChatResult = {
+type UseChatResult = {
   error: string | null;
   isLoading: boolean;
   isSelectingTool?: boolean;
@@ -46,7 +46,7 @@ type UseVercelChatResult = {
   deleteConversation: (id: string) => Promise<void>;
 };
 
-export function useVercelChat(options?: {
+export function useChat(options?: {
   database?: Database;
   model?: string;
   getToken?: () => Promise<string | null>;
@@ -62,7 +62,7 @@ export function useVercelChat(options?: {
     embeddings?: boolean;
     tools?: boolean;
   };
-}): UseVercelChatResult {
+}): UseChatResult {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
