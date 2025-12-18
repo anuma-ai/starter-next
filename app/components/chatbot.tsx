@@ -12,7 +12,11 @@ import {
 } from "@reverbia/sdk/react";
 import { useDatabase } from "@/app/providers";
 import { useChat } from "@/hooks/useChat";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 
 import {
@@ -79,7 +83,9 @@ const ChatBotDemo = () => {
     }
   }, [authenticated, identityToken, refetch]);
 
-  const [model, setModel] = useState<string>("fireworks/accounts/fireworks/models/gpt-oss-120b");
+  const [model, setModel] = useState<string>(
+    "fireworks/accounts/fireworks/models/gpt-oss-120b"
+  );
 
   // Helper function to get display name from model ID
   const getModelDisplayName = (modelId: string) => {
@@ -113,11 +119,18 @@ const ChatBotDemo = () => {
   const displayModels =
     models && models.length > 0
       ? models
-      : [{ id: "fireworks/accounts/fireworks/models/gpt-oss-120b", name: "fireworks/accounts/fireworks/models/gpt-oss-120b" }];
+      : [
+          {
+            id: "fireworks/accounts/fireworks/models/gpt-oss-120b",
+            name: "fireworks/accounts/fireworks/models/gpt-oss-120b",
+          },
+        ];
 
   const selectedModel = displayModels.find((m: any) => m.id === model);
   const selectedLabel = getModelDisplayName(
-    selectedModel?.name ?? selectedModel?.id ?? "fireworks/accounts/fireworks/models/gpt-oss-120b"
+    selectedModel?.name ??
+      selectedModel?.id ??
+      "fireworks/accounts/fireworks/models/gpt-oss-120b"
   );
 
   const {
@@ -133,6 +146,7 @@ const ChatBotDemo = () => {
     createConversation,
     setConversationId,
     deleteConversation,
+    subscribeToStreaming,
   } = useChat({
     database,
     model: "fireworks/accounts/fireworks/models/gpt-oss-120b",
@@ -140,6 +154,18 @@ const ChatBotDemo = () => {
     chatProvider: localModels.chat ? "local" : "api",
     enableLocalModels: localModels,
   });
+
+  // Subscribe to streaming updates for direct DOM manipulation
+  useEffect(() => {
+    const unsubscribe = subscribeToStreaming((text) => {
+      // Find the streaming element by ID instead of ref (ref might not be set yet)
+      const el = document.getElementById("streaming-message");
+      if (el) {
+        el.textContent = text;
+      }
+    });
+    return unsubscribe;
+  }, [subscribeToStreaming]);
 
   const handleNewConversation = useCallback(async () => {
     // Don't create a new conversation if the current one is empty
@@ -326,272 +352,295 @@ const ChatBotDemo = () => {
         </header>
         {/* Main Chat Area */}
         <div className="flex flex-1 flex-col items-center px-14 py-4">
-        <div className={`flex w-full max-w-3xl flex-1 flex-col ${messages.length === 0 ? "justify-center" : ""}`}>
-        {messages.length > 0 && (
-        <Conversation className="h-full">
-          <ConversationContent>
-            {messages.map((message: any) => (
-              <div key={message.id}>
-                {message.parts.map((part: any, i: number) => {
-                  switch ((part as any).type) {
-                    case "text":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            {/* @ts-ignore */}
-                            {message.role === "assistant" &&
-                            !part.text &&
-                            message.id === messages.at(-1)?.id ? (
-                              <Loader />
-                            ) : (
-                              <MessageResponse
-                                components={{
-                                  a: ({
-                                    href,
-                                    children,
-                                  }: {
-                                    href?: string;
-                                    children?: React.ReactNode;
-                                  }) => (
-                                    <a
-                                      href={href}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-primary hover:underline"
-                                    >
-                                      {children}
-                                    </a>
-                                  ),
-                                }}
+          <div
+            className={`flex w-full max-w-3xl flex-1 flex-col ${
+              messages.length === 0 ? "justify-center" : ""
+            }`}
+          >
+            {messages.length > 0 && (
+              <Conversation className="h-full">
+                <ConversationContent>
+                  {messages.map((message: any) => (
+                    <div key={message.id}>
+                      {message.parts.map((part: any, i: number) => {
+                        switch ((part as any).type) {
+                          case "text": {
+                            const isStreamingMessage =
+                              message.role === "assistant" &&
+                              message.id === messages.at(-1)?.id &&
+                              isLoading;
+
+                            return (
+                              <Message
+                                key={`${message.id}-${i}`}
+                                from={message.role}
                               >
-                                {(part as any).text}
-                              </MessageResponse>
-                            )}
-                          </MessageContent>
-                        </Message>
-                      );
-                    case "file":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
-                              <div className="flex size-8 items-center justify-center rounded-sm bg-background">
-                                <span className="text-xs font-bold text-muted-foreground">
-                                  PDF
-                                </span>
-                              </div>
-                              <div className="flex flex-col overflow-hidden">
-                                <span className="truncate font-medium">
+                                <MessageContent>
                                   {/* @ts-ignore */}
-                                  {part.filename}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
+                                  {isStreamingMessage ? (
+                                    // During streaming, use a div with ID for direct DOM updates
+                                    <div
+                                      id="streaming-message"
+                                      className="whitespace-pre-wrap"
+                                    />
+                                  ) : message.role === "assistant" &&
+                                    !part.text &&
+                                    message.id === messages.at(-1)?.id ? (
+                                    <Loader />
+                                  ) : (
+                                    <div className="whitespace-pre-wrap">
+                                      {(part as any).text}
+                                    </div>
+                                  )}
+                                </MessageContent>
+                              </Message>
+                            );
+                          }
+                          case "file":
+                            return (
+                              <Message
+                                key={`${message.id}-${i}`}
+                                from={message.role}
+                              >
+                                <MessageContent>
+                                  <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
+                                    <div className="flex size-8 items-center justify-center rounded-sm bg-background">
+                                      <span className="text-xs font-bold text-muted-foreground">
+                                        PDF
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-col overflow-hidden">
+                                      <span className="truncate font-medium">
+                                        {/* @ts-ignore */}
+                                        {part.filename}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {/* @ts-ignore */}
+                                        {part.mediaType}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </MessageContent>
+                              </Message>
+                            );
+                          case "image_url":
+                            return (
+                              <Message
+                                key={`${message.id}-${i}`}
+                                from={message.role}
+                              >
+                                <MessageContent>
                                   {/* @ts-ignore */}
-                                  {part.mediaType}
-                                </span>
-                              </div>
-                            </div>
-                          </MessageContent>
-                        </Message>
-                      );
-                    case "image_url":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            {/* @ts-ignore */}
-                            <img
-                              /* @ts-ignore */
-                              src={part.image_url?.url}
-                              alt="Uploaded image"
-                              className="max-h-60 max-w-[300px] rounded-lg object-contain"
-                            />
-                          </MessageContent>
-                        </Message>
-                      );
-                    case "reasoning":
-                      return (
-                        <Reasoning
-                          key={`${message.id}-${i}`}
-                          className="w-full"
-                          isStreaming={false}
-                        >
-                          <ReasoningTrigger />
-                          {/* @ts-ignore */}
-                          <ReasoningContent>{part.text}</ReasoningContent>
-                        </Reasoning>
-                      );
-                    case "image":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            {/* @ts-ignore */}
-                            <img
-                              src={(part as any).url}
-                              alt="Generated image"
-                              className="rounded-lg max-w-full"
-                            />
-                          </MessageContent>
-                        </Message>
-                      );
-                    default:
-                      return null;
-                  }
-                })}
-              </div>
-            ))}
-            {isGeneratingImage ||
-            isProcessingPdf ||
-            isProcessingOCR ||
-            isSearching ? (
-              <Message from="assistant">
-                <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
-                  <Loader />
-                </MessageContent>
-              </Message>
-            ) : null}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-        )}
-
-        <PromptInput
-          accept="image/*,application/pdf"
-          className="mt-4"
-          globalDrop
-          multiple
-          onSubmit={onSubmit}
-        >
-          <PromptInputHeader>
-            <PromptInputAttachments>
-              {(attachment) => (
-                <PromptInputAttachment key={attachment.id} data={attachment} />
-              )}
-            </PromptInputAttachments>
-          </PromptInputHeader>
-          <PromptInputBody>
-            <PromptInputTextarea
-              disabled={!authenticated}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={
-                authenticated ? "Ask anything" : "Please sign in to chat"
-              }
-              value={input}
-            />
-          </PromptInputBody>
-          <PromptInputFooter>
-            <PromptInputTools className="flex-wrap">
-              <PromptInputAttachButton />
-              <PromptInputSelect
-                onValueChange={(value) => {
-                  setModel(value);
-                }}
-                value={model}
-              >
-                <PromptInputSelectTrigger>
-                  <PromptInputSelectValue placeholder="gpt-oss-120b">
-                    {selectedLabel}
-                  </PromptInputSelectValue>
-                </PromptInputSelectTrigger>
-                <PromptInputSelectContent>
-                  {displayModels.map((option: any) => (
-                    <PromptInputSelectItem key={option.id} value={option.id}>
-                      {getModelDisplayName(option.name ?? option.id)}
-                    </PromptInputSelectItem>
+                                  <img
+                                    /* @ts-ignore */
+                                    src={part.image_url?.url}
+                                    alt="Uploaded image"
+                                    className="max-h-60 max-w-[300px] rounded-lg object-contain"
+                                  />
+                                </MessageContent>
+                              </Message>
+                            );
+                          case "reasoning":
+                            return (
+                              <Reasoning
+                                key={`${message.id}-${i}`}
+                                className="w-full"
+                                isStreaming={false}
+                              >
+                                <ReasoningTrigger />
+                                {/* @ts-ignore */}
+                                <ReasoningContent>{part.text}</ReasoningContent>
+                              </Reasoning>
+                            );
+                          case "image":
+                            return (
+                              <Message
+                                key={`${message.id}-${i}`}
+                                from={message.role}
+                              >
+                                <MessageContent>
+                                  {/* @ts-ignore */}
+                                  <img
+                                    src={(part as any).url}
+                                    alt="Generated image"
+                                    className="rounded-lg max-w-full"
+                                  />
+                                </MessageContent>
+                              </Message>
+                            );
+                          default:
+                            return null;
+                        }
+                      })}
+                    </div>
                   ))}
-                </PromptInputSelectContent>
-              </PromptInputSelect>
+                  {isGeneratingImage ||
+                  isProcessingPdf ||
+                  isProcessingOCR ||
+                  isSearching ? (
+                    <Message from="assistant">
+                      <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
+                        <Loader />
+                      </MessageContent>
+                    </Message>
+                  ) : null}
+                </ConversationContent>
+                <ConversationScrollButton />
+              </Conversation>
+            )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsImageMode(!isImageMode);
-                  setIsSearchMode(false);
-                }}
-                className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                  isImageMode
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-                title="Toggle Image Generation"
-              >
-                <ImageIcon className="size-4" />
-              </button>
+            <PromptInput
+              accept="image/*,application/pdf"
+              className="mt-4"
+              globalDrop
+              multiple
+              onSubmit={onSubmit}
+            >
+              <PromptInputHeader>
+                <PromptInputAttachments>
+                  {(attachment) => (
+                    <PromptInputAttachment
+                      key={attachment.id}
+                      data={attachment}
+                    />
+                  )}
+                </PromptInputAttachments>
+              </PromptInputHeader>
+              <PromptInputBody>
+                <PromptInputTextarea
+                  disabled={!authenticated}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={
+                    authenticated ? "Ask anything" : "Please sign in to chat"
+                  }
+                  value={input}
+                />
+              </PromptInputBody>
+              <PromptInputFooter>
+                <PromptInputTools className="flex-wrap">
+                  <PromptInputAttachButton />
+                  <PromptInputSelect
+                    onValueChange={(value) => {
+                      setModel(value);
+                    }}
+                    value={model}
+                  >
+                    <PromptInputSelectTrigger>
+                      <PromptInputSelectValue placeholder="gpt-oss-120b">
+                        {selectedLabel}
+                      </PromptInputSelectValue>
+                    </PromptInputSelectTrigger>
+                    <PromptInputSelectContent>
+                      {displayModels.map((option: any) => (
+                        <PromptInputSelectItem
+                          key={option.id}
+                          value={option.id}
+                        >
+                          {getModelDisplayName(option.name ?? option.id)}
+                        </PromptInputSelectItem>
+                      ))}
+                    </PromptInputSelectContent>
+                  </PromptInputSelect>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSearchMode(!isSearchMode);
-                  setIsImageMode(false);
-                }}
-                className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                  isSearchMode
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-                title="Toggle Web Search"
-              >
-                <Globe className="size-4" />
-              </button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="hidden items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground sm:flex">
-                    Local models
-                    <ChevronDown className="size-4 text-muted-foreground opacity-50" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsImageMode(!isImageMode);
+                      setIsSearchMode(false);
+                    }}
+                    className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                      isImageMode
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                    title="Toggle Image Generation"
+                  >
+                    <ImageIcon className="size-4" />
                   </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel>Enable Local Models</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuCheckboxItem
-                    checked={localModels.chat}
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
-                      setLocalModels((prev) => ({ ...prev, chat: !!checked }))
-                    }
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSearchMode(!isSearchMode);
+                      setIsImageMode(false);
+                    }}
+                    className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                      isSearchMode
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                    title="Toggle Web Search"
                   >
-                    Chat
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={localModels.embeddings}
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
-                      setLocalModels((prev) => ({
-                        ...prev,
-                        embeddings: !!checked,
-                      }))
-                    }
-                  >
-                    Embeddings
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={localModels.tools}
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
-                      setLocalModels((prev) => ({ ...prev, tools: !!checked }))
-                    }
-                  >
-                    Tools
-                  </DropdownMenuCheckboxItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </PromptInputTools>
-            <PromptInputSubmit
-              disabled={
-                !input ||
-                isLoading ||
-                isGeneratingImage ||
-                isProcessingPdf ||
-                isProcessingOCR ||
-                isSearching ||
-                !authenticated
-              }
-              status={isGeneratingImage || isSearching ? "submitted" : status}
-            />
-          </PromptInputFooter>
-        </PromptInput>
+                    <Globe className="size-4" />
+                  </button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="hidden items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground sm:flex">
+                        Local models
+                        <ChevronDown className="size-4 text-muted-foreground opacity-50" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuLabel>Enable Local Models</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuCheckboxItem
+                        checked={localModels.chat}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={(checked) =>
+                          setLocalModels((prev) => ({
+                            ...prev,
+                            chat: !!checked,
+                          }))
+                        }
+                      >
+                        Chat
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem
+                        checked={localModels.embeddings}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={(checked) =>
+                          setLocalModels((prev) => ({
+                            ...prev,
+                            embeddings: !!checked,
+                          }))
+                        }
+                      >
+                        Embeddings
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem
+                        checked={localModels.tools}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={(checked) =>
+                          setLocalModels((prev) => ({
+                            ...prev,
+                            tools: !!checked,
+                          }))
+                        }
+                      >
+                        Tools
+                      </DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </PromptInputTools>
+                <PromptInputSubmit
+                  disabled={
+                    !input ||
+                    isLoading ||
+                    isGeneratingImage ||
+                    isProcessingPdf ||
+                    isProcessingOCR ||
+                    isSearching ||
+                    !authenticated
+                  }
+                  status={
+                    isGeneratingImage || isSearching ? "submitted" : status
+                  }
+                />
+              </PromptInputFooter>
+            </PromptInput>
+          </div>
         </div>
-      </div>
       </SidebarInset>
     </SidebarProvider>
   );

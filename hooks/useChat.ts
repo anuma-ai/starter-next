@@ -44,6 +44,8 @@ type UseChatResult = {
   createConversation: () => Promise<any>;
   setConversationId: (id: string) => void;
   deleteConversation: (id: string) => Promise<void>;
+  // Streaming subscription for direct DOM updates
+  subscribeToStreaming: (callback: (text: string) => void) => () => void;
 };
 
 export function useChat(options?: {
@@ -254,8 +256,13 @@ export function useChat(options?: {
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
 
-  const defaultModel = options?.model;
+  const defaultModel =
+    options?.model || "fireworks/accounts/fireworks/models/gpt-oss-120b";
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
+
+  // Ref for accumulating streaming text and notifying subscribers
+  const streamingTextRef = useRef<string>("");
+  const streamingCallbackRef = useRef<((text: string) => void) | null>(null);
   const memorySearchLimit = options?.memorySearchLimit ?? 5;
   const memoryMinSimilarity = options?.memoryMinSimilarity ?? 0.2;
   const memoryUseFallbackThreshold =
@@ -423,6 +430,10 @@ export function useChat(options?: {
 
         // Call the API via useChatStorage with streaming callback
         // Pass original message text as content (for storage), memory context via messages array
+
+        // Reset streaming text accumulator
+        streamingTextRef.current = "";
+
         const response = await baseSendMessage({
           content: message.text || "",
           model,
@@ -430,27 +441,34 @@ export function useChat(options?: {
           messages: messagesToSend.length > 0 ? messagesToSend : undefined,
           onData: (chunk: string) => {
             console.log("chunk", chunk);
-            // Update assistant message with each streaming chunk
-            setMessages((prev) =>
-              prev.map((msg) => {
-                if (msg.id === assistantMessageId) {
-                  const currentText =
-                    msg.parts?.[0]?.type === "text" ? msg.parts[0].text : "";
-                  return {
-                    ...msg,
-                    parts: [
-                      {
-                        type: "text",
-                        text: currentText + chunk,
-                      },
-                    ],
-                  };
-                }
-                return msg;
-              })
-            );
+            // Accumulate text in ref
+            streamingTextRef.current += chunk;
+
+            // Notify subscriber for direct DOM updates (bypasses React batching)
+            if (streamingCallbackRef.current) {
+              streamingCallbackRef.current(streamingTextRef.current);
+            }
           },
         });
+
+        // Sync final streamed text to React state after streaming completes
+        const finalText = streamingTextRef.current;
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === assistantMessageId) {
+              return {
+                ...msg,
+                parts: [
+                  {
+                    type: "text",
+                    text: finalText,
+                  },
+                ],
+              };
+            }
+            return msg;
+          })
+        );
 
         // Check for error response
         if (response?.error) {
@@ -565,6 +583,17 @@ export function useChat(options?: {
 
   const status: ChatStatus | undefined = isLoading ? "streaming" : undefined;
 
+  // Function to subscribe to streaming updates (for direct DOM updates)
+  const subscribeToStreaming = useCallback(
+    (callback: (text: string) => void) => {
+      streamingCallbackRef.current = callback;
+      return () => {
+        streamingCallbackRef.current = null;
+      };
+    },
+    []
+  );
+
   return {
     error,
     isLoading,
@@ -583,5 +612,7 @@ export function useChat(options?: {
     createConversation,
     setConversationId,
     deleteConversation,
+    // Streaming subscription for direct DOM updates
+    subscribeToStreaming,
   };
 }
