@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { ChevronDown, ImageIcon, Globe } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import {
@@ -10,8 +11,6 @@ import {
   useOCR,
   useSearch,
 } from "@reverbia/sdk/react";
-import { useDatabase } from "@/app/providers";
-import { useChat } from "@/hooks/useChat";
 
 import {
   DropdownMenu,
@@ -57,11 +56,14 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "@/components/chat/reasoning";
+import { useChatContext } from "./chat-provider";
 
 const ChatBotDemo = () => {
+  const pathname = usePathname();
+  const chatState = useChatContext();
   const { authenticated } = usePrivy();
   const { identityToken } = useIdentityToken();
-  const database = useDatabase();
+  const hasRedirectedRef = useRef(false);
 
   const getIdentityToken = useCallback(async (): Promise<string | null> => {
     return identityToken ?? null;
@@ -128,6 +130,7 @@ const ChatBotDemo = () => {
       "fireworks/accounts/fireworks/models/gpt-oss-120b"
   );
 
+  // Use chatState from context
   const {
     messages,
     input,
@@ -137,13 +140,28 @@ const ChatBotDemo = () => {
     status,
     setMessages,
     subscribeToStreaming,
-  } = useChat({
-    database,
-    model: "fireworks/accounts/fireworks/models/gpt-oss-120b",
-    getToken: getIdentityToken,
-    chatProvider: localModels.chat ? "local" : "api",
-    enableLocalModels: localModels,
-  });
+    conversationId,
+  } = chatState;
+
+  // Update URL when a new conversation is created (without navigation flash)
+  useEffect(() => {
+    if (
+      conversationId &&
+      pathname === "/" &&
+      messages.length > 0 &&
+      !hasRedirectedRef.current
+    ) {
+      hasRedirectedRef.current = true;
+      window.history.replaceState(null, "", `/c/${conversationId}`);
+    }
+  }, [conversationId, pathname, messages.length]);
+
+  // Reset redirect flag when navigating to home
+  useEffect(() => {
+    if (pathname === "/") {
+      hasRedirectedRef.current = false;
+    }
+  }, [pathname]);
 
 
 
