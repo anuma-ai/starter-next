@@ -62,7 +62,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     [router]
   );
 
-  const currentView = pathname === "/settings" ? "settings" : "chat";
+  const currentView = pathname.startsWith("/settings") ? "settings" : "chat";
   const insetBackground =
     currentView === "settings" ? "bg-muted/50" : "bg-background";
 

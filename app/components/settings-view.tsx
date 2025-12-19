@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ChevronRight } from "lucide-react";
 
 export function SettingsView() {
+  const router = useRouter();
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
@@ -45,6 +48,18 @@ export function SettingsView() {
                 onCheckedChange={handleDarkModeToggle}
               />
             </div>
+            <button
+              onClick={() => router.push("/settings/memories")}
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <div className="space-y-0.5 text-left">
+                <span className="text-base">Memories</span>
+                <p className="text-sm text-muted-foreground">
+                  Allow the assistant to remember information across chats
+                </p>
+              </div>
+              <ChevronRight className="size-5 text-muted-foreground" />
+            </button>
           </div>
         </div>
       </div>
