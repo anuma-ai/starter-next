@@ -60,6 +60,18 @@ export function SettingsView() {
               </div>
               <ChevronRight className="size-5 text-muted-foreground" />
             </button>
+            <button
+              onClick={() => router.push("/settings/models")}
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <div className="space-y-0.5 text-left">
+                <span className="text-base">Models</span>
+                <p className="text-sm text-muted-foreground">
+                  Choose which AI models to use
+                </p>
+              </div>
+              <ChevronRight className="size-5 text-muted-foreground" />
+            </button>
           </div>
         </div>
       </div>

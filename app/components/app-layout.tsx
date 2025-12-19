@@ -82,7 +82,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         currentView={currentView}
         onViewChange={handleViewChange}
       />
-      <SidebarInset className={`h-dvh max-h-dvh ${insetBackground}`}>
+      <SidebarInset className={`min-h-dvh ${insetBackground}`}>
         <header className="flex h-14 shrink-0 items-center gap-2 px-4 bg-transparent">
           <SidebarTrigger />
         </header>
