@@ -72,7 +72,7 @@ export function AppSidebar({
                 {conversations.map((conv: any, index: number) => (
                   <SidebarMenuItem key={conv.id ?? index}>
                     <SidebarMenuButton
-                      isActive={conversationId === conv.id}
+                      isActive={currentView === "chat" && conversationId === conv.id}
                       onClick={() => onSelectConversation(conv.id)}
                     >
                       <span className="truncate">

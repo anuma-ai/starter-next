@@ -66,11 +66,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   const insetBackground =
     currentView === "settings" ? "bg-muted/50" : "bg-background";
 
+  // Derive active conversation from pathname for immediate UI updates
+  const activeConversationId = pathname.startsWith("/c/")
+    ? pathname.replace("/c/", "")
+    : null;
+
   return (
     <SidebarProvider>
       <AppSidebar
         conversations={conversations}
-        conversationId={conversationId}
+        conversationId={activeConversationId}
         onNewConversation={handleNewConversation}
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={deleteConversation}
