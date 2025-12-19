@@ -64,7 +64,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const currentView = pathname === "/settings" ? "settings" : "chat";
   const insetBackground =
-    currentView === "settings" ? "bg-muted/30" : "bg-background";
+    currentView === "settings" ? "bg-muted/50" : "bg-background";
 
   return (
     <SidebarProvider>
@@ -78,7 +78,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         onViewChange={handleViewChange}
       />
       <SidebarInset className={`h-dvh max-h-dvh ${insetBackground}`}>
-        <header className="flex h-14 shrink-0 items-center gap-2 px-4">
+        <header className="flex h-14 shrink-0 items-center gap-2 px-4 bg-transparent">
           <SidebarTrigger />
         </header>
         {children}

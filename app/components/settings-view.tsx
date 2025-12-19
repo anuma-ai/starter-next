@@ -26,23 +26,25 @@ export function SettingsView() {
   return (
     <div className="flex flex-1 flex-col p-8">
       <div className="mx-auto w-full max-w-2xl">
-        <h1 className="mb-8 text-2xl font-semibold">Settings</h1>
+        <h1 className="mb-6 text-2xl font-semibold">Settings</h1>
 
-        <div className="space-y-6">
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="dark-mode" className="text-base">
-                Dark mode
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Toggle dark mode on or off
-              </p>
+        <div className="space-y-4">
+          <div className="rounded-xl bg-background p-1">
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="dark-mode" className="text-base">
+                  Dark mode
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Toggle dark mode on or off
+                </p>
+              </div>
+              <Switch
+                id="dark-mode"
+                checked={darkMode}
+                onCheckedChange={handleDarkModeToggle}
+              />
             </div>
-            <Switch
-              id="dark-mode"
-              checked={darkMode}
-              onCheckedChange={handleDarkModeToggle}
-            />
           </div>
         </div>
       </div>
