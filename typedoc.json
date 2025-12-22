@@ -1,0 +1,16 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "out": "./docs",
+  "plugin": [
+    "typedoc-plugin-markdown"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "readme": "none",
+  "skipErrorChecking": true,
+  "hidePageHeader": true,
+  "projectDocuments": [
+    "documents/**/*.md"
+  ],
+  "hideBreadcrumbs": true
+}

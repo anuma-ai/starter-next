@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { ChevronDown, ImageIcon, Globe } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import {
@@ -10,10 +11,6 @@ import {
   useOCR,
   useSearch,
 } from "@reverbia/sdk/react";
-import { useDatabase } from "@/app/providers";
-import { useVercelChat } from "@/hooks/useVercelChat";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "./app-sidebar";
 
 import {
   DropdownMenu,
@@ -28,13 +25,14 @@ import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from "@/components/ai-elements/conversation";
-import { Loader } from "@/components/ai-elements/loader";
+} from "@/components/chat/conversation";
+import { Loader } from "@/components/chat/loader";
 import {
   Message,
   MessageContent,
   MessageResponse,
-} from "@/components/ai-elements/message";
+  StreamingMessage,
+} from "@/components/chat/message";
 import {
   PromptInput,
   PromptInputAttachButton,
@@ -52,17 +50,20 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
-} from "@/components/ai-elements/prompt-input";
+} from "@/components/chat/prompt-input";
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
-} from "@/components/ai-elements/reasoning";
+} from "@/components/chat/reasoning";
+import { useChatContext } from "./chat-provider";
 
 const ChatBotDemo = () => {
+  const pathname = usePathname();
+  const chatState = useChatContext();
   const { authenticated } = usePrivy();
   const { identityToken } = useIdentityToken();
-  const database = useDatabase();
+  const hasRedirectedRef = useRef(false);
 
   const getIdentityToken = useCallback(async (): Promise<string | null> => {
     return identityToken ?? null;
@@ -79,7 +80,17 @@ const ChatBotDemo = () => {
     }
   }, [authenticated, identityToken, refetch]);
 
-  const [model, setModel] = useState<string>("openai/gpt-4o");
+  const [model, setModel] = useState<string>(
+    "fireworks/accounts/fireworks/models/gpt-oss-120b"
+  );
+
+  // Helper function to get display name from model ID
+  const getModelDisplayName = (modelId: string) => {
+    if (modelId.includes("/")) {
+      return modelId.split("/").pop() || modelId;
+    }
+    return modelId;
+  };
 
   const [localModels, setLocalModels] = useState({
     chat: false,
@@ -105,12 +116,21 @@ const ChatBotDemo = () => {
   const displayModels =
     models && models.length > 0
       ? models
-      : [{ id: "openai/gpt-4o", name: "openai/gpt-4o" }];
+      : [
+          {
+            id: "fireworks/accounts/fireworks/models/gpt-oss-120b",
+            name: "fireworks/accounts/fireworks/models/gpt-oss-120b",
+          },
+        ];
 
   const selectedModel = displayModels.find((m: any) => m.id === model);
-  const selectedLabel =
-    selectedModel?.name ?? selectedModel?.id ?? "openai/gpt-4o";
+  const selectedLabel = getModelDisplayName(
+    selectedModel?.name ??
+      selectedModel?.id ??
+      "fireworks/accounts/fireworks/models/gpt-oss-120b"
+  );
 
+  // Use chatState from context
   const {
     messages,
     input,
@@ -119,37 +139,31 @@ const ChatBotDemo = () => {
     isLoading,
     status,
     setMessages,
+    subscribeToStreaming,
     conversationId,
-    conversations,
-    createConversation,
-    setConversationId,
-    deleteConversation,
-  } = useVercelChat({
-    database,
-    model: "openai/gpt-4o",
-    getToken: getIdentityToken,
-    chatProvider: localModels.chat ? "local" : "api",
-    enableLocalModels: localModels,
-  });
+  } = chatState;
 
-  const handleNewConversation = useCallback(async () => {
-    // Don't create a new conversation if the current one is empty
-    if (messages.length === 0) {
-      return;
+  // Update URL when a new conversation is created (without navigation flash)
+  useEffect(() => {
+    if (
+      conversationId &&
+      pathname === "/" &&
+      messages.length > 0 &&
+      !hasRedirectedRef.current
+    ) {
+      hasRedirectedRef.current = true;
+      window.history.replaceState(null, "", `/c/${conversationId}`);
     }
-    const newConversation = await createConversation();
-    if (newConversation) {
-      // StoredConversation uses conversationId as the actual ID
-      setConversationId((newConversation as any).conversationId);
-    }
-  }, [createConversation, setConversationId, messages.length]);
+  }, [conversationId, pathname, messages.length]);
 
-  const handleSelectConversation = useCallback(
-    (id: string) => {
-      setConversationId(id);
-    },
-    [setConversationId]
-  );
+  // Reset redirect flag when navigating to home
+  useEffect(() => {
+    if (pathname === "/") {
+      hasRedirectedRef.current = false;
+    }
+  }, [pathname]);
+
+
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
@@ -248,28 +262,17 @@ const ChatBotDemo = () => {
       } else {
         let enhancedText = message.text;
 
-        try {
-          const pdfContext = await extractPdfContext(message.files);
-          if (pdfContext && pdfContext.length > 100) {
-            enhancedText = enhancedText
-              ? `${enhancedText}\n\n${pdfContext}`
-              : pdfContext;
-          } else if (message.files && message.files.length > 0) {
-            // Fallback to OCR if PDF extraction was unsuccessful or yielded too little text
-            console.log("PDF extraction insufficient, falling back to OCR...");
-            const ocrContext = await extractOCRContext(message.files);
-            if (ocrContext) {
-              enhancedText = enhancedText
-                ? `${enhancedText}\n\n${ocrContext}`
-                : ocrContext;
-            }
-          }
-        } catch (error) {
-          console.error("Error processing PDF attachments:", error);
-          // Try OCR on error as well if appropriate, or just log
+        // Only process files if they exist
+        if (message.files && message.files.length > 0) {
           try {
-            if (message.files && message.files.length > 0) {
-              console.log("PDF extraction failed, trying OCR...");
+            const pdfContext = await extractPdfContext(message.files);
+            if (pdfContext && pdfContext.length > 100) {
+              enhancedText = enhancedText
+                ? `${enhancedText}\n\n${pdfContext}`
+                : pdfContext;
+            } else {
+              // Fallback to OCR if PDF extraction was unsuccessful or yielded too little text
+              console.log("PDF extraction insufficient, falling back to OCR...");
               const ocrContext = await extractOCRContext(message.files);
               if (ocrContext) {
                 enhancedText = enhancedText
@@ -277,8 +280,20 @@ const ChatBotDemo = () => {
                   : ocrContext;
               }
             }
-          } catch (ocrError) {
-            console.error("Error processing OCR fallback:", ocrError);
+          } catch (error) {
+            console.error("Error processing PDF attachments:", error);
+            // Try OCR on error as well
+            try {
+              console.log("PDF extraction failed, trying OCR...");
+              const ocrContext = await extractOCRContext(message.files);
+              if (ocrContext) {
+                enhancedText = enhancedText
+                  ? `${enhancedText}\n\n${ocrContext}`
+                  : ocrContext;
+              }
+            } catch (ocrError) {
+              console.error("Error processing OCR fallback:", ocrError);
+            }
           }
         }
 
@@ -303,288 +318,298 @@ const ChatBotDemo = () => {
   );
 
   return (
-    <SidebarProvider>
-      <AppSidebar
-        conversations={conversations}
-        conversationId={conversationId}
-        onNewConversation={handleNewConversation}
-        onSelectConversation={handleSelectConversation}
-        onDeleteConversation={deleteConversation}
-      />
-      <SidebarInset>
-        <header className="flex h-14 items-center gap-2 px-4">
-          <SidebarTrigger />
-        </header>
-        {/* Main Chat Area */}
-        <div className="flex flex-1 flex-col items-center px-14 py-4">
-        <div className={`flex w-full max-w-3xl flex-1 flex-col ${messages.length === 0 ? "justify-center" : ""}`}>
-        {messages.length > 0 && (
-        <Conversation className="h-full">
-          <ConversationContent>
-            {messages.map((message: any) => (
-              <div key={message.id}>
-                {message.parts.map((part: any, i: number) => {
-                  switch ((part as any).type) {
-                    case "text":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            {/* @ts-ignore */}
-                            {message.role === "assistant" &&
-                            !part.text &&
-                            message.id === messages.at(-1)?.id ? (
-                              <Loader />
-                            ) : (
-                              <MessageResponse
-                                components={{
-                                  a: ({
-                                    href,
-                                    children,
-                                  }: {
-                                    href?: string;
-                                    children?: React.ReactNode;
-                                  }) => (
-                                    <a
-                                      href={href}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-primary hover:underline"
-                                    >
-                                      {children}
-                                    </a>
-                                  ),
-                                }}
+    <div
+      className={`relative flex min-h-0 flex-1 flex-col ${
+        messages.length === 0 ? "justify-center" : ""
+      }`}
+    >
+          {messages.length > 0 && (
+            <Conversation className="min-h-0 flex-1">
+              <ConversationContent className="mx-auto max-w-3xl px-14 pb-52">
+                  {messages.map((message: any) => (
+                    <div key={message.id}>
+                      {message.parts.map((part: any, i: number) => {
+                        switch ((part as any).type) {
+                          case "text": {
+                            return (
+                              <Message
+                                key={`${message.id}-${i}`}
+                                from={message.role}
                               >
-                                {(part as any).text}
-                              </MessageResponse>
-                            )}
-                          </MessageContent>
-                        </Message>
-                      );
-                    case "file":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
-                              <div className="flex size-8 items-center justify-center rounded-sm bg-background">
-                                <span className="text-xs font-bold text-muted-foreground">
-                                  PDF
-                                </span>
-                              </div>
-                              <div className="flex flex-col overflow-hidden">
-                                <span className="truncate font-medium">
+                                <MessageContent>
                                   {/* @ts-ignore */}
-                                  {part.filename}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
+                                  {message.role === "assistant" &&
+                                  message.id === messages.at(-1)?.id ? (
+                                    // For the last assistant message, use StreamingMessage
+                                    // It handles both streaming (empty text) and completed states
+                                    <StreamingMessage
+                                      subscribe={subscribeToStreaming}
+                                      initialText={(part as any).text || ""}
+                                      isLoading={isLoading}
+                                    />
+                                  ) : (
+                                    <MessageResponse>
+                                      {(part as any).text}
+                                    </MessageResponse>
+                                  )}
+                                </MessageContent>
+                              </Message>
+                            );
+                          }
+                          case "file":
+                            return (
+                              <Message
+                                key={`${message.id}-${i}`}
+                                from={message.role}
+                              >
+                                <MessageContent>
+                                  <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
+                                    <div className="flex size-8 items-center justify-center rounded-sm bg-background">
+                                      <span className="text-xs font-bold text-muted-foreground">
+                                        PDF
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-col overflow-hidden">
+                                      <span className="truncate font-medium">
+                                        {/* @ts-ignore */}
+                                        {part.filename}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {/* @ts-ignore */}
+                                        {part.mediaType}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </MessageContent>
+                              </Message>
+                            );
+                          case "image_url":
+                            return (
+                              <Message
+                                key={`${message.id}-${i}`}
+                                from={message.role}
+                              >
+                                <MessageContent>
                                   {/* @ts-ignore */}
-                                  {part.mediaType}
-                                </span>
-                              </div>
-                            </div>
-                          </MessageContent>
-                        </Message>
-                      );
-                    case "image_url":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            {/* @ts-ignore */}
-                            <img
-                              /* @ts-ignore */
-                              src={part.image_url?.url}
-                              alt="Uploaded image"
-                              className="max-h-60 max-w-[300px] rounded-lg object-contain"
-                            />
-                          </MessageContent>
-                        </Message>
-                      );
-                    case "reasoning":
-                      return (
-                        <Reasoning
-                          key={`${message.id}-${i}`}
-                          className="w-full"
-                          isStreaming={false}
-                        >
-                          <ReasoningTrigger />
-                          {/* @ts-ignore */}
-                          <ReasoningContent>{part.text}</ReasoningContent>
-                        </Reasoning>
-                      );
-                    case "image":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            {/* @ts-ignore */}
-                            <img
-                              src={(part as any).url}
-                              alt="Generated image"
-                              className="rounded-lg max-w-full"
-                            />
-                          </MessageContent>
-                        </Message>
-                      );
-                    default:
-                      return null;
-                  }
-                })}
-              </div>
-            ))}
-            {isGeneratingImage ||
-            isProcessingPdf ||
-            isProcessingOCR ||
-            isSearching ? (
-              <Message from="assistant">
-                <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
-                  <Loader />
-                </MessageContent>
-              </Message>
-            ) : null}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-        )}
-
-        <PromptInput
-          accept="image/*,application/pdf"
-          className="mt-4"
-          globalDrop
-          multiple
-          onSubmit={onSubmit}
-        >
-          <PromptInputHeader>
-            <PromptInputAttachments>
-              {(attachment) => (
-                <PromptInputAttachment key={attachment.id} data={attachment} />
-              )}
-            </PromptInputAttachments>
-          </PromptInputHeader>
-          <PromptInputBody>
-            <PromptInputTextarea
-              disabled={!authenticated}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={
-                authenticated ? "Ask anything" : "Please sign in to chat"
-              }
-              value={input}
-            />
-          </PromptInputBody>
-          <PromptInputFooter>
-            <PromptInputTools className="flex-wrap">
-              <PromptInputAttachButton />
-              <PromptInputSelect
-                onValueChange={(value) => {
-                  setModel(value);
-                }}
-                value={model}
-              >
-                <PromptInputSelectTrigger>
-                  <PromptInputSelectValue placeholder="openai/gpt-4o">
-                    {selectedLabel}
-                  </PromptInputSelectValue>
-                </PromptInputSelectTrigger>
-                <PromptInputSelectContent>
-                  {displayModels.map((option: any) => (
-                    <PromptInputSelectItem key={option.id} value={option.id}>
-                      {option.name ?? option.id}
-                    </PromptInputSelectItem>
+                                  <img
+                                    /* @ts-ignore */
+                                    src={part.image_url?.url}
+                                    alt="Uploaded image"
+                                    className="max-h-60 max-w-[300px] rounded-lg object-contain"
+                                  />
+                                </MessageContent>
+                              </Message>
+                            );
+                          case "reasoning":
+                            return (
+                              <Reasoning
+                                key={`${message.id}-${i}`}
+                                className="w-full"
+                                isStreaming={false}
+                              >
+                                <ReasoningTrigger />
+                                {/* @ts-ignore */}
+                                <ReasoningContent>{part.text}</ReasoningContent>
+                              </Reasoning>
+                            );
+                          case "image":
+                            return (
+                              <Message
+                                key={`${message.id}-${i}`}
+                                from={message.role}
+                              >
+                                <MessageContent>
+                                  {/* @ts-ignore */}
+                                  <img
+                                    src={(part as any).url}
+                                    alt="Generated image"
+                                    className="rounded-lg max-w-full"
+                                  />
+                                </MessageContent>
+                              </Message>
+                            );
+                          default:
+                            return null;
+                        }
+                      })}
+                    </div>
                   ))}
-                </PromptInputSelectContent>
-              </PromptInputSelect>
+                  {isGeneratingImage ||
+                  isProcessingPdf ||
+                  isProcessingOCR ||
+                  isSearching ? (
+                    <Message from="assistant">
+                      <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
+                        <Loader />
+                      </MessageContent>
+                    </Message>
+                  ) : null}
+              </ConversationContent>
+              <ConversationScrollButton />
+            </Conversation>
+          )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsImageMode(!isImageMode);
-                  setIsSearchMode(false);
-                }}
-                className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                  isImageMode
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-                title="Toggle Image Generation"
+          {/* Fixed prompt input at bottom, centered when no messages */}
+          <div
+            className={`z-50 bg-background px-4 pb-4 pt-2 md:px-14 ${
+              messages.length === 0
+                ? "w-full"
+                : "fixed bottom-0 left-0 right-0 md:left-[var(--sidebar-width)]"
+            }`}
+          >
+            <div className="mx-auto w-full max-w-3xl">
+              <PromptInput
+                accept="image/*,application/pdf"
+                globalDrop
+                multiple
+                onSubmit={onSubmit}
               >
-                <ImageIcon className="size-4" />
-              </button>
+              <PromptInputHeader>
+                <PromptInputAttachments>
+                  {(attachment) => (
+                    <PromptInputAttachment
+                      key={attachment.id}
+                      data={attachment}
+                    />
+                  )}
+                </PromptInputAttachments>
+              </PromptInputHeader>
+              <PromptInputBody>
+                <PromptInputTextarea
+                  disabled={!authenticated}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={
+                    authenticated ? "Ask anything" : "Please sign in to chat"
+                  }
+                  value={input}
+                />
+              </PromptInputBody>
+              <PromptInputFooter>
+                <PromptInputTools className="flex-wrap">
+                  <PromptInputAttachButton />
+                  <PromptInputSelect
+                    onValueChange={(value) => {
+                      setModel(value);
+                    }}
+                    value={model}
+                  >
+                    <PromptInputSelectTrigger>
+                      <PromptInputSelectValue placeholder="gpt-oss-120b">
+                        {selectedLabel}
+                      </PromptInputSelectValue>
+                    </PromptInputSelectTrigger>
+                    <PromptInputSelectContent>
+                      {displayModels.map((option: any) => (
+                        <PromptInputSelectItem
+                          key={option.id}
+                          value={option.id}
+                        >
+                          {getModelDisplayName(option.name ?? option.id)}
+                        </PromptInputSelectItem>
+                      ))}
+                    </PromptInputSelectContent>
+                  </PromptInputSelect>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSearchMode(!isSearchMode);
-                  setIsImageMode(false);
-                }}
-                className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                  isSearchMode
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-                title="Toggle Web Search"
-              >
-                <Globe className="size-4" />
-              </button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="hidden items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground sm:flex">
-                    Local models
-                    <ChevronDown className="size-4 text-muted-foreground opacity-50" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsImageMode(!isImageMode);
+                      setIsSearchMode(false);
+                    }}
+                    className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                      isImageMode
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                    title="Toggle Image Generation"
+                  >
+                    <ImageIcon className="size-4" />
                   </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel>Enable Local Models</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuCheckboxItem
-                    checked={localModels.chat}
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
-                      setLocalModels((prev) => ({ ...prev, chat: !!checked }))
-                    }
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSearchMode(!isSearchMode);
+                      setIsImageMode(false);
+                    }}
+                    className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                      isSearchMode
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    }`}
+                    title="Toggle Web Search"
                   >
-                    Chat
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={localModels.embeddings}
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
-                      setLocalModels((prev) => ({
-                        ...prev,
-                        embeddings: !!checked,
-                      }))
-                    }
-                  >
-                    Embeddings
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={localModels.tools}
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
-                      setLocalModels((prev) => ({ ...prev, tools: !!checked }))
-                    }
-                  >
-                    Tools
-                  </DropdownMenuCheckboxItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </PromptInputTools>
-            <PromptInputSubmit
-              disabled={
-                !input ||
-                isLoading ||
-                isGeneratingImage ||
-                isProcessingPdf ||
-                isProcessingOCR ||
-                isSearching ||
-                !authenticated
-              }
-              status={isGeneratingImage || isSearching ? "submitted" : status}
-            />
-          </PromptInputFooter>
-        </PromptInput>
-        </div>
-      </div>
-      </SidebarInset>
-    </SidebarProvider>
+                    <Globe className="size-4" />
+                  </button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="hidden items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground sm:flex">
+                        Local models
+                        <ChevronDown className="size-4 text-muted-foreground opacity-50" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuLabel>Enable Local Models</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuCheckboxItem
+                        checked={localModels.chat}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={(checked) =>
+                          setLocalModels((prev) => ({
+                            ...prev,
+                            chat: !!checked,
+                          }))
+                        }
+                      >
+                        Chat
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem
+                        checked={localModels.embeddings}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={(checked) =>
+                          setLocalModels((prev) => ({
+                            ...prev,
+                            embeddings: !!checked,
+                          }))
+                        }
+                      >
+                        Embeddings
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuCheckboxItem
+                        checked={localModels.tools}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={(checked) =>
+                          setLocalModels((prev) => ({
+                            ...prev,
+                            tools: !!checked,
+                          }))
+                        }
+                      >
+                        Tools
+                      </DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </PromptInputTools>
+                <PromptInputSubmit
+                  disabled={
+                    !input ||
+                    isLoading ||
+                    isGeneratingImage ||
+                    isProcessingPdf ||
+                    isProcessingOCR ||
+                    isSearching ||
+                    !authenticated
+                  }
+                  status={
+                    isGeneratingImage || isSearching ? "submitted" : status
+                  }
+                />
+              </PromptInputFooter>
+            </PromptInput>
+            </div>
+          </div>
+    </div>
   );
 };
 

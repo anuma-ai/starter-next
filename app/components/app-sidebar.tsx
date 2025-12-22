@@ -1,6 +1,12 @@
 "use client";
 
-import { SquarePen, LogOut, MoreHorizontal, Trash2 } from "lucide-react";
+import {
+  SquarePen,
+  LogOut,
+  MoreHorizontal,
+  Trash2,
+  SlidersHorizontal,
+} from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +34,8 @@ type AppSidebarProps = {
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
+  currentView: "chat" | "settings";
+  onViewChange: (view: "chat" | "settings") => void;
 };
 
 export function AppSidebar({
@@ -36,66 +44,85 @@ export function AppSidebar({
   onNewConversation,
   onSelectConversation,
   onDeleteConversation,
+  currentView,
+  onViewChange,
 }: AppSidebarProps) {
   const { authenticated, user, login, logout, ready } = usePrivy();
 
   return (
     <Sidebar>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={onNewConversation}>
-              <SquarePen className="size-4" />
-              <span>New chat</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+      {authenticated && (
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={onNewConversation}>
+                <SquarePen className="size-4" />
+                <span>New chat</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+      )}
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {conversations.map((conv: any, index: number) => (
-                <SidebarMenuItem key={conv.id ?? index}>
-                  <SidebarMenuButton
-                    isActive={conversationId === conv.id}
-                    onClick={() => onSelectConversation(conv.id)}
-                  >
-                    <span className="truncate">
-                      {conv.title ||
-                        `Chat ${conv.id?.slice(0, 8) ?? index + 1}`}
-                    </span>
-                  </SidebarMenuButton>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <SidebarMenuAction showOnHover>
-                        <MoreHorizontal className="size-4" />
-                      </SidebarMenuAction>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="right" align="start">
-                      <DropdownMenuItem
-                        onClick={() => onDeleteConversation(conv.id)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="mr-2 size-4 text-destructive" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </SidebarMenuItem>
-              ))}
-              {conversations.length === 0 && (
-                <p className="px-2 py-2 text-sm text-muted-foreground">
-                  No conversations yet
-                </p>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+      {authenticated && (
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {conversations.map((conv: any, index: number) => (
+                  <SidebarMenuItem key={conv.id ?? index}>
+                    <SidebarMenuButton
+                      isActive={currentView === "chat" && conversationId === conv.id}
+                      onClick={() => onSelectConversation(conv.id)}
+                    >
+                      <span className="truncate">
+                        {conv.title ||
+                          `Chat ${conv.id?.slice(0, 8) ?? index + 1}`}
+                      </span>
+                    </SidebarMenuButton>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuAction showOnHover>
+                          <MoreHorizontal className="size-4" />
+                        </SidebarMenuAction>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="right" align="start">
+                        <DropdownMenuItem
+                          onClick={() => onDeleteConversation(conv.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 size-4 text-destructive" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </SidebarMenuItem>
+                ))}
+                {conversations.length === 0 && (
+                  <p className="px-2 py-2 text-sm text-muted-foreground">
+                    No conversations yet
+                  </p>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      )}
 
       <SidebarFooter>
+        {authenticated && (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={currentView === "settings"}
+                onClick={() => onViewChange("settings")}
+              >
+                <SlidersHorizontal className="size-4" />
+                <span>Settings</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        )}
         {!ready ? (
           <Button disabled className="w-full">
             Loading...
