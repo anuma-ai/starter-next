@@ -1,5 +1,5 @@
 ---
-title: useImageGeneration
+title: Generating Images
 ---
 
 The `useImageGeneration` hook from `@reverbia/sdk/react` provides AI image
