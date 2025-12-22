@@ -32,7 +32,7 @@ export function SettingsView() {
         <h1 className="mb-6 text-2xl font-semibold">Settings</h1>
 
         <div className="space-y-4">
-          <div className="rounded-xl bg-background p-1">
+          <div className="rounded-xl bg-card p-1">
             <div className="flex items-center justify-between px-4 py-3">
               <div className="space-y-0.5">
                 <Label htmlFor="dark-mode" className="text-base">
