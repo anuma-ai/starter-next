@@ -262,28 +262,17 @@ const ChatBotDemo = () => {
       } else {
         let enhancedText = message.text;
 
-        try {
-          const pdfContext = await extractPdfContext(message.files);
-          if (pdfContext && pdfContext.length > 100) {
-            enhancedText = enhancedText
-              ? `${enhancedText}\n\n${pdfContext}`
-              : pdfContext;
-          } else if (message.files && message.files.length > 0) {
-            // Fallback to OCR if PDF extraction was unsuccessful or yielded too little text
-            console.log("PDF extraction insufficient, falling back to OCR...");
-            const ocrContext = await extractOCRContext(message.files);
-            if (ocrContext) {
-              enhancedText = enhancedText
-                ? `${enhancedText}\n\n${ocrContext}`
-                : ocrContext;
-            }
-          }
-        } catch (error) {
-          console.error("Error processing PDF attachments:", error);
-          // Try OCR on error as well if appropriate, or just log
+        // Only process files if they exist
+        if (message.files && message.files.length > 0) {
           try {
-            if (message.files && message.files.length > 0) {
-              console.log("PDF extraction failed, trying OCR...");
+            const pdfContext = await extractPdfContext(message.files);
+            if (pdfContext && pdfContext.length > 100) {
+              enhancedText = enhancedText
+                ? `${enhancedText}\n\n${pdfContext}`
+                : pdfContext;
+            } else {
+              // Fallback to OCR if PDF extraction was unsuccessful or yielded too little text
+              console.log("PDF extraction insufficient, falling back to OCR...");
               const ocrContext = await extractOCRContext(message.files);
               if (ocrContext) {
                 enhancedText = enhancedText
@@ -291,8 +280,20 @@ const ChatBotDemo = () => {
                   : ocrContext;
               }
             }
-          } catch (ocrError) {
-            console.error("Error processing OCR fallback:", ocrError);
+          } catch (error) {
+            console.error("Error processing PDF attachments:", error);
+            // Try OCR on error as well
+            try {
+              console.log("PDF extraction failed, trying OCR...");
+              const ocrContext = await extractOCRContext(message.files);
+              if (ocrContext) {
+                enhancedText = enhancedText
+                  ? `${enhancedText}\n\n${ocrContext}`
+                  : ocrContext;
+              }
+            } catch (ocrError) {
+              console.error("Error processing OCR fallback:", ocrError);
+            }
           }
         }
 

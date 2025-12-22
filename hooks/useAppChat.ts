@@ -70,15 +70,17 @@ export function useAppChat({
       setError(null);
 
       try {
-        // Search for relevant memories before sending
-        const memories = await findRelevantMemories(text);
-
-        if (memories.length > 0) {
-          console.log(`Found ${memories.length} relevant memories for context`);
-        }
-
-        // Send the message
+        // Send the message immediately (user message appears right away)
         const response = await baseSendMessage(text, model);
+
+        // Search for relevant memories in the background (for future use)
+        findRelevantMemories(text).then((memories) => {
+          if (memories.length > 0) {
+            console.log(`Found ${memories.length} relevant memories for context`);
+          }
+        }).catch((err) => {
+          console.error("Failed to find memories:", err);
+        });
 
         // Extract memories from the user message in the background
         extractMemories(text, model).catch((err) => {
