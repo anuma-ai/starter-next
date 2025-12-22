@@ -319,13 +319,13 @@ const ChatBotDemo = () => {
 
   return (
     <div
-      className={`relative flex min-h-0 flex-1 flex-col overflow-hidden ${
+      className={`relative flex min-h-0 flex-1 flex-col ${
         messages.length === 0 ? "justify-center" : ""
       }`}
     >
           {messages.length > 0 && (
-            <Conversation className="min-h-0 flex-1 pb-48">
-              <ConversationContent className="mx-auto max-w-3xl px-14">
+            <Conversation className="min-h-0 flex-1">
+              <ConversationContent className="mx-auto max-w-3xl px-14 pb-40">
                   {messages.map((message: any) => (
                     <div key={message.id}>
                       {message.parts.map((part: any, i: number) => {
@@ -449,8 +449,14 @@ const ChatBotDemo = () => {
             </Conversation>
           )}
 
-          {/* Fixed prompt input at bottom */}
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background px-4 pb-4 pt-2 md:left-[var(--sidebar-width)] md:px-14">
+          {/* Fixed prompt input at bottom, centered when no messages */}
+          <div
+            className={`z-50 bg-background px-4 pb-4 pt-2 md:px-14 ${
+              messages.length === 0
+                ? "w-full"
+                : "fixed bottom-0 left-0 right-0 md:left-[var(--sidebar-width)]"
+            }`}
+          >
             <div className="mx-auto w-full max-w-3xl">
               <PromptInput
                 accept="image/*,application/pdf"

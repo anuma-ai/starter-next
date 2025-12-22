@@ -76,11 +76,14 @@ export const StreamingMessage = ({
   const [text, setText] = useState(initialText);
   const textRef = useRef(initialText);
   const rafRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const updateText = () => {
       setText(textRef.current);
       rafRef.current = null;
+      // Scroll the container into view when content updates
+      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     };
 
     const unsubscribe = subscribe((newText) => {
@@ -115,13 +118,15 @@ export const StreamingMessage = ({
   }
 
   return (
-    <Streamdown
-      className={cn(
-        "size-full [&>p]:my-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className
-      )}
-    >
-      {text}
-    </Streamdown>
+    <div ref={containerRef}>
+      <Streamdown
+        className={cn(
+          "size-full [&>p]:my-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+          className
+        )}
+      >
+        {text}
+      </Streamdown>
+    </div>
   );
 };
