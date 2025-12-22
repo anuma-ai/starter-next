@@ -325,7 +325,7 @@ const ChatBotDemo = () => {
     >
           {messages.length > 0 && (
             <Conversation className="min-h-0 flex-1">
-              <ConversationContent className="mx-auto max-w-3xl px-14 pb-40">
+              <ConversationContent className="mx-auto max-w-3xl px-14 pb-52">
                   {messages.map((message: any) => (
                     <div key={message.id}>
                       {message.parts.map((part: any, i: number) => {

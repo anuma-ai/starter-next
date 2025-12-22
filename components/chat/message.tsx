@@ -82,8 +82,10 @@ export const StreamingMessage = ({
     const updateText = () => {
       setText(textRef.current);
       rafRef.current = null;
-      // Scroll the container into view when content updates
-      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      // Scroll to keep the streaming content visible
+      if (containerRef.current) {
+        containerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
+      }
     };
 
     const unsubscribe = subscribe((newText) => {
