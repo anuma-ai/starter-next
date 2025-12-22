@@ -59,25 +59,51 @@ export default function ModelsPage() {
             </div>
           ) : (
             <div className="rounded-xl bg-background p-1">
-              {models.map((model, index) => (
-                <div
-                  key={model.id}
-                  className={`px-4 py-3 ${
-                    index < models.length - 1 ? "border-b border-border/50" : ""
-                  }`}
-                >
-                  <p className="text-sm font-medium">{model.name || model.id}</p>
-                  {model.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                      {model.description}
+              {models.map((model, index) => {
+                const pricing = model.pricing as { prompt?: string; completion?: string } | undefined;
+                const modalities = model.modalities as string[] | undefined;
+
+                return (
+                  <div
+                    key={model.id}
+                    className={`px-4 py-3 ${
+                      index < models.length - 1 ? "border-b border-border/50" : ""
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{model.name || model.id}</p>
+                    {model.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        {model.description}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {modalities?.map((modality) => (
+                        <span
+                          key={modality}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
+                        >
+                          {modality}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      {model.owned_by && <span>{model.owned_by}</span>}
+                      {model.context_length && (
+                        <span>{model.owned_by ? " · " : ""}{(model.context_length / 1000).toFixed(0)}k context</span>
+                      )}
+                      {pricing?.prompt && (
+                        <span>
+                          {(model.owned_by || model.context_length) ? " · " : ""}
+                          ${parseFloat(pricing.prompt).toFixed(6)}/1k input
+                        </span>
+                      )}
+                      {pricing?.completion && (
+                        <span> · ${parseFloat(pricing.completion).toFixed(6)}/1k output</span>
+                      )}
                     </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {model.owned_by}
-                    {model.context_length && ` · ${(model.context_length / 1000).toFixed(0)}k context`}
-                  </p>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

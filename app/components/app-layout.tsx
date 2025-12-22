@@ -63,8 +63,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   );
 
   const currentView = pathname.startsWith("/settings") ? "settings" : "chat";
-  const insetBackground =
-    currentView === "settings" ? "bg-muted/50" : "bg-background";
+  const insetBackground = "bg-background";
 
   // Derive active conversation from pathname for immediate UI updates
   const activeConversationId = pathname.startsWith("/c/")
