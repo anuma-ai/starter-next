@@ -48,7 +48,7 @@ type UseChatResult = {
   subscribeToStreaming: (callback: (text: string) => void) => () => void;
 };
 
-export function useChat(options?: {
+export function useAppChat(options?: {
   database?: Database;
   model?: string;
   getToken?: () => Promise<string | null>;
@@ -125,6 +125,7 @@ export function useChat(options?: {
       ]
     : undefined;
 
+  //#region chatStorageInit
   // Use useChatStorage for persistence
   const {
     sendMessage: baseSendMessage,
@@ -140,6 +141,7 @@ export function useChat(options?: {
     getToken: options?.getToken,
     autoCreateConversation: true,
   });
+  //#endregion chatStorageInit
 
   // Load conversations list with first message as title
   useEffect(() => {
@@ -242,6 +244,7 @@ export function useChat(options?: {
 
   const isSelectingTool = false;
 
+  //#region memoryStorageInit
   const embeddingProvider = enableLocalModels.embeddings ? "local" : "api";
   const embeddingModelConfig = enableLocalModels.embeddings
     ? "Snowflake/snowflake-arctic-embed-xs"
@@ -255,6 +258,7 @@ export function useChat(options?: {
     embeddingModel: embeddingModelConfig,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
+  //#endregion memoryStorageInit
 
   const defaultModel =
     options?.model || "fireworks/accounts/fireworks/models/gpt-oss-120b";

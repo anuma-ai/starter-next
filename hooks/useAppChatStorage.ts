@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import { useChatStorage as useSDKChatStorage } from "@reverbia/sdk/react";
+import { useChatStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 
 type Message = {
@@ -16,25 +16,9 @@ type UseChatStorageProps = {
 };
 
 /**
- * useChatStorage Hook Example
- *
- * The useChatStorage hook provides persistent chat storage with conversation
- * management. It handles saving messages to a local database and supports
- * multiple conversations.
- *
- * ## Hook Initialization
- *
- * {@includeCode ./useChatStorage.ts#hookInit}
- *
- * ## Sending Messages
- *
- * {@includeCode ./useChatStorage.ts#sendMessage}
- *
- * ## Conversation Management
- *
- * {@includeCode ./useChatStorage.ts#conversationManagement}
+ * useAppChatStorage Hook Example
  */
-export function useChatStorage({ database, getToken }: UseChatStorageProps) {
+export function useAppChatStorage({ database, getToken }: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
 
@@ -48,7 +32,7 @@ export function useChatStorage({ database, getToken }: UseChatStorageProps) {
     createConversation,
     setConversationId,
     deleteConversation,
-  } = useSDKChatStorage({
+  } = useChatStorage({
     database,
     getToken,
     autoCreateConversation: true,

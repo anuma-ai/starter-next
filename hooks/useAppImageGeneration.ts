@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useImageGeneration as useSDKImageGeneration } from "@reverbia/sdk/react";
+import { useImageGeneration } from "@reverbia/sdk/react";
 
 /**
  * useImageGeneration Hook Example
@@ -21,17 +21,20 @@ type GeneratedImage = {
   timestamp: number;
 };
 
-export function useImageGeneration({
+export function useAppImageGeneration({
   getToken,
   baseUrl,
 }: UseImageGenerationProps) {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
 
-  const { generateImage, isLoading, error } = useSDKImageGeneration({
+  //#region hookInit
+  const { generateImage, isLoading, error } = useImageGeneration({
     getToken,
     baseUrl: baseUrl || process.env.NEXT_PUBLIC_API_URL,
   });
+  //#endregion hookInit
 
+  //#region generateImage
   const createImage = useCallback(
     async (
       prompt: string,
@@ -64,6 +67,7 @@ export function useImageGeneration({
     },
     [generateImage]
   );
+  //#endregion generateImage
 
   const clearHistory = useCallback(() => {
     setGeneratedImages([]);

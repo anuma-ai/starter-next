@@ -1,8 +1,5 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": [
-    "./hooks/useChatStorage.ts"
-  ],
   "out": "./docs",
   "plugin": [
     "typedoc-plugin-markdown"
@@ -12,5 +9,8 @@
   "readme": "none",
   "skipErrorChecking": true,
   "hidePageHeader": true,
+  "projectDocuments": [
+    "documents/**/*.md"
+  ],
   "hideBreadcrumbs": true
 }

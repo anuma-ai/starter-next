@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { usePdf as useSDKPdf } from "@reverbia/sdk/react";
+import { usePdf } from "@reverbia/sdk/react";
 
 /**
  * usePdf Hook Example
@@ -23,11 +23,14 @@ type ExtractedPdf = {
   timestamp: number;
 };
 
-export function usePdf() {
+export function useAppPdf() {
   const [extractedPdfs, setExtractedPdfs] = useState<ExtractedPdf[]>([]);
 
-  const { extractPdfContext, isProcessing, error } = useSDKPdf();
+  //#region hookInit
+  const { extractPdfContext, isProcessing, error } = usePdf();
+  //#endregion hookInit
 
+  //#region extractFromPdfs
   const extractFromPdfs = useCallback(
     async (files: FileAttachment[]) => {
       const pdfFiles = files.filter(
@@ -62,6 +65,7 @@ export function usePdf() {
     },
     [extractPdfContext]
   );
+  //#endregion extractFromPdfs
 
   const hasMinimumContent = useCallback(
     (content: string | null, minLength: number = 100) => {

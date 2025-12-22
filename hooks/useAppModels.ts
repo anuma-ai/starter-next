@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useModels as useSDKModels } from "@reverbia/sdk/react";
+import { useModels } from "@reverbia/sdk/react";
 
 /**
  * useModels Hook Example
@@ -15,11 +15,13 @@ type UseModelsProps = {
   baseUrl?: string;
 };
 
-export function useModels({ getToken, baseUrl }: UseModelsProps) {
-  const { models, refetch, isLoading, error } = useSDKModels({
+export function useAppModels({ getToken, baseUrl }: UseModelsProps) {
+  //#region hookInit
+  const { models, refetch, isLoading, error } = useModels({
     getToken,
     baseUrl: baseUrl || process.env.NEXT_PUBLIC_API_URL,
   });
+  //#endregion hookInit
 
   useEffect(() => {
     refetch();

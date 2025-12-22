@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useSearch as useSDKSearch } from "@reverbia/sdk/react";
+import { useSearch } from "@reverbia/sdk/react";
 
 /**
  * useSearch Hook Example
@@ -28,14 +28,17 @@ type SearchHistory = {
   timestamp: number;
 };
 
-export function useSearch({ getToken, baseUrl }: UseSearchProps) {
+export function useAppSearch({ getToken, baseUrl }: UseSearchProps) {
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
 
-  const { search, isLoading, error } = useSDKSearch({
+  //#region hookInit
+  const { search, isLoading, error } = useSearch({
     getToken,
     baseUrl: baseUrl || process.env.NEXT_PUBLIC_API_URL,
   });
+  //#endregion hookInit
 
+  //#region performSearch
   const performSearch = useCallback(
     async (
       query: string,
@@ -72,6 +75,7 @@ export function useSearch({ getToken, baseUrl }: UseSearchProps) {
     },
     [search]
   );
+  //#endregion performSearch
 
   const formatResultsAsMarkdown = useCallback((results: SearchResult[]) => {
     return results

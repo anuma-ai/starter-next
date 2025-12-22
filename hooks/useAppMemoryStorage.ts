@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useMemoryStorage as useSDKMemoryStorage } from "@reverbia/sdk/react";
+import { useMemoryStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 
 /**
@@ -18,7 +18,7 @@ type UseMemoryStorageProps = {
   useLocalEmbeddings?: boolean;
 };
 
-export function useMemoryStorage({
+export function useAppMemoryStorage({
   database,
   getToken,
   useLocalEmbeddings = false,
@@ -28,12 +28,13 @@ export function useMemoryStorage({
     ? "Snowflake/snowflake-arctic-embed-xs"
     : "openai/text-embedding-3-small";
 
+  //#region hookInit
   const {
     extractMemoriesFromMessage,
     searchMemories,
     fetchAllMemories,
     removeMemoryById,
-  } = useSDKMemoryStorage({
+  } = useMemoryStorage({
     database,
     getToken,
     generateEmbeddings: true,
@@ -41,7 +42,9 @@ export function useMemoryStorage({
     embeddingModel,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
+  //#endregion hookInit
 
+  //#region extractMemories
   const extractMemories = useCallback(
     async (userMessage: string, model: string) => {
       const result = await extractMemoriesFromMessage({
@@ -58,7 +61,9 @@ export function useMemoryStorage({
     },
     [extractMemoriesFromMessage]
   );
+  //#endregion extractMemories
 
+  //#region searchMemories
   const findRelevantMemories = useCallback(
     async (
       query: string,
@@ -92,6 +97,7 @@ export function useMemoryStorage({
     },
     [searchMemories]
   );
+  //#endregion searchMemories
 
   const getAllMemories = useCallback(async () => {
     return await fetchAllMemories();

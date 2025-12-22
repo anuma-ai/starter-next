@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useOCR as useSDKOCR } from "@reverbia/sdk/react";
+import { useOCR } from "@reverbia/sdk/react";
 
 /**
  * useOCR Hook Example
@@ -23,11 +23,14 @@ type ExtractedOCR = {
   timestamp: number;
 };
 
-export function useOCR() {
+export function useAppOCR() {
   const [extractedTexts, setExtractedTexts] = useState<ExtractedOCR[]>([]);
 
-  const { extractOCRContext, isProcessing, error } = useSDKOCR();
+  //#region hookInit
+  const { extractOCRContext, isProcessing, error } = useOCR();
+  //#endregion hookInit
 
+  //#region extractFromImages
   const extractFromImages = useCallback(
     async (files: FileAttachment[]) => {
       const imageFiles = files.filter((f) => f.mediaType.startsWith("image/"));
@@ -58,6 +61,7 @@ export function useOCR() {
     },
     [extractOCRContext]
   );
+  //#endregion extractFromImages
 
   const extractFromAnyFiles = useCallback(
     async (files: FileAttachment[]) => {

@@ -1,14 +1,11 @@
-# Function: useChatStorage()
+The `useChatStorage` hook from `@reverbia/sdk/react` provides persistent chat
+storage with WatermelonDB. It manages conversations, message history, and
+handles syncing between local storage and the server.
 
-> **useChatStorage**(`__namedParameters`): `object`
+## Prerequisites
 
-Defined in: useChatStorage.ts:37
-
-useChatStorage Hook Example
-
-The useChatStorage hook provides persistent chat storage with conversation
-management. It handles saving messages to a local database and supports
-multiple conversations.
+- A WatermelonDB `Database` instance configured in your app
+- An authentication function that returns a valid token
 
 ## Hook Initialization
 
@@ -22,7 +19,7 @@ const {
   createConversation,
   setConversationId,
   deleteConversation,
-} = useSDKChatStorage({
+} = useChatStorage({
   database,
   getToken,
   autoCreateConversation: true,
@@ -93,83 +90,3 @@ const handleDeleteConversation = useCallback(
   [deleteConversation, conversationId]
 );
 ```
-
-## Parameters
-
-### \_\_namedParameters
-
-`UseChatStorageProps`
-
-## Returns
-
-`object`
-
-### conversationId
-
-> **conversationId**: `string` \| `null`
-
-### conversations
-
-> **conversations**: `any`[]
-
-### createConversation()
-
-> **createConversation**: () => `Promise`\<`StoredConversation`\> = `handleNewConversation`
-
-#### Returns
-
-`Promise`\<`StoredConversation`\>
-
-### deleteConversation()
-
-> **deleteConversation**: (`id`) => `Promise`\<`void`\> = `handleDeleteConversation`
-
-#### Parameters
-
-##### id
-
-`string`
-
-#### Returns
-
-`Promise`\<`void`\>
-
-### isLoading
-
-> **isLoading**: `boolean`
-
-### messages
-
-> **messages**: `Message`[]
-
-### sendMessage()
-
-> **sendMessage**: (`text`, `model`) => `Promise`\<`SendMessageWithStorageResult`\> = `handleSendMessage`
-
-#### Parameters
-
-##### text
-
-`string`
-
-##### model
-
-`string`
-
-#### Returns
-
-`Promise`\<`SendMessageWithStorageResult`\>
-
-### switchConversation()
-
-> **switchConversation**: (`id`) => `void` = `handleSwitchConversation`
-
-#### Parameters
-
-##### id
-
-`string`
-
-#### Returns
-
-`void`
