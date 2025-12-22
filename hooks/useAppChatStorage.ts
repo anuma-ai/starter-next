@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useChatStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 
@@ -18,12 +18,13 @@ type Message = {
 type UseChatStorageProps = {
   database: Database;
   getToken: () => Promise<string | null>;
+  onStreamingData?: (chunk: string, accumulated: string) => void;
 };
 
 /**
  * useAppChatStorage Hook Example
  */
-export function useAppChatStorage({ database, getToken }: UseChatStorageProps) {
+export function useAppChatStorage({ database, getToken, onStreamingData }: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
 
@@ -87,6 +88,8 @@ export function useAppChatStorage({ database, getToken }: UseChatStorageProps) {
   }, [conversationId, getMessages]);
 
   //#region sendMessage
+  const streamingTextRef = useRef<string>("");
+
   const handleSendMessage = useCallback(
     async (text: string, model: string) => {
       const userMessage: Message = {
@@ -94,29 +97,53 @@ export function useAppChatStorage({ database, getToken }: UseChatStorageProps) {
         role: "user",
         parts: [{ type: "text", text }],
       };
-      setMessages((prev) => [...prev, userMessage]);
+
+      // Create assistant placeholder message immediately for streaming
+      const assistantMessageId = `assistant-${Date.now()}`;
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        role: "assistant",
+        parts: [{ type: "text", text: "" }],
+      };
+
+      // Add both messages to state immediately
+      setMessages((prev) => [...prev, userMessage, assistantMessage]);
+
+      // Reset streaming text accumulator
+      streamingTextRef.current = "";
 
       const response = await sendMessage({
         content: text,
         model,
         includeHistory: true,
         onData: (chunk: string) => {
-          console.log("Received chunk:", chunk);
+          // Accumulate text
+          streamingTextRef.current += chunk;
+
+          // Notify callback for streaming updates
+          if (onStreamingData) {
+            onStreamingData(chunk, streamingTextRef.current);
+          }
         },
       });
 
-      if (response?.assistantMessage?.content) {
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          parts: [{ type: "text", text: response.assistantMessage.content }],
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      }
+      // Sync final streamed text to React state after streaming completes
+      const finalText = streamingTextRef.current;
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === assistantMessageId) {
+            return {
+              ...msg,
+              parts: [{ type: "text", text: finalText }],
+            };
+          }
+          return msg;
+        })
+      );
 
       return response;
     },
-    [sendMessage]
+    [sendMessage, onStreamingData]
   );
   //#endregion sendMessage
 

@@ -31,6 +31,17 @@ export function useAppChat({
   const [error, setError] = useState<string | null>(null);
   const streamingCallbackRef = useRef<((text: string) => void) | null>(null);
 
+  // Callback to handle streaming data from chat storage
+  const handleStreamingData = useCallback(
+    (_chunk: string, accumulated: string) => {
+      // Notify subscriber for direct DOM updates (bypasses React batching)
+      if (streamingCallbackRef.current) {
+        streamingCallbackRef.current(accumulated);
+      }
+    },
+    []
+  );
+
   // Use chat storage for message persistence
   const {
     messages,
@@ -43,7 +54,7 @@ export function useAppChat({
     switchConversation,
     setConversationId,
     deleteConversation,
-  } = useAppChatStorage({ database, getToken });
+  } = useAppChatStorage({ database, getToken, onStreamingData: handleStreamingData });
 
   // Use memory storage for context-aware responses
   const { extractMemories, findRelevantMemories } = useAppMemoryStorage({
