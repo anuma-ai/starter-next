@@ -1,5 +1,5 @@
 ---
-title: useSearch
+title: Searching the Web
 ---
 
 The `useSearch` hook from `@reverbia/sdk/react` provides web search

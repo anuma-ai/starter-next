@@ -1,5 +1,5 @@
 ---
-title: useModels
+title: Fetching Models
 ---
 
 The `useModels` hook from `@reverbia/sdk/react` fetches and manages the list of

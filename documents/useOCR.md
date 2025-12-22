@@ -1,5 +1,5 @@
 ---
-title: useOCR
+title: Extracting Text from Images
 ---
 
 The `useOCR` hook from `@reverbia/sdk/react` provides Optical Character

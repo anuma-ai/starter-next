@@ -1,5 +1,5 @@
 ---
-title: useChatStorage
+title: Sending messages
 ---
 
 The `useChatStorage` hook from `@reverbia/sdk/react` provides persistent chat

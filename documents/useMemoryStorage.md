@@ -1,5 +1,5 @@
 ---
-title: useMemoryStorage
+title: Storing Memories
 ---
 
 The `useMemoryStorage` hook from `@reverbia/sdk/react` provides memory

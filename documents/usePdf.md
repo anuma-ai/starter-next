@@ -1,5 +1,5 @@
 ---
-title: usePdf
+title: Extracting Text from PDFs
 ---
 
 The `usePdf` hook from `@reverbia/sdk/react` provides PDF text extraction
