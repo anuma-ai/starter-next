@@ -4,14 +4,6 @@ import { useCallback, useState, useEffect } from "react";
 import { useChatStorage as useSDKChatStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 
-/**
- * useChatStorage Hook Example
- *
- * The useChatStorage hook provides persistent chat storage with conversation
- * management. It handles saving messages to a local database and supports
- * multiple conversations.
- */
-
 type Message = {
   id: string;
   role: "user" | "assistant";
@@ -23,6 +15,30 @@ type UseChatStorageProps = {
   getToken: () => Promise<string | null>;
 };
 
+/**
+ * useChatStorage Hook Example
+ *
+ * The useChatStorage hook provides persistent chat storage with conversation
+ * management. It handles saving messages to a local database and supports
+ * multiple conversations.
+ *
+ * ## Hook Initialization
+ *
+ * {@includeCode ./useChatStorage.tsx:50-63}
+ *
+ * ## Sending Messages
+ *
+ * {@includeCode ./useChatStorage.tsx:86-116}
+ *
+ * ## Conversation Management
+ *
+ * {@includeCode ./useChatStorage.tsx:120-143}
+ *
+ * @param props - Configuration options
+ * @param props.database - WatermelonDB database instance for storage
+ * @param props.getToken - Function to retrieve authentication token
+ * @returns Chat storage methods and state
+ */
 export function useChatStorage({
   database,
   getToken,
@@ -30,6 +46,7 @@ export function useChatStorage({
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
 
+  //#region hookInit
   const {
     sendMessage,
     isLoading,
@@ -44,6 +61,7 @@ export function useChatStorage({
     getToken,
     autoCreateConversation: true,
   });
+  //#endregion hookInit
 
   useEffect(() => {
     getConversations().then((list) => {
@@ -64,6 +82,7 @@ export function useChatStorage({
     }
   }, [conversationId, getMessages]);
 
+  //#region sendMessage
   const handleSendMessage = useCallback(
     async (text: string, model: string) => {
       const userMessage: Message = {
@@ -95,7 +114,9 @@ export function useChatStorage({
     },
     [sendMessage]
   );
+  //#endregion sendMessage
 
+  //#region conversationManagement
   const handleNewConversation = useCallback(async () => {
     const newConv = await createConversation();
     if (newConv) {
@@ -120,6 +141,7 @@ export function useChatStorage({
     },
     [deleteConversation, conversationId]
   );
+  //#endregion conversationManagement
 
   return {
     messages,

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "./hooks/useChatStorage.tsx"
+  ],
+  "out": "./docs",
+  "plugin": [
+    "typedoc-plugin-markdown"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "readme": "none",
+  "skipErrorChecking": true
+}
