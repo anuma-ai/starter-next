@@ -1,7 +1,7 @@
 {
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": [
-    "./hooks/useChatStorage.tsx"
+    "./hooks/useChatStorage.ts"
   ],
   "out": "./docs",
   "plugin": [
@@ -10,5 +10,7 @@
   "excludePrivate": true,
   "excludeProtected": true,
   "readme": "none",
-  "skipErrorChecking": true
+  "skipErrorChecking": true,
+  "hidePageHeader": true,
+  "hideBreadcrumbs": true
 }

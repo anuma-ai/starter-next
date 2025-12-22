@@ -1,14 +1,8 @@
-[**example**](../README.md)
-
-***
-
-[example](../README.md) / useChatStorage
-
 # Function: useChatStorage()
 
-> **useChatStorage**(`props`): `object`
+> **useChatStorage**(`__namedParameters`): `object`
 
-Defined in: [useChatStorage.tsx:42](https://github.com/zeta-chain/ai-examples/blob/f7584af3cadbf2450cf7842307938e57249a6c04/hooks/useChatStorage.tsx#L42)
+Defined in: useChatStorage.ts:37
 
 useChatStorage Hook Example
 
@@ -18,101 +12,97 @@ multiple conversations.
 
 ## Hook Initialization
 
-```tsx
-  const {
-    sendMessage,
-    isLoading,
-    conversationId,
-    getMessages,
-    getConversations,
-    createConversation,
-    setConversationId,
-    deleteConversation,
-  } = useSDKChatStorage({
-    database,
-    getToken,
-    autoCreateConversation: true,
-  });
+```ts
+const {
+  sendMessage,
+  isLoading,
+  conversationId,
+  getMessages,
+  getConversations,
+  createConversation,
+  setConversationId,
+  deleteConversation,
+} = useSDKChatStorage({
+  database,
+  getToken,
+  autoCreateConversation: true,
+});
 ```
 
 ## Sending Messages
 
-```tsx
-  const handleSendMessage = useCallback(
-    async (text: string, model: string) => {
-      const userMessage: Message = {
-        id: `user-${Date.now()}`,
-        role: "user",
-        content: text,
+```ts
+const handleSendMessage = useCallback(
+  async (text: string, model: string) => {
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: text,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+
+    const response = await sendMessage({
+      content: text,
+      model,
+      includeHistory: true,
+      onData: (chunk: string) => {
+        console.log("Received chunk:", chunk);
+      },
+    });
+
+    if (response?.content) {
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: response.content,
       };
-      setMessages((prev) => [...prev, userMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
+    }
 
-      const response = await sendMessage({
-        content: text,
-        model,
-        includeHistory: true,
-        onData: (chunk: string) => {
-          console.log("Received chunk:", chunk);
-        },
-      });
-
-      if (response?.content) {
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: response.content,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      }
-
-      return response;
-    },
-    [sendMessage]
-  );
+    return response;
+  },
+  [sendMessage]
+);
 ```
 
 ## Conversation Management
 
-```tsx
-  const handleNewConversation = useCallback(async () => {
-    const newConv = await createConversation();
-    if (newConv) {
+```ts
+const handleNewConversation = useCallback(async () => {
+  const newConv = await createConversation();
+  if (newConv) {
+    setMessages([]);
+  }
+  return newConv;
+}, [createConversation]);
+
+const handleSwitchConversation = useCallback(
+  (id: string) => {
+    setConversationId(id);
+  },
+  [setConversationId]
+);
+
+const handleDeleteConversation = useCallback(
+  async (id: string) => {
+    await deleteConversation(id);
+    if (conversationId === id) {
       setMessages([]);
     }
-    return newConv;
-  }, [createConversation]);
-
-  const handleSwitchConversation = useCallback(
-    (id: string) => {
-      setConversationId(id);
-    },
-    [setConversationId]
-  );
-
-  const handleDeleteConversation = useCallback(
-    async (id: string) => {
-      await deleteConversation(id);
-      if (conversationId === id) {
-        setMessages([]);
-      }
-    },
-    [deleteConversation, conversationId]
-  );
+  },
+  [deleteConversation, conversationId]
+);
 ```
 
 ## Parameters
 
-### props
+### \_\_namedParameters
 
 `UseChatStorageProps`
-
-Configuration options
 
 ## Returns
 
 `object`
-
-Chat storage methods and state
 
 ### conversationId
 

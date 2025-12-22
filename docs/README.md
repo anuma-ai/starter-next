@@ -1,7 +1,3 @@
-**example**
-
-***
-
 # example
 
 ## Functions

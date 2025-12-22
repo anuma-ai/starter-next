@@ -24,25 +24,17 @@ type UseChatStorageProps = {
  *
  * ## Hook Initialization
  *
- * {@includeCode ./useChatStorage.tsx:50-63}
+ * {@includeCode ./useChatStorage.ts#hookInit}
  *
  * ## Sending Messages
  *
- * {@includeCode ./useChatStorage.tsx:86-116}
+ * {@includeCode ./useChatStorage.ts#sendMessage}
  *
  * ## Conversation Management
  *
- * {@includeCode ./useChatStorage.tsx:120-143}
- *
- * @param props - Configuration options
- * @param props.database - WatermelonDB database instance for storage
- * @param props.getToken - Function to retrieve authentication token
- * @returns Chat storage methods and state
+ * {@includeCode ./useChatStorage.ts#conversationManagement}
  */
-export function useChatStorage({
-  database,
-  getToken,
-}: UseChatStorageProps) {
+export function useChatStorage({ database, getToken }: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
 
