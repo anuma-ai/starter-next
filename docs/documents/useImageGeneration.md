@@ -1,3 +1,5 @@
+# Generating Images
+
 The `useImageGeneration` hook from `@reverbia/sdk/react` provides AI image
 generation capabilities. It supports multiple models (like DALL-E 3) and returns
 generated image URLs or base64-encoded data.

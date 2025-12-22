@@ -1,3 +1,5 @@
+# Storing Memories
+
 The `useMemoryStorage` hook from `@reverbia/sdk/react` provides memory
 extraction and semantic search capabilities. It automatically extracts facts
 from conversations and stores them with embeddings for later retrieval.

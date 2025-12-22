@@ -1,6 +1,4 @@
----
-title: Storing Memories
----
+# Storing Memories
 
 The `useMemoryStorage` hook from `@reverbia/sdk/react` provides memory
 extraction and semantic search capabilities. It automatically extracts facts
