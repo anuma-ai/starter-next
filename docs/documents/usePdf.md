@@ -1,3 +1,5 @@
+Extracting Text from PDFs
+
 The `usePdf` hook from `@reverbia/sdk/react` provides PDF text extraction
 capabilities. It extracts text content from PDF files for use in chat context or
 other processing.

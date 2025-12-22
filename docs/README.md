@@ -2,11 +2,11 @@
 
 ## Documents
 
-- [Introduction](documents/Introduction.md)
-- [Sending messages](documents/Sending-messages.md)
-- [Generating Images](documents/Generating-Images.md)
-- [Storing Memories](documents/Storing-Memories.md)
-- [Fetching Models](documents/Fetching-Models.md)
-- [Extracting Text from Images](documents/Extracting-Text-from-Images.md)
-- [Extracting Text from PDFs](documents/Extracting-Text-from-PDFs.md)
-- [Searching the Web](documents/Searching-the-Web.md)
+- [intro](documents/intro.md)
+- [useChatStorage](documents/useChatStorage.md)
+- [useImageGeneration](documents/useImageGeneration.md)
+- [useMemoryStorage](documents/useMemoryStorage.md)
+- [useModels](documents/useModels.md)
+- [useOCR](documents/useOCR.md)
+- [usePdf](documents/usePdf.md)
+- [useSearch](documents/useSearch.md)

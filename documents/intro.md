@@ -1,6 +1,4 @@
----
-title: Introduction
----
+# Introduction
 
 This is an AI-enabled web application starter kit that demonstrates how to build
 a full-featured chat interface with persistent memory, file processing, web

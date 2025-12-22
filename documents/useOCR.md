@@ -1,6 +1,4 @@
----
-title: Extracting Text from Images
----
+# Extracting Text from Images
 
 The `useOCR` hook from `@reverbia/sdk/react` provides Optical Character
 Recognition (OCR) capabilities. It extracts text from images and scanned
