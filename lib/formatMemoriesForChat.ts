@@ -1,4 +1,7 @@
-import { formatMemoriesForChat } from "@reverbia/sdk/react";
+import {
+  formatMemoriesForChat,
+  type StoredMemory,
+} from "@reverbia/sdk/react";
 
 /**
  * formatMemoriesForChat Utility
@@ -8,20 +11,14 @@ import { formatMemoriesForChat } from "@reverbia/sdk/react";
  * It supports different output formats for various use cases.
  */
 
-type StoredMemory = {
-  id: string;
-  content: string;
-  similarity?: number;
-  createdAt?: Date;
-  metadata?: Record<string, any>;
-};
+type StoredMemoryWithSimilarity = StoredMemory & { similarity?: number };
 
 /**
  * Format memories for inclusion in chat context
  */
 export function formatMemories(
-  memories: StoredMemory[],
-  format: "compact" | "detailed" | "bullet" = "compact"
+  memories: StoredMemoryWithSimilarity[],
+  format: "compact" | "detailed" = "compact"
 ): string | null {
   if (!memories || memories.length === 0) {
     return null;
@@ -36,7 +33,7 @@ export function formatMemories(
  * Build a system prompt with memory context
  */
 export function buildSystemPromptWithMemories(
-  memories: StoredMemory[],
+  memories: StoredMemoryWithSimilarity[],
   basePrompt?: string
 ): string {
   const memoryContext = formatMemories(memories, "compact");
@@ -58,7 +55,7 @@ export function buildSystemPromptWithMemories(
  * Create a messages array with memory context as system message
  */
 export function createMessagesWithMemoryContext(
-  memories: StoredMemory[],
+  memories: StoredMemoryWithSimilarity[],
   userMessages: Array<{ role: string; content: string }>
 ): Array<{
   role: string;
