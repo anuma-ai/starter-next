@@ -4,10 +4,15 @@ import { useCallback, useState, useEffect } from "react";
 import { useChatStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 
+type MessagePart = {
+  type: "text";
+  text: string;
+};
+
 type Message = {
   id: string;
   role: "user" | "assistant";
-  content: string;
+  parts: MessagePart[];
 };
 
 type UseChatStorageProps = {
@@ -40,10 +45,33 @@ export function useAppChatStorage({ database, getToken }: UseChatStorageProps) {
   //#endregion hookInit
 
   useEffect(() => {
-    getConversations().then((list) => {
-      setConversations(list);
+    getConversations().then(async (list) => {
+      // Load first message for each conversation to use as title
+      const conversationsWithTitles = await Promise.all(
+        list.map(async (conv: any) => {
+          const convId = conv.conversationId || conv.id;
+          if (!convId) return null;
+
+          try {
+            const msgs = await getMessages(convId);
+            if (!msgs || msgs.length === 0) return null;
+
+            const firstUserMessage = msgs.find((m: any) => m.role === "user");
+            const title = firstUserMessage?.content?.slice(0, 30) || null;
+
+            return {
+              ...conv,
+              id: convId,
+              title: title ? (title.length >= 30 ? `${title}...` : title) : null,
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+      setConversations(conversationsWithTitles.filter(Boolean));
     });
-  }, [getConversations, conversationId]);
+  }, [getConversations, getMessages, conversationId]);
 
   useEffect(() => {
     if (conversationId) {
@@ -51,7 +79,7 @@ export function useAppChatStorage({ database, getToken }: UseChatStorageProps) {
         const uiMessages: Message[] = msgs.map((msg: any) => ({
           id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
           role: msg.role,
-          content: msg.content,
+          parts: [{ type: "text" as const, text: msg.content }],
         }));
         setMessages(uiMessages);
       });
@@ -64,7 +92,7 @@ export function useAppChatStorage({ database, getToken }: UseChatStorageProps) {
       const userMessage: Message = {
         id: `user-${Date.now()}`,
         role: "user",
-        content: text,
+        parts: [{ type: "text", text }],
       };
       setMessages((prev) => [...prev, userMessage]);
 
@@ -77,11 +105,11 @@ export function useAppChatStorage({ database, getToken }: UseChatStorageProps) {
         },
       });
 
-      if (response?.content) {
+      if (response?.assistantMessage?.content) {
         const assistantMessage: Message = {
           id: `assistant-${Date.now()}`,
           role: "assistant",
-          content: response.content,
+          parts: [{ type: "text", text: response.assistantMessage.content }],
         };
         setMessages((prev) => [...prev, assistantMessage]);
       }
@@ -121,12 +149,14 @@ export function useAppChatStorage({ database, getToken }: UseChatStorageProps) {
 
   return {
     messages,
+    setMessages,
     conversations,
     conversationId,
     isLoading,
     sendMessage: handleSendMessage,
     createConversation: handleNewConversation,
     switchConversation: handleSwitchConversation,
+    setConversationId: handleSwitchConversation,
     deleteConversation: handleDeleteConversation,
   };
 }

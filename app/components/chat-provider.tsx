@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useCallback } from "react";
 import { useIdentityToken } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
-import { useChat } from "@/hooks/useChat";
+import { useAppChat } from "@/hooks/useAppChat";
 
 type ChatState = {
   messages: any[];
@@ -39,7 +39,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return identityToken ?? null;
   }, [identityToken]);
 
-  const chatState = useChat({
+  const chatState = useAppChat({
     database,
     model: "fireworks/accounts/fireworks/models/gpt-oss-120b",
     getToken: getIdentityToken,

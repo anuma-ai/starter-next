@@ -28,7 +28,7 @@ export function useAppImageGeneration({
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
 
   //#region hookInit
-  const { generateImage, isLoading, error } = useImageGeneration({
+  const { generateImage, isLoading } = useImageGeneration({
     getToken,
     baseUrl: baseUrl || process.env.NEXT_PUBLIC_API_URL,
   });
@@ -77,7 +77,6 @@ export function useAppImageGeneration({
     createImage,
     generatedImages,
     isLoading,
-    error,
     clearHistory,
   };
 }

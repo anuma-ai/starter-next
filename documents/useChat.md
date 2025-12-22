@@ -2,24 +2,19 @@
 title: useChat
 ---
 
-The `useChat` hook combines `useChatStorage` and `useMemoryStorage` from
-`@reverbia/sdk/react` to provide a complete chat experience with persistent
-storage and memory-augmented responses. It handles message sending, conversation
-management, and automatic memory extraction from user messages.
+The `useAppChat` hook combines `useAppChatStorage` and `useAppMemoryStorage` to
+provide a complete chat experience with persistent storage and memory-augmented
+responses.
 
 ## Prerequisites
 
 - A WatermelonDB `Database` instance configured in your app
 - An authentication function that returns a valid token
 
-## Chat Storage Initialization
+## Hook Initialization
 
-The hook uses `useChatStorage` internally for message persistence:
+{@includeCode ../hooks/useAppChat.ts#hookInit}
 
-{@includeCode ../hooks/useAppChat.ts#chatStorageInit}
+## Sending Messages
 
-## Memory Storage Initialization
-
-Memory storage enables semantic search over past conversations:
-
-{@includeCode ../hooks/useAppChat.ts#memoryStorageInit}
+{@includeCode ../hooks/useAppChat.ts#sendMessage}

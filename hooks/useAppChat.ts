@@ -1,569 +1,99 @@
 "use client";
 
-import { useCallback, useState, useRef, useEffect } from "react";
-import type { UIMessage, ChatStatus, FileUIPart } from "@/types/chat";
-import {
-  useChatStorage,
-  useMemoryStorage,
-  extractConversationContext,
-  formatMemoriesForChat,
-} from "@reverbia/sdk/react";
+import { useCallback, useState, useRef } from "react";
+import { useAppChatStorage } from "./useAppChatStorage";
+import { useAppMemoryStorage } from "./useAppMemoryStorage";
 import type { Database } from "@nozbe/watermelondb";
 
-type SendMessageOptions = {
-  model: string;
-};
+/**
+ * useAppChat Hook Example
+ *
+ * This hook demonstrates how to combine useAppChatStorage and useAppMemoryStorage
+ * to create a complete chat experience with persistent storage and memory-augmented
+ * responses.
+ */
 
-type PromptInputMessage = {
-  text: string;
-  displayText?: string;
-  files: FileUIPart[];
-};
-
-type UseChatResult = {
-  error: string | null;
-  isLoading: boolean;
-  isSelectingTool?: boolean;
-  messages: UIMessage[];
-  input: string;
-  setInput: (value: string) => void;
-  handleSubmit: (
-    message: PromptInputMessage,
-    options?: SendMessageOptions
-  ) => Promise<void>;
-  sendMessage: (
-    message: { text?: string; files?: UIMessage["parts"] },
-    options?: SendMessageOptions
-  ) => Promise<any>;
-  setMessages: React.Dispatch<React.SetStateAction<UIMessage[]>>;
-  stop: () => void;
-  status: ChatStatus | undefined;
-  // Chat storage methods
-  conversationId: string | null;
-  conversations: any[];
-  createConversation: () => Promise<any>;
-  setConversationId: (id: string) => void;
-  deleteConversation: (id: string) => Promise<void>;
-  // Streaming subscription for direct DOM updates
-  subscribeToStreaming: (callback: (text: string) => void) => () => void;
-};
-
-export function useAppChat(options?: {
-  database?: Database;
+type UseAppChatProps = {
+  database: Database;
+  getToken: () => Promise<string | null>;
   model?: string;
-  getToken?: () => Promise<string | null>;
-  embeddingModel?: string;
-  memorySearchLimit?: number;
-  memoryMinSimilarity?: number;
-  memoryUseFallbackThreshold?: boolean;
-  memoryFallbackThreshold?: number;
-  chatProvider?: "api" | "local";
-  localModel?: string;
-  enableLocalModels?: {
-    chat?: boolean;
-    embeddings?: boolean;
-    tools?: boolean;
-  };
-}): UseChatResult {
-  const [messages, setMessages] = useState<UIMessage[]>([]);
+  useLocalEmbeddings?: boolean;
+};
+
+//#region hookInit
+export function useAppChat({
+  database,
+  getToken,
+  model = "openai/gpt-4",
+  useLocalEmbeddings = false,
+}: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [conversationRefreshKey, setConversationRefreshKey] = useState(0);
-  const isSendingRef = useRef(false);
-
-  const enableLocalModels = options?.enableLocalModels || {};
-  const chatProvider = enableLocalModels.chat
-    ? "local"
-    : options?.chatProvider || "api";
-
-  const tools = enableLocalModels.tools
-    ? [
-        {
-          name: "get_weather",
-          description: "Get the current weather for a location",
-          parameters: [
-            {
-              name: "location",
-              type: "string" as const,
-              description: "City name",
-              required: true,
-            },
-          ],
-          execute: async (args: any) => {
-            const { location } = args as { location: string };
-            // Mock weather response
-            return {
-              temperature: Math.floor(Math.random() * 100),
-              condition: "sunny",
-              location,
-            };
-          },
-        },
-        {
-          name: "calculate",
-          description: "Perform a mathematical calculation",
-          parameters: [
-            {
-              name: "expression",
-              type: "string" as const,
-              description: "Math expression",
-              required: true,
-            },
-          ],
-          execute: (args: any) => {
-            const { expression } = args as { expression: string };
-            try {
-              // Safe evaluation for demo purposes
-              // eslint-disable-next-line no-eval
-              return eval(expression);
-            } catch (e) {
-              return "Error calculating";
-            }
-          },
-        },
-      ]
-    : undefined;
-
-  //#region chatStorageInit
-  // Use useChatStorage for persistence
-  const {
-    sendMessage: baseSendMessage,
-    isLoading,
-    conversationId,
-    getMessages,
-    getConversations,
-    createConversation: baseCreateConversation,
-    setConversationId: baseSetConversationId,
-    deleteConversation: baseDeleteConversation,
-  } = useChatStorage({
-    database: options?.database!,
-    getToken: options?.getToken,
-    autoCreateConversation: true,
-  });
-  //#endregion chatStorageInit
-
-  // Load conversations list with first message as title
-  useEffect(() => {
-    if (options?.database) {
-      getConversations().then(async (list) => {
-        // Load first message for each conversation to use as title
-        const conversationsWithTitles = await Promise.all(
-          list.map(async (conv: any) => {
-            // StoredConversation uses conversationId for the actual ID
-            const convId = conv.conversationId || conv.id;
-            if (!convId) {
-              return null; // Skip conversations without ID
-            }
-            try {
-              const msgs = await getMessages(convId);
-              // Skip empty conversations (no messages)
-              if (!msgs || msgs.length === 0) {
-                return null;
-              }
-              const firstUserMessage = msgs.find((m: any) => m.role === "user");
-              const title = firstUserMessage?.content?.slice(0, 30) || null;
-              return {
-                ...conv,
-                // Normalize the id field for UI usage
-                id: convId,
-                title: title
-                  ? title.length >= 30
-                    ? `${title}...`
-                    : title
-                  : null,
-              };
-            } catch {
-              return null; // Skip conversations that fail to load
-            }
-          })
-        );
-        // Filter out null entries (empty conversations)
-        setConversations(conversationsWithTitles.filter(Boolean));
-      });
-    }
-  }, [
-    getConversations,
-    getMessages,
-    conversationId,
-    conversationRefreshKey,
-    options?.database,
-  ]);
-
-  // Load messages when conversation changes
-  useEffect(() => {
-    // Skip reloading messages if we're in the middle of sending
-    // This prevents race conditions where the reload overwrites optimistic UI
-    if (isSendingRef.current) {
-      return;
-    }
-    if (conversationId && options?.database) {
-      getMessages(conversationId).then((msgs) => {
-        const uiMessages: UIMessage[] = msgs.map((msg: any) => ({
-          id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
-          role: msg.role,
-          parts: [{ type: "text" as const, text: msg.content }],
-        }));
-        setMessages(uiMessages);
-      });
-    }
-  }, [conversationId, getMessages, options?.database]);
-
-  const createConversation = useCallback(async () => {
-    const newConv = await baseCreateConversation();
-    if (newConv) {
-      setMessages([]);
-    }
-    return newConv;
-  }, [baseCreateConversation]);
-
-  const setConversationId = useCallback(
-    (id: string) => {
-      baseSetConversationId(id);
-    },
-    [baseSetConversationId]
-  );
-
-  const deleteConversation = useCallback(
-    async (id: string) => {
-      await baseDeleteConversation(id);
-      // If we deleted the current conversation, clear messages
-      if (conversationId === id) {
-        setMessages([]);
-      }
-      // Refresh the conversations list
-      setConversationRefreshKey((prev) => prev + 1);
-    },
-    [baseDeleteConversation, conversationId]
-  );
-
-  // Placeholder stop function
-  const stop = useCallback(() => {
-    // TODO: Implement stop by exposing abort controller from useChatStorage
-  }, []);
-
-  const isSelectingTool = false;
-
-  //#region memoryStorageInit
-  const embeddingProvider = enableLocalModels.embeddings ? "local" : "api";
-  const embeddingModelConfig = enableLocalModels.embeddings
-    ? "Snowflake/snowflake-arctic-embed-xs"
-    : options?.embeddingModel || "openai/text-embedding-3-small";
-
-  const { extractMemoriesFromMessage, searchMemories } = useMemoryStorage({
-    database: options?.database as Database,
-    getToken: options?.getToken,
-    generateEmbeddings: true,
-    embeddingProvider,
-    embeddingModel: embeddingModelConfig,
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-  });
-  //#endregion memoryStorageInit
-
-  const defaultModel =
-    options?.model || "fireworks/accounts/fireworks/models/gpt-oss-120b";
-  const processedMessageIdsRef = useRef<Set<string>>(new Set());
-
-  // Ref for accumulating streaming text and notifying subscribers
-  const streamingTextRef = useRef<string>("");
   const streamingCallbackRef = useRef<((text: string) => void) | null>(null);
-  const memorySearchLimit = options?.memorySearchLimit ?? 5;
-  const memoryMinSimilarity = options?.memoryMinSimilarity ?? 0.2;
-  const memoryUseFallbackThreshold =
-    options?.memoryUseFallbackThreshold ?? true;
-  const memoryFallbackThreshold = options?.memoryFallbackThreshold ?? 0.1;
 
+  // Use chat storage for message persistence
+  const {
+    messages,
+    setMessages,
+    conversations,
+    conversationId,
+    isLoading,
+    sendMessage: baseSendMessage,
+    createConversation,
+    switchConversation,
+    setConversationId,
+    deleteConversation,
+  } = useAppChatStorage({ database, getToken });
+
+  // Use memory storage for context-aware responses
+  const { extractMemories, findRelevantMemories } = useAppMemoryStorage({
+    database,
+    getToken,
+    useLocalEmbeddings,
+  });
+  //#endregion hookInit
+
+  //#region sendMessage
   const sendMessage = useCallback(
-    async (
-      message: {
-        text?: string;
-        displayText?: string;
-        files?: UIMessage["parts"];
-      },
-      sendOptions?: SendMessageOptions
-    ) => {
-      const model = sendOptions?.model || defaultModel;
-      if (!model) {
-        const error =
-          "Model is required. Provide it in options or initialOptions.";
-        setError(error);
-        throw new Error(error);
-      }
-
-      const hasText = Boolean(message.text);
-      const hasFiles = Boolean(message.files?.length);
-
-      if (!hasText && !hasFiles) {
-        return;
-      }
-
-      // Mark that we're sending to prevent message reload race condition
-      isSendingRef.current = true;
-
-      // Create user message
-      const userMessage: UIMessage = {
-        id: `user-${Date.now()}`,
-        role: "user",
-        parts: [
-          ...(hasText
-            ? [
-                {
-                  type: "text" as const,
-                  text: message.displayText || message.text || "",
-                },
-              ]
-            : []),
-          ...(message.files || []).map((file: any) => {
-            // Always use image_url for images for better rendering
-            if (file.mediaType?.startsWith("image/")) {
-              return {
-                type: "image_url",
-                image_url: {
-                  url: file.url,
-                },
-              };
-            }
-            // For other files like PDFs, keep them as is
-            return {
-              type: "file",
-              url: file.url,
-              filename: file.filename,
-              mediaType: file.mediaType,
-            };
-          }),
-        ] as any,
-      };
-
-      // Create assistant message placeholder immediately
-      const assistantMessageId = `assistant-${Date.now()}`;
-      const assistantMessage: UIMessage = {
-        id: assistantMessageId,
-        role: "assistant",
-        parts: [
-          {
-            type: "text",
-            text: "",
-          },
-        ],
-      };
-
-      // Add both messages to state immediately
-      const updatedMessages = [...messages, userMessage];
-      setMessages([...updatedMessages, assistantMessage]);
+    async (text: string) => {
       setError(null);
 
       try {
-        // 1. Extract context from recent conversation for memory search
-        // Use updatedMessages which contains history + new user message
-        const conversationHistory = updatedMessages
-          .map((msg) => {
-            const textPart = msg.parts?.find((p) => p.type === "text");
-            return {
-              role: msg.role,
-              content: textPart?.type === "text" ? textPart.text : "",
-            };
-          })
-          .filter((msg) => msg.content);
+        // Search for relevant memories before sending
+        const memories = await findRelevantMemories(text);
 
-        const context = extractConversationContext(conversationHistory, 3);
-
-        // 2. Search for relevant memories
-        let memoryContext: string | null = null;
-        if (context && searchMemories) {
-          try {
-            // First try with the main threshold
-            let relevantMemories = await searchMemories(
-              context,
-              memorySearchLimit,
-              memoryMinSimilarity
-            );
-
-            // If no memories found and fallback is enabled, try with lower threshold
-            if (
-              (!relevantMemories || relevantMemories.length === 0) &&
-              memoryUseFallbackThreshold
-            ) {
-              console.log(
-                `[Memory Lookup] No memories above threshold ${memoryMinSimilarity}, trying fallback threshold ${memoryFallbackThreshold}`
-              );
-              relevantMemories = await searchMemories(
-                context,
-                memorySearchLimit,
-                memoryFallbackThreshold
-              );
-            }
-
-            // 3. Format memories for chat context
-            if (relevantMemories && relevantMemories.length > 0) {
-              memoryContext = formatMemoriesForChat(
-                relevantMemories,
-                "compact"
-              );
-              const topSimilarity =
-                relevantMemories[0]?.similarity?.toFixed(3) || "N/A";
-              console.log(
-                `[Memory Lookup] Found ${relevantMemories.length} relevant memories (top similarity: ${topSimilarity})`
-              );
-            } else {
-              console.log(
-                `[Memory Lookup] No memories found above similarity threshold ${memoryMinSimilarity}`
-              );
-            }
-          } catch (memoryError) {
-            console.error("Error searching memories:", memoryError);
-            // Continue without memory context if search fails
-          }
+        if (memories.length > 0) {
+          console.log(`Found ${memories.length} relevant memories for context`);
         }
 
-        // Build the messages array with memory context as system message
-        const messagesToSend: {
-          role: string;
-          content: { type: string; text: string }[];
-        }[] = [];
-        if (memoryContext) {
-          messagesToSend.push({
-            role: "system",
-            content: [
-              {
-                type: "text",
-                text: `Relevant context about the user: ${memoryContext}`,
-              },
-            ],
-          });
-        }
+        // Send the message
+        const response = await baseSendMessage(text, model);
 
-        // Call the API via useChatStorage with streaming callback
-        // Pass original message text as content (for storage), memory context via messages array
-
-        // Reset streaming text accumulator
-        streamingTextRef.current = "";
-
-        const response = await baseSendMessage({
-          content: message.text || "",
-          model,
-          includeHistory: true,
-          messages: messagesToSend.length > 0 ? messagesToSend : undefined,
-          onData: (chunk: string) => {
-            console.log("chunk", chunk);
-            // Accumulate text in ref
-            streamingTextRef.current += chunk;
-
-            // Notify subscriber for direct DOM updates (bypasses React batching)
-            if (streamingCallbackRef.current) {
-              streamingCallbackRef.current(streamingTextRef.current);
-            }
-          },
+        // Extract memories from the user message in the background
+        extractMemories(text, model).catch((err) => {
+          console.error("Failed to extract memories:", err);
         });
-
-        // Sync final streamed text to React state after streaming completes
-        const finalText = streamingTextRef.current;
-        setMessages((prev) =>
-          prev.map((msg) => {
-            if (msg.id === assistantMessageId) {
-              return {
-                ...msg,
-                parts: [
-                  {
-                    type: "text",
-                    text: finalText,
-                  },
-                ],
-              };
-            }
-            return msg;
-          })
-        );
-
-        // Check for error response
-        if (response?.error) {
-          console.error("[Chat] API error:", response.error);
-          setError(response.error);
-          setMessages((prev) =>
-            prev.filter((msg) => msg.id !== assistantMessageId)
-          );
-          return response;
-        }
-
-        // Note: We intentionally don't update message IDs to match database IDs
-        // Changing IDs causes React to unmount/remount components (flicker)
-        // The temporary IDs work fine for UI purposes
-
-        setError(null);
-
-        // Refresh conversations list to show new conversation with title
-        setConversationRefreshKey((prev) => prev + 1);
-
-        // Extract facts from user message if it hasn't been processed yet
-        const userMessageText = message.text || "";
-        if (
-          userMessageText &&
-          !processedMessageIdsRef.current.has(userMessage.id)
-        ) {
-          processedMessageIdsRef.current.add(userMessage.id);
-          extractMemoriesFromMessage({
-            messages: [{ role: "user", content: userMessageText }],
-            model,
-          })
-            .then((result) => {
-              if (result && result.items && result.items.length > 0) {
-                console.log(
-                  `[Memory Extraction] Extracted ${result.items.length} memories with embeddings enabled`
-                );
-              } else {
-                console.log("[Memory Extraction] No memories extracted");
-              }
-            })
-            .catch((error) => {
-              console.error(
-                "[Memory Extraction] Error in automatic fact extraction:",
-                error
-              );
-            });
-        }
 
         return response;
       } catch (err) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to send message.";
+          err instanceof Error ? err.message : "Failed to send message";
         setError(errorMessage);
-        // Re-throw to allow component to handle if needed
         throw err;
-      } finally {
-        // Clear the sending flag so message reload can work again
-        isSendingRef.current = false;
       }
     },
-    [
-      messages,
-      baseSendMessage,
-      defaultModel,
-      extractMemoriesFromMessage,
-      searchMemories,
-      memorySearchLimit,
-      memoryMinSimilarity,
-      memoryUseFallbackThreshold,
-      memoryFallbackThreshold,
-    ]
+    [baseSendMessage, model, findRelevantMemories, extractMemories]
   );
 
   const handleSubmit = useCallback(
-    async (message: PromptInputMessage, options?: SendMessageOptions) => {
+    async (message: { text?: string }, options?: { model?: string }) => {
+      if (!message.text) return;
       setInput("");
-      await sendMessage(
-        {
-          text: message.text || "Sent with attachments",
-          displayText: message.displayText,
-          files: message.files,
-        },
-        options
-      );
+      await sendMessage(message.text);
     },
     [sendMessage]
   );
 
-  const status: ChatStatus | undefined = isLoading ? "streaming" : undefined;
-
-  // Function to subscribe to streaming updates (for direct DOM updates)
   const subscribeToStreaming = useCallback(
     (callback: (text: string) => void) => {
       streamingCallbackRef.current = callback;
@@ -573,26 +103,33 @@ export function useAppChat(options?: {
     },
     []
   );
+  //#endregion sendMessage
+
+  const status = isLoading ? "streaming" : undefined;
 
   return {
-    error,
-    isLoading,
-    isSelectingTool,
+    // Chat state
     messages,
+    setMessages,
+    conversations,
+    conversationId,
+    isLoading,
+    error,
     input,
     setInput,
-    handleSubmit,
-    sendMessage,
-    setMessages,
-    stop,
     status,
-    // Chat storage methods
-    conversationId,
-    conversations,
+
+    // Chat actions
+    sendMessage,
+    handleSubmit,
     createConversation,
+    switchConversation,
     setConversationId,
     deleteConversation,
-    // Streaming subscription for direct DOM updates
     subscribeToStreaming,
+
+    // Memory actions
+    findRelevantMemories,
+    extractMemories,
   };
 }
