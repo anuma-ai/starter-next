@@ -31,7 +31,7 @@ export const MessageContent = ({
   <div
     className={cn(
       "is-user:dark flex w-fit flex-col gap-2 overflow-hidden text-base",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-[20px] group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
+      "group-[.is-user]:ml-auto group-[.is-user]:rounded-[50px] group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground group-[.is-user]:[corner-shape:squircle]",
       "group-[.is-assistant]:text-foreground",
       className
     )}
@@ -84,7 +84,10 @@ export const StreamingMessage = ({
       rafRef.current = null;
       // Scroll to keep the streaming content visible
       if (containerRef.current) {
-        containerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
+        containerRef.current.scrollIntoView({
+          behavior: "instant",
+          block: "end",
+        });
       }
     };
 

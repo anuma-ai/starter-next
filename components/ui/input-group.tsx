@@ -8,13 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
+function InputGroup({
+  className,
+  style,
+  ...props
+}: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="input-group"
       role="group"
+      style={{ cornerShape: "squircle", ...style } as React.CSSProperties}
       className={cn(
-        "group/input-group border-input dark:bg-input/30 relative flex w-full items-center rounded-[24px] border shadow-xs transition-[color,box-shadow] outline-none",
+        "group/input-group border-input dark:bg-input/30 relative flex w-full items-center rounded-[30px] border shadow-xs transition-[color,box-shadow] outline-none",
         "h-9 min-w-0 has-[>textarea]:h-auto",
 
         // Variants based on alignment.

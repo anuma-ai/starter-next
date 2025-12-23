@@ -309,8 +309,8 @@ const ChatBotDemo = () => {
       }`}
     >
           {messages.length > 0 && (
-            <Conversation className="min-h-0 flex-1">
-              <ConversationContent className="mx-auto max-w-3xl px-14 pb-52">
+            <Conversation className="min-h-0 flex-1 px-4">
+              <ConversationContent className="mx-auto max-w-3xl pb-52">
                   {messages.map((message: any) => (
                     <div key={message.id}>
                       {message.parts.map((part: any, i: number) => {
@@ -436,7 +436,7 @@ const ChatBotDemo = () => {
 
           {/* Prompt input at bottom, sticky to stay visible while scrolling */}
           <div
-            className={`z-50 bg-background px-4 pb-4 pt-2 md:px-14 ${
+            className={`z-50 bg-background px-4 pb-4 pt-2 ${
               messages.length === 0 ? "w-full" : "sticky bottom-0"
             }`}
           >
