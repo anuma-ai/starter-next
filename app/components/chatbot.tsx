@@ -434,12 +434,10 @@ const ChatBotDemo = () => {
             </Conversation>
           )}
 
-          {/* Fixed prompt input at bottom, centered when no messages */}
+          {/* Prompt input at bottom, sticky to stay visible while scrolling */}
           <div
             className={`z-50 bg-background px-4 pb-4 pt-2 md:px-14 ${
-              messages.length === 0
-                ? "w-full"
-                : "fixed bottom-0 left-0 right-0 md:left-[var(--sidebar-width)]"
+              messages.length === 0 ? "w-full" : "sticky bottom-0"
             }`}
           >
             <div className="mx-auto w-full max-w-3xl">
