@@ -20,7 +20,6 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -49,16 +48,9 @@ export function AppSidebar({
   onViewChange,
 }: AppSidebarProps) {
   const { authenticated, user, login, logout, ready } = usePrivy();
-  const { toggleSidebar } = useSidebar();
 
   return (
     <Sidebar>
-      {/* Things-style toggle rail - positioned inside sidebar but visually outside */}
-      <button
-        onClick={toggleSidebar}
-        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[calc(100%+6px)] z-50 h-16 w-1.5 rounded-full bg-neutral-300 hover:bg-neutral-400 dark:bg-neutral-600 dark:hover:bg-neutral-500 cursor-pointer"
-        aria-label="Toggle Sidebar"
-      />
       {authenticated && (
         <SidebarHeader>
           <SidebarMenu>

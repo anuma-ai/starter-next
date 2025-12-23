@@ -2,13 +2,30 @@
 
 import { useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { useChatContext } from "./chat-provider";
 
 type AppLayoutProps = {
   children: React.ReactNode;
 };
+
+function SidebarHandle() {
+  const { toggleSidebar, state } = useSidebar();
+
+  return (
+    <div
+      className="fixed top-0 bottom-0 w-5 z-50 group/handle cursor-ew-resize hidden md:block transition-[left] duration-200 ease-linear"
+      style={{ left: state === "collapsed" ? 0 : "var(--sidebar-width)" }}
+    >
+      <button
+        onClick={toggleSidebar}
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-16 w-1.5 rounded-full bg-neutral-300 hover:bg-neutral-400 dark:bg-neutral-600 dark:hover:bg-neutral-500 cursor-ew-resize opacity-0 group-hover/handle:opacity-100 transition-opacity"
+        aria-label="Toggle Sidebar"
+      />
+    </div>
+  );
+}
 
 export function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
@@ -77,6 +94,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         currentView={currentView}
         onViewChange={handleViewChange}
       />
+      <SidebarHandle />
       <SidebarInset className={`min-h-dvh ${insetBackground}`}>
         {children}
       </SidebarInset>
