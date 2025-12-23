@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { ChevronDown, ImageIcon, Globe } from "lucide-react";
+import { ImageIcon, Globe } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import {
   useModels,
@@ -11,15 +11,6 @@ import {
   useOCR,
   useSearch,
 } from "@reverbia/sdk/react";
-
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 import {
   Conversation,
@@ -91,12 +82,6 @@ const ChatBotDemo = () => {
     }
     return modelId;
   };
-
-  const [localModels, setLocalModels] = useState({
-    chat: false,
-    embeddings: false,
-    tools: false,
-  });
 
   const [isImageMode, setIsImageMode] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
@@ -541,55 +526,6 @@ const ChatBotDemo = () => {
                   >
                     <Globe className="size-4" />
                   </button>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="hidden items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground sm:flex">
-                        Local models
-                        <ChevronDown className="size-4 text-muted-foreground opacity-50" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuLabel>Enable Local Models</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuCheckboxItem
-                        checked={localModels.chat}
-                        onSelect={(e) => e.preventDefault()}
-                        onCheckedChange={(checked) =>
-                          setLocalModels((prev) => ({
-                            ...prev,
-                            chat: !!checked,
-                          }))
-                        }
-                      >
-                        Chat
-                      </DropdownMenuCheckboxItem>
-                      <DropdownMenuCheckboxItem
-                        checked={localModels.embeddings}
-                        onSelect={(e) => e.preventDefault()}
-                        onCheckedChange={(checked) =>
-                          setLocalModels((prev) => ({
-                            ...prev,
-                            embeddings: !!checked,
-                          }))
-                        }
-                      >
-                        Embeddings
-                      </DropdownMenuCheckboxItem>
-                      <DropdownMenuCheckboxItem
-                        checked={localModels.tools}
-                        onSelect={(e) => e.preventDefault()}
-                        onCheckedChange={(checked) =>
-                          setLocalModels((prev) => ({
-                            ...prev,
-                            tools: !!checked,
-                          }))
-                        }
-                      >
-                        Tools
-                      </DropdownMenuCheckboxItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </PromptInputTools>
                 <PromptInputSubmit
                   disabled={

@@ -17,7 +17,6 @@ type UseAppChatProps = {
   database: Database;
   getToken: () => Promise<string | null>;
   model?: string;
-  useLocalEmbeddings?: boolean;
 };
 
 //#region hookInit
@@ -25,7 +24,6 @@ export function useAppChat({
   database,
   getToken,
   model = "openai/gpt-4",
-  useLocalEmbeddings = false,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +58,6 @@ export function useAppChat({
   const { extractMemories, findRelevantMemories } = useAppMemoryStorage({
     database,
     getToken,
-    useLocalEmbeddings,
   });
   //#endregion hookInit
 

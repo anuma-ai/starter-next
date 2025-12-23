@@ -15,18 +15,14 @@ import type { Database } from "@nozbe/watermelondb";
 type UseMemoryStorageProps = {
   database: Database;
   getToken?: () => Promise<string | null>;
-  useLocalEmbeddings?: boolean;
 };
 
 export function useAppMemoryStorage({
   database,
   getToken,
-  useLocalEmbeddings = false,
 }: UseMemoryStorageProps) {
-  const embeddingProvider = useLocalEmbeddings ? "local" : "api";
-  const embeddingModel = useLocalEmbeddings
-    ? "Snowflake/snowflake-arctic-embed-xs"
-    : "openai/text-embedding-3-small";
+  const embeddingProvider = "api";
+  const embeddingModel = "openai/text-embedding-3-small";
 
   //#region hookInit
   const {
