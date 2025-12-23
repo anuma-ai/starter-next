@@ -2,11 +2,7 @@
 
 import { useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { useChatContext } from "./chat-provider";
 
@@ -82,9 +78,6 @@ export function AppLayout({ children }: AppLayoutProps) {
         onViewChange={handleViewChange}
       />
       <SidebarInset className={`min-h-dvh ${insetBackground}`}>
-        <header className="flex h-14 shrink-0 items-center gap-2 px-4 bg-transparent">
-          <SidebarTrigger />
-        </header>
         {children}
       </SidebarInset>
     </SidebarProvider>
