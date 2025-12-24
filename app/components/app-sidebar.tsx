@@ -15,6 +15,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
@@ -67,9 +68,12 @@ export function AppSidebar({
       {authenticated && (
         <SidebarContent>
           <SidebarGroup>
+            <SidebarGroupLabel className="text-muted-foreground">
+              Conversations
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {conversations.map((conv: any, index: number) => (
+                {conversations.slice(0, 10).map((conv: any, index: number) => (
                   <SidebarMenuItem key={conv.id ?? index}>
                     <SidebarMenuButton
                       isActive={
