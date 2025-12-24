@@ -17,6 +17,9 @@ type UseAppChatProps = {
   database: Database;
   getToken: () => Promise<string | null>;
   model?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+  store?: boolean;
 };
 
 //#region hookInit
@@ -24,6 +27,8 @@ export function useAppChat({
   database,
   getToken,
   model = "openai/gpt-4",
+  temperature,
+  maxOutputTokens,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -63,12 +68,19 @@ export function useAppChat({
 
   //#region sendMessage
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, options?: { model?: string; temperature?: number; maxOutputTokens?: number }) => {
       setError(null);
+      const effectiveModel = options?.model || model;
+      const effectiveTemperature = options?.temperature ?? temperature;
+      const effectiveMaxOutputTokens = options?.maxOutputTokens ?? maxOutputTokens;
 
       try {
         // Send the message immediately (user message appears right away)
-        const response = await baseSendMessage(text, model);
+        const response = await baseSendMessage(text, {
+          model: effectiveModel,
+          temperature: effectiveTemperature,
+          maxOutputTokens: effectiveMaxOutputTokens,
+        });
 
         // Search for relevant memories in the background (for future use)
         findRelevantMemories(text).then((memories) => {
@@ -80,7 +92,7 @@ export function useAppChat({
         });
 
         // Extract memories from the user message in the background
-        extractMemories(text, model).catch((err) => {
+        extractMemories(text, effectiveModel).catch((err) => {
           console.error("Failed to extract memories:", err);
         });
 
@@ -92,14 +104,14 @@ export function useAppChat({
         throw err;
       }
     },
-    [baseSendMessage, model, findRelevantMemories, extractMemories]
+    [baseSendMessage, model, temperature, maxOutputTokens, findRelevantMemories, extractMemories]
   );
 
   const handleSubmit = useCallback(
-    async (message: { text?: string }, options?: { model?: string }) => {
+    async (message: { text?: string }, options?: { model?: string; temperature?: number; maxOutputTokens?: number }) => {
       if (!message.text) return;
       setInput("");
-      await sendMessage(message.text);
+      await sendMessage(message.text, options);
     },
     [sendMessage]
   );

@@ -71,9 +71,7 @@ const ChatBotDemo = () => {
     }
   }, [authenticated, identityToken, refetch]);
 
-  const [model, setModel] = useState<string>(
-    "fireworks/accounts/fireworks/models/gpt-oss-120b"
-  );
+  const [model, setModel] = useState<string>("openai/gpt-5.2");
 
   // Helper function to get display name from model ID
   const getModelDisplayName = (modelId: string) => {

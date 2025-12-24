@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useCallback } from "react";
+import React, { createContext, useContext, useCallback, useState, useEffect } from "react";
 import { useIdentityToken } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 import { useAppChat } from "@/hooks/useAppChat";
@@ -34,6 +34,28 @@ export function useChatContext() {
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();
   const database = useDatabase();
+  const [temperature, setTemperature] = useState<number | undefined>(undefined);
+  const [maxOutputTokens, setMaxOutputTokens] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const savedTemp = localStorage.getItem("chat_temperature");
+    if (savedTemp) setTemperature(parseFloat(savedTemp));
+
+    const savedMaxTokens = localStorage.getItem("chat_maxOutputTokens");
+    if (savedMaxTokens) setMaxOutputTokens(parseInt(savedMaxTokens, 10));
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "chat_temperature" && e.newValue) {
+        setTemperature(parseFloat(e.newValue));
+      }
+      if (e.key === "chat_maxOutputTokens" && e.newValue) {
+        setMaxOutputTokens(parseInt(e.newValue, 10));
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   const getIdentityToken = useCallback(async (): Promise<string | null> => {
     return identityToken ?? null;
@@ -43,6 +65,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     database,
     model: "fireworks/accounts/fireworks/models/gpt-oss-120b",
     getToken: getIdentityToken,
+    temperature,
+    maxOutputTokens,
   });
 
   return (

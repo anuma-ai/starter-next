@@ -21,9 +21,6 @@ export function useAppMemoryStorage({
   database,
   getToken,
 }: UseMemoryStorageProps) {
-  const embeddingProvider = "api";
-  const embeddingModel = "openai/text-embedding-3-small";
-
   //#region hookInit
   const {
     extractMemoriesFromMessage,
@@ -34,8 +31,6 @@ export function useAppMemoryStorage({
     database,
     getToken,
     generateEmbeddings: true,
-    embeddingProvider,
-    embeddingModel,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
   //#endregion hookInit

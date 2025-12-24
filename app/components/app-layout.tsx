@@ -92,9 +92,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   );
 
   const handleViewChange = useCallback(
-    (view: "chat" | "settings") => {
+    (view: "chat" | "settings" | "conversations") => {
       if (view === "settings") {
         router.push("/settings");
+      } else if (view === "conversations") {
+        router.push("/conversations");
       } else {
         router.push("/");
       }
@@ -102,7 +104,11 @@ export function AppLayout({ children }: AppLayoutProps) {
     [router]
   );
 
-  const currentView = pathname.startsWith("/settings") ? "settings" : "chat";
+  const currentView = pathname.startsWith("/settings")
+    ? "settings"
+    : pathname.startsWith("/conversations")
+      ? "conversations"
+      : "chat";
   const insetBackground = "bg-background";
 
   // Derive active conversation from pathname for immediate UI updates
