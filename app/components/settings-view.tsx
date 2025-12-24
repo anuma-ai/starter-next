@@ -15,7 +15,7 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 4096;
 
 export function SettingsView() {
   const router = useRouter();
-  const { user, logout } = usePrivy();
+  const { logout } = usePrivy();
   const [darkMode, setDarkMode] = useState(false);
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE);
   const [maxOutputTokens, setMaxOutputTokens] = useState(
@@ -171,20 +171,17 @@ export function SettingsView() {
           </div>
 
           <div className="rounded-xl bg-white dark:bg-card p-1 mt-4">
-            <div className="px-4 py-3">
-              <div className="space-y-0.5">
-                <Label className="text-base">Account</Label>
-                <p className="text-sm text-muted-foreground">
-                  {user?.email?.address ??
-                    user?.wallet?.address ??
-                    user?.id ??
-                    "Signed in"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-white dark:bg-card p-1 mt-4">
+            <button
+              onClick={() => router.push("/settings/account")}
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <span className="text-base">Account</span>
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={20}
+                className="text-muted-foreground"
+              />
+            </button>
             <button
               onClick={() => logout()}
               className="flex w-full items-center px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors text-left text-destructive"
