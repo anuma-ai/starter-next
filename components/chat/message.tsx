@@ -50,6 +50,7 @@ export const MessageResponse = memo(
         "size-full [&>p]:my-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
+      shikiTheme={["github-light", "github-dark"]}
       {...props}
     />
   ),
@@ -151,6 +152,7 @@ export const StreamingMessage = ({
           "size-full [&>p]:my-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
           className
         )}
+        shikiTheme={["github-light", "github-dark"]}
       >
         {text}
       </Streamdown>
