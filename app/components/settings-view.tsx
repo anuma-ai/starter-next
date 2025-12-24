@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight01Icon, Logout02Icon } from "@hugeicons/core-free-icons";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -14,9 +15,12 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 4096;
 
 export function SettingsView() {
   const router = useRouter();
+  const { user, logout } = usePrivy();
   const [darkMode, setDarkMode] = useState(false);
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE);
-  const [maxOutputTokens, setMaxOutputTokens] = useState(DEFAULT_MAX_OUTPUT_TOKENS);
+  const [maxOutputTokens, setMaxOutputTokens] = useState(
+    DEFAULT_MAX_OUTPUT_TOKENS
+  );
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark");
@@ -86,7 +90,11 @@ export function SettingsView() {
                   Allow the assistant to remember information across chats
                 </p>
               </div>
-              <HugeiconsIcon icon={ArrowRight01Icon} size={20} className="text-muted-foreground" />
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={20}
+                className="text-muted-foreground"
+              />
             </button>
             <button
               onClick={() => router.push("/settings/models")}
@@ -98,7 +106,11 @@ export function SettingsView() {
                   Choose which AI models to use
                 </p>
               </div>
-              <HugeiconsIcon icon={ArrowRight01Icon} size={20} className="text-muted-foreground" />
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={20}
+                className="text-muted-foreground"
+              />
             </button>
           </div>
 
@@ -110,10 +122,13 @@ export function SettingsView() {
                     <Label htmlFor="temperature" className="text-base">
                       Temperature
                     </Label>
-                    <span className="text-sm text-muted-foreground">{temperature.toFixed(1)}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {temperature.toFixed(1)}
+                    </span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">
-                    Controls randomness in responses. Lower values are more focused, higher values are more creative.
+                    Controls randomness in responses. Lower values are more
+                    focused, higher values are more creative.
                   </p>
                   <Slider
                     id="temperature"
@@ -139,7 +154,8 @@ export function SettingsView() {
                   </Label>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Maximum number of tokens in the response. Higher values allow longer responses.
+                  Maximum number of tokens in the response. Higher values allow
+                  longer responses.
                 </p>
                 <Input
                   id="maxOutputTokens"
@@ -152,6 +168,30 @@ export function SettingsView() {
                 />
               </div>
             </div>
+          </div>
+
+          <div className="rounded-xl bg-white dark:bg-card p-1 mt-4">
+            <div className="px-4 py-3">
+              <div className="space-y-0.5">
+                <Label className="text-base">Account</Label>
+                <p className="text-sm text-muted-foreground">
+                  {user?.email?.address ??
+                    user?.wallet?.address ??
+                    user?.id ??
+                    "Signed in"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-white dark:bg-card p-1 mt-4">
+            <button
+              onClick={() => logout()}
+              className="flex w-full items-center px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors text-left text-destructive"
+            >
+              <HugeiconsIcon icon={Logout02Icon} size={16} className="mr-2" />
+              <span className="text-base">Sign out</span>
+            </button>
           </div>
         </div>
       </div>

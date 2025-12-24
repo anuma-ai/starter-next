@@ -3,7 +3,6 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   QuillWrite02Icon,
-  Logout01Icon,
   MoreHorizontalIcon,
   Delete01Icon,
   Setting07Icon,
@@ -50,7 +49,7 @@ export function AppSidebar({
   currentView,
   onViewChange,
 }: AppSidebarProps) {
-  const { authenticated, user, login, logout, ready } = usePrivy();
+  const { authenticated, login, ready } = usePrivy();
 
   return (
     <Sidebar>
@@ -144,34 +143,11 @@ export function AppSidebar({
           <Button disabled className="w-full">
             Loading...
           </Button>
-        ) : authenticated ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center gap-2 rounded-md p-2 text-sm hover:bg-accent cursor-pointer">
-                <span className="truncate text-muted-foreground">
-                  {user?.email?.address ?? user?.id ?? "Signed in"}
-                </span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="top"
-              align="start"
-              className="w-[--radix-dropdown-menu-trigger-width]"
-            >
-              <DropdownMenuItem
-                onClick={() => logout()}
-                className="text-destructive focus:text-destructive"
-              >
-                <HugeiconsIcon icon={Logout01Icon} size={16} className="mr-2 text-destructive" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
+        ) : !authenticated ? (
           <Button onClick={() => login()} className="w-full">
             Sign in
           </Button>
-        )}
+        ) : null}
       </SidebarFooter>
     </Sidebar>
   );
