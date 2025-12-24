@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useCallback, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useCallback,
+  useState,
+  useEffect,
+} from "react";
 import { useIdentityToken } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 import { useAppChat } from "@/hooks/useAppChat";
@@ -35,7 +41,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();
   const database = useDatabase();
   const [temperature, setTemperature] = useState<number | undefined>(undefined);
-  const [maxOutputTokens, setMaxOutputTokens] = useState<number | undefined>(undefined);
+  const [maxOutputTokens, setMaxOutputTokens] = useState<number | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     const savedTemp = localStorage.getItem("chat_temperature");
@@ -63,7 +71,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const chatState = useAppChat({
     database,
-    model: "openai/gpt-4",
+    model: "openai/gpt-5.2",
     getToken: getIdentityToken,
     temperature,
     maxOutputTokens,

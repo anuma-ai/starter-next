@@ -26,7 +26,7 @@ type UseAppChatProps = {
 export function useAppChat({
   database,
   getToken,
-  model = "openai/gpt-4",
+  model = "openai/gpt-5.2",
   temperature,
   maxOutputTokens,
 }: UseAppChatProps) {
@@ -57,7 +57,11 @@ export function useAppChat({
     switchConversation,
     setConversationId,
     deleteConversation,
-  } = useAppChatStorage({ database, getToken, onStreamingData: handleStreamingData });
+  } = useAppChatStorage({
+    database,
+    getToken,
+    onStreamingData: handleStreamingData,
+  });
 
   // Use memory storage for context-aware responses
   const { extractMemories, findRelevantMemories } = useAppMemoryStorage({
@@ -68,11 +72,19 @@ export function useAppChat({
 
   //#region sendMessage
   const sendMessage = useCallback(
-    async (text: string, options?: { model?: string; temperature?: number; maxOutputTokens?: number }) => {
+    async (
+      text: string,
+      options?: {
+        model?: string;
+        temperature?: number;
+        maxOutputTokens?: number;
+      }
+    ) => {
       setError(null);
       const effectiveModel = options?.model || model;
       const effectiveTemperature = options?.temperature ?? temperature;
-      const effectiveMaxOutputTokens = options?.maxOutputTokens ?? maxOutputTokens;
+      const effectiveMaxOutputTokens =
+        options?.maxOutputTokens ?? maxOutputTokens;
 
       try {
         // Send the message immediately (user message appears right away)
@@ -83,13 +95,17 @@ export function useAppChat({
         });
 
         // Search for relevant memories in the background (for future use)
-        findRelevantMemories(text).then((memories) => {
-          if (memories.length > 0) {
-            console.log(`Found ${memories.length} relevant memories for context`);
-          }
-        }).catch((err) => {
-          console.error("Failed to find memories:", err);
-        });
+        findRelevantMemories(text)
+          .then((memories) => {
+            if (memories.length > 0) {
+              console.log(
+                `Found ${memories.length} relevant memories for context`
+              );
+            }
+          })
+          .catch((err) => {
+            console.error("Failed to find memories:", err);
+          });
 
         // Extract memories from the user message in the background
         extractMemories(text, effectiveModel).catch((err) => {
@@ -104,11 +120,25 @@ export function useAppChat({
         throw err;
       }
     },
-    [baseSendMessage, model, temperature, maxOutputTokens, findRelevantMemories, extractMemories]
+    [
+      baseSendMessage,
+      model,
+      temperature,
+      maxOutputTokens,
+      findRelevantMemories,
+      extractMemories,
+    ]
   );
 
   const handleSubmit = useCallback(
-    async (message: { text?: string }, options?: { model?: string; temperature?: number; maxOutputTokens?: number }) => {
+    async (
+      message: { text?: string },
+      options?: {
+        model?: string;
+        temperature?: number;
+        maxOutputTokens?: number;
+      }
+    ) => {
       if (!message.text) return;
       setInput("");
       await sendMessage(message.text, options);

@@ -77,13 +77,35 @@ export const StreamingMessage = ({
   const textRef = useRef(initialText);
   const rafRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Track if user has detached by scrolling up - start attached (following stream)
+  const isDetachedRef = useRef(false);
+
+  // Detect user scroll-up intent to detach from auto-scroll
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      // deltaY < 0 means scrolling up
+      if (e.deltaY < 0) {
+        isDetachedRef.current = true;
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: true });
+    return () => window.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  // Reset detached state when streaming starts (new text comes in from empty)
+  useEffect(() => {
+    if (!initialText) {
+      isDetachedRef.current = false;
+    }
+  }, [initialText]);
 
   useEffect(() => {
     const updateText = () => {
       setText(textRef.current);
       rafRef.current = null;
-      // Scroll to keep the streaming content visible
-      if (containerRef.current) {
+      // Auto-scroll unless user has scrolled up to detach
+      if (!isDetachedRef.current && containerRef.current) {
         containerRef.current.scrollIntoView({
           behavior: "instant",
           block: "end",

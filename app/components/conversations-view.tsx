@@ -40,11 +40,11 @@ export function ConversationsView() {
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 border-0 focus-visible:ring-0"
+            className="pl-12 py-6 border-0 focus-visible:ring-0 rounded-xl"
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="rounded-xl bg-card p-1">
           {filteredConversations.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               {searchQuery
@@ -52,17 +52,28 @@ export function ConversationsView() {
                 : "No conversations yet"}
             </p>
           ) : (
-            filteredConversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => handleSelectConversation(conv.id)}
-                className="flex w-full items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-              >
-                <span className="truncate">
-                  {conv.title || `Chat ${conv.id?.slice(0, 8) || ""}`}
-                </span>
-              </button>
-            ))
+            filteredConversations.map((conv) => {
+              const date = conv.createdAt ? new Date(conv.createdAt) : null;
+              const formattedDate = date
+                ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                : "";
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => handleSelectConversation(conv.id)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 hover:bg-muted/50 rounded-lg transition-colors text-left cursor-pointer"
+                >
+                  <span className="truncate">
+                    {conv.title || `Chat ${conv.id?.slice(0, 8) || ""}`}
+                  </span>
+                  {formattedDate && (
+                    <span className="text-sm text-muted-foreground shrink-0">
+                      {formattedDate}
+                    </span>
+                  )}
+                </button>
+              );
+            })
           )}
         </div>
       </div>

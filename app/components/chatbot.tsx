@@ -71,7 +71,7 @@ const ChatBotDemo = () => {
     }
   }, [authenticated, identityToken, refetch]);
 
-  const [model, setModel] = useState<string>("openai/gpt-4");
+  const [model, setModel] = useState<string>("openai/gpt-5.2");
 
   // Helper function to get display name from model ID
   const getModelDisplayName = (modelId: string) => {
@@ -101,16 +101,14 @@ const ChatBotDemo = () => {
       ? models
       : [
           {
-            id: "openai/gpt-4",
-            name: "openai/gpt-4",
+            id: "openai/gpt-5.2",
+            name: "openai/gpt-5.2",
           },
         ];
 
   const selectedModel = displayModels.find((m: any) => m.id === model);
   const selectedLabel = getModelDisplayName(
-    selectedModel?.name ??
-      selectedModel?.id ??
-      "openai/gpt-4"
+    selectedModel?.name ?? selectedModel?.id ?? "openai/gpt-5.2"
   );
 
   // Use chatState from context
@@ -145,8 +143,6 @@ const ChatBotDemo = () => {
       hasRedirectedRef.current = false;
     }
   }, [pathname]);
-
-
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
@@ -255,7 +251,9 @@ const ChatBotDemo = () => {
                 : pdfContext;
             } else {
               // Fallback to OCR if PDF extraction was unsuccessful or yielded too little text
-              console.log("PDF extraction insufficient, falling back to OCR...");
+              console.log(
+                "PDF extraction insufficient, falling back to OCR..."
+              );
               const ocrContext = await extractOCRContext(message.files);
               if (ocrContext) {
                 enhancedText = enhancedText
@@ -306,241 +304,224 @@ const ChatBotDemo = () => {
         messages.length === 0 ? "justify-center" : ""
       }`}
     >
-          {messages.length > 0 && (
-            <Conversation className="min-h-0 flex-1 px-4">
-              <ConversationContent className="mx-auto max-w-3xl pb-52">
-                  {messages.map((message: any) => (
-                    <div key={message.id}>
-                      {message.parts.map((part: any, i: number) => {
-                        switch ((part as any).type) {
-                          case "text": {
-                            return (
-                              <Message
-                                key={`${message.id}-${i}`}
-                                from={message.role}
-                              >
-                                <MessageContent>
+      {messages.length > 0 && (
+        <Conversation className="min-h-0 flex-1 px-4">
+          <ConversationContent className="mx-auto max-w-3xl pb-52">
+            {messages.map((message: any) => (
+              <div key={message.id}>
+                {message.parts.map((part: any, i: number) => {
+                  switch ((part as any).type) {
+                    case "text": {
+                      return (
+                        <Message key={`${message.id}-${i}`} from={message.role}>
+                          <MessageContent>
+                            {/* @ts-ignore */}
+                            {message.role === "assistant" &&
+                            message.id === messages.at(-1)?.id ? (
+                              // For the last assistant message, use StreamingMessage
+                              // It handles both streaming (empty text) and completed states
+                              <StreamingMessage
+                                subscribe={subscribeToStreaming}
+                                initialText={(part as any).text || ""}
+                                isLoading={isLoading}
+                              />
+                            ) : (
+                              <MessageResponse>
+                                {(part as any).text}
+                              </MessageResponse>
+                            )}
+                          </MessageContent>
+                        </Message>
+                      );
+                    }
+                    case "file":
+                      return (
+                        <Message key={`${message.id}-${i}`} from={message.role}>
+                          <MessageContent>
+                            <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
+                              <div className="flex size-8 items-center justify-center rounded-sm bg-background">
+                                <span className="text-xs font-bold text-muted-foreground">
+                                  PDF
+                                </span>
+                              </div>
+                              <div className="flex flex-col overflow-hidden">
+                                <span className="truncate font-medium">
                                   {/* @ts-ignore */}
-                                  {message.role === "assistant" &&
-                                  message.id === messages.at(-1)?.id ? (
-                                    // For the last assistant message, use StreamingMessage
-                                    // It handles both streaming (empty text) and completed states
-                                    <StreamingMessage
-                                      subscribe={subscribeToStreaming}
-                                      initialText={(part as any).text || ""}
-                                      isLoading={isLoading}
-                                    />
-                                  ) : (
-                                    <MessageResponse>
-                                      {(part as any).text}
-                                    </MessageResponse>
-                                  )}
-                                </MessageContent>
-                              </Message>
-                            );
-                          }
-                          case "file":
-                            return (
-                              <Message
-                                key={`${message.id}-${i}`}
-                                from={message.role}
-                              >
-                                <MessageContent>
-                                  <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
-                                    <div className="flex size-8 items-center justify-center rounded-sm bg-background">
-                                      <span className="text-xs font-bold text-muted-foreground">
-                                        PDF
-                                      </span>
-                                    </div>
-                                    <div className="flex flex-col overflow-hidden">
-                                      <span className="truncate font-medium">
-                                        {/* @ts-ignore */}
-                                        {part.filename}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {/* @ts-ignore */}
-                                        {part.mediaType}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </MessageContent>
-                              </Message>
-                            );
-                          case "image_url":
-                            return (
-                              <Message
-                                key={`${message.id}-${i}`}
-                                from={message.role}
-                              >
-                                <MessageContent>
+                                  {part.filename}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
                                   {/* @ts-ignore */}
-                                  <img
-                                    /* @ts-ignore */
-                                    src={part.image_url?.url}
-                                    alt="Uploaded image"
-                                    className="max-h-60 max-w-[300px] rounded-lg object-contain"
-                                  />
-                                </MessageContent>
-                              </Message>
-                            );
-                          case "reasoning":
-                            return (
-                              <Reasoning
-                                key={`${message.id}-${i}`}
-                                className="w-full"
-                                isStreaming={false}
-                              >
-                                <ReasoningTrigger />
-                                {/* @ts-ignore */}
-                                <ReasoningContent>{part.text}</ReasoningContent>
-                              </Reasoning>
-                            );
-                          case "image":
-                            return (
-                              <Message
-                                key={`${message.id}-${i}`}
-                                from={message.role}
-                              >
-                                <MessageContent>
-                                  {/* @ts-ignore */}
-                                  <img
-                                    src={(part as any).url}
-                                    alt="Generated image"
-                                    className="rounded-lg max-w-full"
-                                  />
-                                </MessageContent>
-                              </Message>
-                            );
-                          default:
-                            return null;
-                        }
-                      })}
-                    </div>
-                  ))}
-                  {isGeneratingImage ||
+                                  {part.mediaType}
+                                </span>
+                              </div>
+                            </div>
+                          </MessageContent>
+                        </Message>
+                      );
+                    case "image_url":
+                      return (
+                        <Message key={`${message.id}-${i}`} from={message.role}>
+                          <MessageContent>
+                            {/* @ts-ignore */}
+                            <img
+                              /* @ts-ignore */
+                              src={part.image_url?.url}
+                              alt="Uploaded image"
+                              className="max-h-60 max-w-[300px] rounded-lg object-contain"
+                            />
+                          </MessageContent>
+                        </Message>
+                      );
+                    case "reasoning":
+                      return (
+                        <Reasoning
+                          key={`${message.id}-${i}`}
+                          className="w-full"
+                          isStreaming={false}
+                        >
+                          <ReasoningTrigger />
+                          {/* @ts-ignore */}
+                          <ReasoningContent>{part.text}</ReasoningContent>
+                        </Reasoning>
+                      );
+                    case "image":
+                      return (
+                        <Message key={`${message.id}-${i}`} from={message.role}>
+                          <MessageContent>
+                            {/* @ts-ignore */}
+                            <img
+                              src={(part as any).url}
+                              alt="Generated image"
+                              className="rounded-lg max-w-full"
+                            />
+                          </MessageContent>
+                        </Message>
+                      );
+                    default:
+                      return null;
+                  }
+                })}
+              </div>
+            ))}
+            {isGeneratingImage ||
+            isProcessingPdf ||
+            isProcessingOCR ||
+            isSearching ? (
+              <Message from="assistant">
+                <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
+                  <Loader />
+                </MessageContent>
+              </Message>
+            ) : null}
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
+      )}
+
+      {/* Prompt input at bottom, sticky to stay visible while scrolling */}
+      <div
+        className={`px-4 pb-4 pt-2 ${
+          messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"
+        }`}
+      >
+        <div className="mx-auto w-full max-w-3xl">
+          <PromptInput
+            accept="image/*,application/pdf"
+            globalDrop
+            multiple
+            onSubmit={onSubmit}
+          >
+            <PromptInputHeader>
+              <PromptInputAttachments>
+                {(attachment) => (
+                  <PromptInputAttachment
+                    key={attachment.id}
+                    data={attachment}
+                  />
+                )}
+              </PromptInputAttachments>
+            </PromptInputHeader>
+            <PromptInputBody>
+              <PromptInputTextarea
+                disabled={!authenticated}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={
+                  authenticated ? "Ask anything" : "Please sign in to chat"
+                }
+                value={input}
+              />
+            </PromptInputBody>
+            <PromptInputFooter>
+              <PromptInputTools className="flex-wrap">
+                <PromptInputAttachButton />
+                <PromptInputSelect
+                  onValueChange={(value) => {
+                    setModel(value);
+                  }}
+                  value={model}
+                >
+                  <PromptInputSelectTrigger>
+                    <PromptInputSelectValue placeholder="gpt-oss-120b">
+                      {selectedLabel}
+                    </PromptInputSelectValue>
+                  </PromptInputSelectTrigger>
+                  <PromptInputSelectContent>
+                    {displayModels.map((option: any) => (
+                      <PromptInputSelectItem key={option.id} value={option.id}>
+                        {getModelDisplayName(option.name ?? option.id)}
+                      </PromptInputSelectItem>
+                    ))}
+                  </PromptInputSelectContent>
+                </PromptInputSelect>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsImageMode(!isImageMode);
+                    setIsSearchMode(false);
+                  }}
+                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                    isImageMode
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
+                  title="Toggle Image Generation"
+                >
+                  <ImageIcon className="size-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSearchMode(!isSearchMode);
+                    setIsImageMode(false);
+                  }}
+                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                    isSearchMode
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
+                  title="Toggle Web Search"
+                >
+                  <Globe className="size-4" />
+                </button>
+              </PromptInputTools>
+              <PromptInputSubmit
+                disabled={
+                  !input ||
+                  isLoading ||
+                  isGeneratingImage ||
                   isProcessingPdf ||
                   isProcessingOCR ||
-                  isSearching ? (
-                    <Message from="assistant">
-                      <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
-                        <Loader />
-                      </MessageContent>
-                    </Message>
-                  ) : null}
-              </ConversationContent>
-              <ConversationScrollButton />
-            </Conversation>
-          )}
-
-          {/* Prompt input at bottom, sticky to stay visible while scrolling */}
-          <div
-            className={`px-4 pb-4 pt-2 ${
-              messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"
-            }`}
-          >
-            <div className="mx-auto w-full max-w-3xl">
-              <PromptInput
-                accept="image/*,application/pdf"
-                globalDrop
-                multiple
-                onSubmit={onSubmit}
-              >
-              <PromptInputHeader>
-                <PromptInputAttachments>
-                  {(attachment) => (
-                    <PromptInputAttachment
-                      key={attachment.id}
-                      data={attachment}
-                    />
-                  )}
-                </PromptInputAttachments>
-              </PromptInputHeader>
-              <PromptInputBody>
-                <PromptInputTextarea
-                  disabled={!authenticated}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder={
-                    authenticated ? "Ask anything" : "Please sign in to chat"
-                  }
-                  value={input}
-                />
-              </PromptInputBody>
-              <PromptInputFooter>
-                <PromptInputTools className="flex-wrap">
-                  <PromptInputAttachButton />
-                  <PromptInputSelect
-                    onValueChange={(value) => {
-                      setModel(value);
-                    }}
-                    value={model}
-                  >
-                    <PromptInputSelectTrigger>
-                      <PromptInputSelectValue placeholder="gpt-oss-120b">
-                        {selectedLabel}
-                      </PromptInputSelectValue>
-                    </PromptInputSelectTrigger>
-                    <PromptInputSelectContent>
-                      {displayModels.map((option: any) => (
-                        <PromptInputSelectItem
-                          key={option.id}
-                          value={option.id}
-                        >
-                          {getModelDisplayName(option.name ?? option.id)}
-                        </PromptInputSelectItem>
-                      ))}
-                    </PromptInputSelectContent>
-                  </PromptInputSelect>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsImageMode(!isImageMode);
-                      setIsSearchMode(false);
-                    }}
-                    className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                      isImageMode
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    }`}
-                    title="Toggle Image Generation"
-                  >
-                    <ImageIcon className="size-4" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsSearchMode(!isSearchMode);
-                      setIsImageMode(false);
-                    }}
-                    className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                      isSearchMode
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    }`}
-                    title="Toggle Web Search"
-                  >
-                    <Globe className="size-4" />
-                  </button>
-                </PromptInputTools>
-                <PromptInputSubmit
-                  disabled={
-                    !input ||
-                    isLoading ||
-                    isGeneratingImage ||
-                    isProcessingPdf ||
-                    isProcessingOCR ||
-                    isSearching ||
-                    !authenticated
-                  }
-                  status={
-                    isGeneratingImage || isSearching ? "submitted" : status
-                  }
-                />
-              </PromptInputFooter>
-            </PromptInput>
-            </div>
-          </div>
+                  isSearching ||
+                  !authenticated
+                }
+                status={isGeneratingImage || isSearching ? "submitted" : status}
+              />
+            </PromptInputFooter>
+          </PromptInput>
+        </div>
+      </div>
     </div>
   );
 };
