@@ -71,7 +71,7 @@ const ChatBotDemo = () => {
     }
   }, [authenticated, identityToken, refetch]);
 
-  const [model, setModel] = useState<string>("openai/gpt-5.2");
+  const [model, setModel] = useState<string>("openai/gpt-4");
 
   // Helper function to get display name from model ID
   const getModelDisplayName = (modelId: string) => {
@@ -101,8 +101,8 @@ const ChatBotDemo = () => {
       ? models
       : [
           {
-            id: "fireworks/accounts/fireworks/models/gpt-oss-120b",
-            name: "fireworks/accounts/fireworks/models/gpt-oss-120b",
+            id: "openai/gpt-4",
+            name: "openai/gpt-4",
           },
         ];
 
@@ -110,7 +110,7 @@ const ChatBotDemo = () => {
   const selectedLabel = getModelDisplayName(
     selectedModel?.name ??
       selectedModel?.id ??
-      "fireworks/accounts/fireworks/models/gpt-oss-120b"
+      "openai/gpt-4"
   );
 
   // Use chatState from context

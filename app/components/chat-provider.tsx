@@ -63,7 +63,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const chatState = useAppChat({
     database,
-    model: "fireworks/accounts/fireworks/models/gpt-oss-120b",
+    model: "openai/gpt-4",
     getToken: getIdentityToken,
     temperature,
     maxOutputTokens,
