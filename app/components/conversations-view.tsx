@@ -40,7 +40,7 @@ export function ConversationsView() {
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 py-6 border-0 focus-visible:ring-0 rounded-xl bg-white dark:bg-card"
+            className="pl-12 py-6 border-0 focus-visible:ring-0 rounded-xl bg-white dark:bg-card shadow-none"
           />
         </div>
 

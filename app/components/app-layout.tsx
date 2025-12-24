@@ -2,7 +2,11 @@
 
 import { useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { SidebarProvider, SidebarInset, useSidebar } from "@/components/ui/sidebar";
+import {
+  SidebarProvider,
+  SidebarInset,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { useChatContext } from "./chat-provider";
 
@@ -16,16 +20,16 @@ function SidebarHandle() {
   return (
     <>
       {/* Desktop handle */}
-      <div
-        className="fixed top-0 bottom-0 w-5 z-50 group/handle cursor-ew-resize hidden md:block transition-[left] duration-200 ease-linear"
+      <button
+        onClick={toggleSidebar}
+        className={`fixed top-0 bottom-0 z-50 group/handle cursor-ew-resize hidden md:flex items-center justify-center transition-[left,width,background-color] duration-200 ease-linear ${
+          state === "collapsed" ? "w-8 hover:bg-black/[0.02] dark:hover:bg-muted/50" : "w-5"
+        }`}
         style={{ left: state === "collapsed" ? 0 : "var(--sidebar-width)" }}
+        aria-label="Toggle Sidebar"
       >
-        <button
-          onClick={toggleSidebar}
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-16 w-1.5 rounded-full bg-neutral-300 hover:bg-neutral-400 dark:bg-neutral-600 dark:hover:bg-neutral-500 cursor-ew-resize opacity-0 group-hover/handle:opacity-100 transition-opacity"
-          aria-label="Toggle Sidebar"
-        />
-      </div>
+        <div className="h-16 w-1.5 rounded-full bg-neutral-300 hover:bg-neutral-400 dark:bg-neutral-600 dark:hover:bg-neutral-500 opacity-0 group-hover/handle:opacity-100 transition-opacity" />
+      </button>
       {/* Mobile toggle button */}
       {!openMobile && (
         <button
@@ -107,8 +111,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const currentView = pathname.startsWith("/settings")
     ? "settings"
     : pathname.startsWith("/conversations")
-      ? "conversations"
-      : "chat";
+    ? "conversations"
+    : "chat";
   const insetBackground = "bg-background";
 
   // Derive active conversation from pathname for immediate UI updates
