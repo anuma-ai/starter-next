@@ -29,7 +29,7 @@ export function ConversationsView() {
   };
 
   return (
-    <div className="flex flex-1 flex-col p-8">
+    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
       <div className="mx-auto w-full max-w-2xl">
         <h1 className="mb-6 text-2xl font-semibold">Conversations</h1>
 
@@ -40,11 +40,11 @@ export function ConversationsView() {
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 py-6 border-0 focus-visible:ring-0 rounded-xl"
+            className="pl-12 py-6 border-0 focus-visible:ring-0 rounded-xl bg-white dark:bg-card"
           />
         </div>
 
-        <div className="rounded-xl bg-card p-1">
+        <div className="rounded-xl bg-white dark:bg-card p-1">
           {filteredConversations.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               {searchQuery
@@ -61,7 +61,7 @@ export function ConversationsView() {
                 <button
                   key={conv.id}
                   onClick={() => handleSelectConversation(conv.id)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 hover:bg-muted/50 rounded-lg transition-colors text-left cursor-pointer"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <span className="truncate">
                     {conv.title || `Chat ${conv.id?.slice(0, 8) || ""}`}

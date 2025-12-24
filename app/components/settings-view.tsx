@@ -55,12 +55,12 @@ export function SettingsView() {
   };
 
   return (
-    <div className="flex flex-1 flex-col p-8">
+    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
       <div className="mx-auto w-full max-w-2xl">
         <h1 className="mb-6 text-2xl font-semibold">Settings</h1>
 
         <div className="space-y-4">
-          <div className="rounded-xl bg-card p-1">
+          <div className="rounded-xl bg-white dark:bg-card p-1">
             <div className="flex items-center justify-between px-4 py-3">
               <div className="space-y-0.5">
                 <Label htmlFor="dark-mode" className="text-base">
@@ -78,7 +78,7 @@ export function SettingsView() {
             </div>
             <button
               onClick={() => router.push("/settings/memories")}
-              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 rounded-lg transition-colors"
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
             >
               <div className="space-y-0.5 text-left">
                 <span className="text-base">Memories</span>
@@ -90,7 +90,7 @@ export function SettingsView() {
             </button>
             <button
               onClick={() => router.push("/settings/models")}
-              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/50 rounded-lg transition-colors"
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
             >
               <div className="space-y-0.5 text-left">
                 <span className="text-base">Models</span>
@@ -102,7 +102,7 @@ export function SettingsView() {
             </button>
           </div>
 
-          <div className="rounded-xl bg-card p-1 mt-4">
+          <div className="rounded-xl bg-white dark:bg-card p-1 mt-4">
             <div className="px-4 py-3">
               <div className="space-y-4">
                 <div>

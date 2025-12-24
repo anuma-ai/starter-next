@@ -42,7 +42,7 @@ export default function MemoriesPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col p-8">
+    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-6 flex items-center h-8">
           <Button
@@ -58,20 +58,20 @@ export default function MemoriesPage() {
 
         <div className="space-y-4">
           {isLoading ? (
-            <div className="rounded-xl bg-card p-4">
+            <div className="rounded-xl bg-white dark:bg-card p-4">
               <p className="text-sm text-muted-foreground">
                 Loading memories...
               </p>
             </div>
           ) : memories.length === 0 ? (
-            <div className="rounded-xl bg-card p-4">
+            <div className="rounded-xl bg-white dark:bg-card p-4">
               <p className="text-sm text-muted-foreground">
                 No memories yet. The assistant will save important information
                 from your conversations here.
               </p>
             </div>
           ) : (
-            <div className="rounded-xl bg-card p-1">
+            <div className="rounded-xl bg-white dark:bg-card p-1">
               {memories.map((memory, index) => (
                 <div
                   key={memory.uniqueId}

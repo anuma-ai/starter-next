@@ -28,7 +28,7 @@ export default function ModelsPage() {
   }, [authenticated, identityToken, refetch]);
 
   return (
-    <div className="flex flex-1 flex-col p-8">
+    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
       <div className="mx-auto w-full max-w-2xl pb-8">
         <div className="mb-6 flex items-center h-8">
           <Button
@@ -44,21 +44,21 @@ export default function ModelsPage() {
 
         <div className="space-y-4">
           {isLoading ? (
-            <div className="rounded-xl bg-card p-4">
+            <div className="rounded-xl bg-white dark:bg-card p-4">
               <p className="text-sm text-muted-foreground">Loading models...</p>
             </div>
           ) : error ? (
-            <div className="rounded-xl bg-card p-4">
+            <div className="rounded-xl bg-white dark:bg-card p-4">
               <p className="text-sm text-destructive">
                 Failed to load models: {error.message}
               </p>
             </div>
           ) : models.length === 0 ? (
-            <div className="rounded-xl bg-card p-4">
+            <div className="rounded-xl bg-white dark:bg-card p-4">
               <p className="text-sm text-muted-foreground">No models available.</p>
             </div>
           ) : (
-            <div className="rounded-xl bg-card p-1">
+            <div className="rounded-xl bg-white dark:bg-card p-1">
               {models.map((model, index) => {
                 const pricing = model.pricing as { prompt?: string; completion?: string } | undefined;
                 const modalities = model.modalities as string[] | undefined;
