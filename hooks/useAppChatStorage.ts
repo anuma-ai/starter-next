@@ -4,10 +4,15 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { useChatStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 
-type MessagePart = {
-  type: "text";
-  text: string;
-};
+type MessagePart =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "reasoning";
+      text: string;
+    };
 
 type Message = {
   id: string;
@@ -87,11 +92,24 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
   useEffect(() => {
     if (conversationId) {
       getMessages(conversationId).then((msgs) => {
-        const uiMessages: Message[] = msgs.map((msg: any) => ({
-          id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
-          role: msg.role,
-          parts: [{ type: "text" as const, text: msg.content }],
-        }));
+        const uiMessages: Message[] = msgs.map((msg: any) => {
+          const parts: MessagePart[] = [];
+
+          // Add reasoning part if available (before the text content)
+          // SDK stores thinking/reasoning in the 'thinking' field
+          if (msg.thinking) {
+            parts.push({ type: "reasoning" as const, text: msg.thinking });
+          }
+
+          // Add text content
+          parts.push({ type: "text" as const, text: msg.content });
+
+          return {
+            id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
+            role: msg.role,
+            parts,
+          };
+        });
         setMessages(uiMessages);
       });
     }

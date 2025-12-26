@@ -9,6 +9,9 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { useChatContext } from "./chat-provider";
+import { ThinkingPanelProvider } from "./thinking-panel-provider";
+import { ThinkingPanel } from "./thinking-panel";
+import { RightSidebarHandle } from "@/components/ui/right-sidebar";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -121,20 +124,28 @@ export function AppLayout({ children }: AppLayoutProps) {
     : null;
 
   return (
-    <SidebarProvider>
-      <AppSidebar
-        conversations={conversations}
-        conversationId={activeConversationId}
-        onNewConversation={handleNewConversation}
-        onSelectConversation={handleSelectConversation}
-        onDeleteConversation={deleteConversation}
-        currentView={currentView}
-        onViewChange={handleViewChange}
-      />
-      <SidebarHandle />
-      <SidebarInset className={`min-h-dvh ${insetBackground}`}>
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
+    <ThinkingPanelProvider>
+      <SidebarProvider>
+        <AppSidebar
+          conversations={conversations}
+          conversationId={activeConversationId}
+          onNewConversation={handleNewConversation}
+          onSelectConversation={handleSelectConversation}
+          onDeleteConversation={deleteConversation}
+          currentView={currentView}
+          onViewChange={handleViewChange}
+        />
+        <SidebarHandle />
+        <SidebarInset className={`min-h-dvh ${insetBackground}`}>
+          {children}
+        </SidebarInset>
+        {currentView === "chat" && (
+          <>
+            <ThinkingPanel />
+            <RightSidebarHandle />
+          </>
+        )}
+      </SidebarProvider>
+    </ThinkingPanelProvider>
   );
 }

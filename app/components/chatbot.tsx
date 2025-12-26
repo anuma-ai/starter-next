@@ -42,17 +42,15 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from "@/components/chat/prompt-input";
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from "@/components/chat/reasoning";
+import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
+import { useThinkingPanel } from "./thinking-panel-provider";
 
 const ChatBotDemo = () => {
   const pathname = usePathname();
   const chatState = useChatContext();
   const { authenticated } = usePrivy();
+  const thinkingPanel = useThinkingPanel();
   const { identityToken } = useIdentityToken();
   const hasRedirectedRef = useRef(false);
 
@@ -350,10 +348,9 @@ const ChatBotDemo = () => {
                             <Reasoning
                               className="w-full mb-2"
                               isStreaming={isLoading}
-                            >
-                              <ReasoningTrigger />
-                              <ReasoningContent>{streamingThinking}</ReasoningContent>
-                            </Reasoning>
+                              content={streamingThinking}
+                              onOpen={thinkingPanel.openPanel}
+                            />
                           )}
                           <Message from={message.role}>
                             <MessageContent>
@@ -419,11 +416,9 @@ const ChatBotDemo = () => {
                           key={`${message.id}-${i}`}
                           className="w-full"
                           isStreaming={false}
-                        >
-                          <ReasoningTrigger />
-                          {/* @ts-ignore */}
-                          <ReasoningContent>{part.text}</ReasoningContent>
-                        </Reasoning>
+                          content={(part as any).text}
+                          onOpen={thinkingPanel.openPanel}
+                        />
                       );
                     case "image":
                       return (

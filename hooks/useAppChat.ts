@@ -32,26 +32,22 @@ export function useAppChat({
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const streamingCallbackRef = useRef<((text: string) => void) | null>(null);
-  const thinkingCallbackRef = useRef<((text: string) => void) | null>(null);
+  const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
+  const thinkingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingTextRef = useRef<string>("");
 
   // Callback to handle streaming data from chat storage
   const handleStreamingData = useCallback(
     (_chunk: string, accumulated: string) => {
-      // Notify subscriber for direct DOM updates (bypasses React batching)
-      if (streamingCallbackRef.current) {
-        streamingCallbackRef.current(accumulated);
-      }
+      // Notify all subscribers for direct DOM updates (bypasses React batching)
+      streamingCallbacksRef.current.forEach((callback) => callback(accumulated));
     },
     []
   );
 
   // Callback to handle thinking/reasoning data
   const handleThinkingData = useCallback((accumulated: string) => {
-    if (thinkingCallbackRef.current) {
-      thinkingCallbackRef.current(accumulated);
-    }
+    thinkingCallbacksRef.current.forEach((callback) => callback(accumulated));
   }, []);
 
   // Use chat storage for message persistence
@@ -175,9 +171,9 @@ export function useAppChat({
 
   const subscribeToStreaming = useCallback(
     (callback: (text: string) => void) => {
-      streamingCallbackRef.current = callback;
+      streamingCallbacksRef.current.add(callback);
       return () => {
-        streamingCallbackRef.current = null;
+        streamingCallbacksRef.current.delete(callback);
       };
     },
     []
@@ -185,9 +181,9 @@ export function useAppChat({
 
   const subscribeToThinking = useCallback(
     (callback: (text: string) => void) => {
-      thinkingCallbackRef.current = callback;
+      thinkingCallbacksRef.current.add(callback);
       return () => {
-        thinkingCallbackRef.current = null;
+        thinkingCallbacksRef.current.delete(callback);
       };
     },
     []
