@@ -26,6 +26,9 @@ type SendMessageOptions = {
   temperature?: number;
   maxOutputTokens?: number;
   store?: boolean;
+  reasoning?: { effort?: string; summary?: string };
+  thinking?: { type?: string; budget_tokens?: number };
+  onThinking?: (chunk: string) => void;
 };
 
 /**
@@ -99,7 +102,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
-      const { model, temperature, maxOutputTokens, store } = options;
+      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking } = options;
       const userMessage: Message = {
         id: `user-${Date.now()}`,
         role: "user",
@@ -155,6 +158,9 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         ...(temperature !== undefined && { temperature }),
         ...(maxOutputTokens !== undefined && { maxOutputTokens }),
         ...(store !== undefined && { store }),
+        ...(reasoning && { reasoning }),
+        ...(thinking && { thinking }),
+        ...(onThinking && { onThinking }),
         onData: (chunk: string) => {
           // Accumulate text
           streamingTextRef.current += chunk;

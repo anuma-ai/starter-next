@@ -20,6 +20,7 @@ type ChatState = {
   status: any;
   setMessages: React.Dispatch<React.SetStateAction<any[]>>;
   subscribeToStreaming: (callback: (text: string) => void) => () => void;
+  subscribeToThinking: (callback: (text: string) => void) => () => void;
   conversationId: string | null;
   conversations: any[];
   createConversation: () => Promise<any>;
@@ -71,7 +72,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const chatState = useAppChat({
     database,
-    model: "openai/gpt-5.2",
+    model: "openai/gpt-5.2-2025-12-11",
     getToken: getIdentityToken,
     temperature,
     maxOutputTokens,

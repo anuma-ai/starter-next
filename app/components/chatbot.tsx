@@ -71,7 +71,9 @@ const ChatBotDemo = () => {
     }
   }, [authenticated, identityToken, refetch]);
 
-  const [model, setModel] = useState<string>("openai/gpt-5.2");
+  const [model, setModel] = useState<string>(
+    "openai/gpt-5.2-2025-12-11"
+  );
 
   // Helper function to get display name from model ID
   const getModelDisplayName = (modelId: string) => {
@@ -101,14 +103,16 @@ const ChatBotDemo = () => {
       ? models
       : [
           {
-            id: "openai/gpt-5.2",
-            name: "openai/gpt-5.2",
+            id: "openai/gpt-5.2-2025-12-11",
+            name: "openai/gpt-5.2-2025-12-11",
           },
         ];
 
   const selectedModel = displayModels.find((m: any) => m.id === model);
   const selectedLabel = getModelDisplayName(
-    selectedModel?.name ?? selectedModel?.id ?? "openai/gpt-5.2"
+    selectedModel?.name ??
+      selectedModel?.id ??
+      "openai/gpt-5.2-2025-12-11"
   );
 
   // Use chatState from context
@@ -121,8 +125,27 @@ const ChatBotDemo = () => {
     status,
     setMessages,
     subscribeToStreaming,
+    subscribeToThinking,
     conversationId,
   } = chatState;
+
+  // State for streaming reasoning text
+  const [streamingThinking, setStreamingThinking] = useState<string>("");
+
+  // Subscribe to thinking updates
+  useEffect(() => {
+    const unsubscribe = subscribeToThinking((text: string) => {
+      setStreamingThinking(text);
+    });
+    return unsubscribe;
+  }, [subscribeToThinking]);
+
+  // Reset streaming thinking when loading starts
+  useEffect(() => {
+    if (isLoading) {
+      setStreamingThinking("");
+    }
+  }, [isLoading]);
 
   // Update URL when a new conversation is created (without navigation flash)
   useEffect(() => {
@@ -280,7 +303,11 @@ const ChatBotDemo = () => {
 
         await handleSubmit(
           { ...message, text: enhancedText, displayText: message.text },
-          { model }
+          {
+            model,
+            reasoning: { effort: "high", summary: "detailed" },
+            thinking: { type: "enabled", budget_tokens: 10000 },
+          }
         );
       }
     },
@@ -312,26 +339,40 @@ const ChatBotDemo = () => {
                 {message.parts.map((part: any, i: number) => {
                   switch ((part as any).type) {
                     case "text": {
+                      const isLastAssistantMessage =
+                        message.role === "assistant" &&
+                        message.id === messages.at(-1)?.id;
+
                       return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            {/* @ts-ignore */}
-                            {message.role === "assistant" &&
-                            message.id === messages.at(-1)?.id ? (
-                              // For the last assistant message, use StreamingMessage
-                              // It handles both streaming (empty text) and completed states
-                              <StreamingMessage
-                                subscribe={subscribeToStreaming}
-                                initialText={(part as any).text || ""}
-                                isLoading={isLoading}
-                              />
-                            ) : (
-                              <MessageResponse>
-                                {(part as any).text}
-                              </MessageResponse>
-                            )}
-                          </MessageContent>
-                        </Message>
+                        <div key={`${message.id}-${i}`}>
+                          {/* Show streaming reasoning above the last assistant message */}
+                          {isLastAssistantMessage && streamingThinking && (
+                            <Reasoning
+                              className="w-full mb-2"
+                              isStreaming={isLoading}
+                            >
+                              <ReasoningTrigger />
+                              <ReasoningContent>{streamingThinking}</ReasoningContent>
+                            </Reasoning>
+                          )}
+                          <Message from={message.role}>
+                            <MessageContent>
+                              {isLastAssistantMessage ? (
+                                // For the last assistant message, use StreamingMessage
+                                // It handles both streaming (empty text) and completed states
+                                <StreamingMessage
+                                  subscribe={subscribeToStreaming}
+                                  initialText={(part as any).text || ""}
+                                  isLoading={isLoading}
+                                />
+                              ) : (
+                                <MessageResponse>
+                                  {(part as any).text}
+                                </MessageResponse>
+                              )}
+                            </MessageContent>
+                          </Message>
+                        </div>
                       );
                     }
                     case "file":

@@ -26,13 +26,15 @@ type UseAppChatProps = {
 export function useAppChat({
   database,
   getToken,
-  model = "openai/gpt-5.2",
+  model = "openai/gpt-5.2-2025-12-11",
   temperature,
   maxOutputTokens,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const streamingCallbackRef = useRef<((text: string) => void) | null>(null);
+  const thinkingCallbackRef = useRef<((text: string) => void) | null>(null);
+  const thinkingTextRef = useRef<string>("");
 
   // Callback to handle streaming data from chat storage
   const handleStreamingData = useCallback(
@@ -44,6 +46,13 @@ export function useAppChat({
     },
     []
   );
+
+  // Callback to handle thinking/reasoning data
+  const handleThinkingData = useCallback((accumulated: string) => {
+    if (thinkingCallbackRef.current) {
+      thinkingCallbackRef.current(accumulated);
+    }
+  }, []);
 
   // Use chat storage for message persistence
   const {
@@ -78,6 +87,9 @@ export function useAppChat({
         model?: string;
         temperature?: number;
         maxOutputTokens?: number;
+        reasoning?: { effort?: string; summary?: string };
+        thinking?: { type?: string; budget_tokens?: number };
+        onThinking?: (chunk: string) => void;
       }
     ) => {
       setError(null);
@@ -87,11 +99,23 @@ export function useAppChat({
         options?.maxOutputTokens ?? maxOutputTokens;
 
       try {
+        // Reset thinking accumulator
+        thinkingTextRef.current = "";
+
+        // Create onThinking handler that accumulates and notifies
+        const onThinking = (chunk: string) => {
+          thinkingTextRef.current += chunk;
+          handleThinkingData(thinkingTextRef.current);
+        };
+
         // Send the message immediately (user message appears right away)
         const response = await baseSendMessage(text, {
           model: effectiveModel,
           temperature: effectiveTemperature,
           maxOutputTokens: effectiveMaxOutputTokens,
+          ...(options?.reasoning && { reasoning: options.reasoning }),
+          ...(options?.thinking && { thinking: options.thinking }),
+          onThinking,
         });
 
         // Search for relevant memories in the background (for future use)
@@ -137,6 +161,9 @@ export function useAppChat({
         model?: string;
         temperature?: number;
         maxOutputTokens?: number;
+        reasoning?: { effort?: string; summary?: string };
+        thinking?: { type?: string; budget_tokens?: number };
+        onThinking?: (chunk: string) => void;
       }
     ) => {
       if (!message.text) return;
@@ -151,6 +178,16 @@ export function useAppChat({
       streamingCallbackRef.current = callback;
       return () => {
         streamingCallbackRef.current = null;
+      };
+    },
+    []
+  );
+
+  const subscribeToThinking = useCallback(
+    (callback: (text: string) => void) => {
+      thinkingCallbackRef.current = callback;
+      return () => {
+        thinkingCallbackRef.current = null;
       };
     },
     []
@@ -179,6 +216,7 @@ export function useAppChat({
     setConversationId,
     deleteConversation,
     subscribeToStreaming,
+    subscribeToThinking,
 
     // Memory actions
     findRelevantMemories,
