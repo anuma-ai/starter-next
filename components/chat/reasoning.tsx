@@ -6,7 +6,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps } from "react";
@@ -46,7 +45,7 @@ export const Reasoning = memo(
     className,
     isStreaming = false,
     open,
-    defaultOpen = true,
+    defaultOpen = false,
     onOpenChange,
     duration: durationProp,
     children,
@@ -113,16 +112,9 @@ export const Reasoning = memo(
 
 export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger>;
 
-const ThinkingShimmer = () => (
-  <span className="inline-flex items-center gap-1">
-    <span>Thinking</span>
-    <Skeleton className="h-3 w-8 inline-block" />
-  </span>
-);
-
 const getThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return <ThinkingShimmer />;
+    return <span>Thinking...</span>;
   }
   if (duration === undefined) {
     return <p>Thought for a few seconds</p>;
