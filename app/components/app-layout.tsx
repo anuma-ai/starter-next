@@ -93,15 +93,14 @@ export function AppLayout({ children }: AppLayoutProps) {
   const handleSelectConversation = useCallback(
     (id: string) => {
       console.log("[handleSelectConversation] START, id:", id);
-      // Preload messages and update state
-      // Use history.pushState to update URL without Next.js navigation (no remount)
+      // Update conversation state and navigate using Next.js router
       setConversationId(id).then(() => {
-        console.log("[handleSelectConversation] setConversationId resolved, calling pushState");
-        window.history.pushState({}, "", `/c/${id}`);
+        console.log("[handleSelectConversation] setConversationId resolved, navigating to /c/" + id);
+        router.push(`/c/${id}`);
         console.log("[handleSelectConversation] DONE");
       });
     },
-    [setConversationId]
+    [setConversationId, router]
   );
 
   const handleViewChange = useCallback(
