@@ -42,6 +42,8 @@ type SendMessageOptions = {
 export function useAppChatStorage({ database, getToken, onStreamingData }: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
+  // Track which conversation the current messages belong to
+  const loadedConversationIdRef = useRef<string | null>(null);
 
   //#region hookInit
   const {
@@ -90,8 +92,29 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
   }, [getConversations, getMessages, conversationId]);
 
   useEffect(() => {
+    console.log("[useEffect] conversationId changed:", conversationId, "ref:", loadedConversationIdRef.current);
     if (conversationId) {
+      // Skip loading if messages were already preloaded by handleSwitchConversation
+      if (loadedConversationIdRef.current === conversationId) {
+        console.log("[useEffect] SKIPPING - already preloaded");
+        return;
+      }
+
+      console.log("[useEffect] Loading messages for:", conversationId);
+      // Track the target conversation to handle race conditions
+      // when rapidly switching between conversations
+      const targetConversationId = conversationId;
+      loadedConversationIdRef.current = targetConversationId;
+
       getMessages(conversationId).then((msgs) => {
+        // Only update if this is still the target conversation
+        // (prevents race conditions when rapidly switching)
+        if (loadedConversationIdRef.current !== targetConversationId) {
+          console.log("[useEffect] SKIPPING setMessages - stale conversation");
+          return;
+        }
+
+        console.log("[useEffect] Setting messages, count:", msgs.length);
         const uiMessages: Message[] = msgs.map((msg: any) => {
           const parts: MessagePart[] = [];
 
@@ -110,6 +133,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
             parts,
           };
         });
+
         setMessages(uiMessages);
       });
     }
@@ -220,10 +244,32 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
   }, [createConversation]);
 
   const handleSwitchConversation = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      console.log("[handleSwitchConversation] START, id:", id);
+      // Preload messages before switching to prevent flicker
+      // This ensures new messages are ready before we update state
+      const msgs = await getMessages(id);
+      console.log("[handleSwitchConversation] Messages loaded, count:", msgs.length);
+      const uiMessages: Message[] = msgs.map((msg: any) => {
+        const parts: MessagePart[] = [];
+        if (msg.thinking) {
+          parts.push({ type: "reasoning" as const, text: msg.thinking });
+        }
+        parts.push({ type: "text" as const, text: msg.content });
+        return {
+          id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
+          role: msg.role,
+          parts,
+        };
+      });
+
+      // Update ref first to prevent useEffect from re-loading
+      loadedConversationIdRef.current = id;
+      // Direct state updates
+      setMessages(uiMessages);
       setConversationId(id);
     },
-    [setConversationId]
+    [setConversationId, getMessages]
   );
 
   const handleDeleteConversation = useCallback(

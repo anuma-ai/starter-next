@@ -68,8 +68,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const {
     messages,
-    conversationId,
     conversations,
+    conversationId,
     createConversation,
     setConversationId,
     deleteConversation,
@@ -92,10 +92,16 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const handleSelectConversation = useCallback(
     (id: string) => {
-      setConversationId(id);
-      router.push(`/c/${id}`);
+      console.log("[handleSelectConversation] START, id:", id);
+      // Preload messages and update state
+      // Use history.pushState to update URL without Next.js navigation (no remount)
+      setConversationId(id).then(() => {
+        console.log("[handleSelectConversation] setConversationId resolved, calling pushState");
+        window.history.pushState({}, "", `/c/${id}`);
+        console.log("[handleSelectConversation] DONE");
+      });
     },
-    [setConversationId, router]
+    [setConversationId]
   );
 
   const handleViewChange = useCallback(
@@ -118,10 +124,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     : "chat";
   const insetBackground = "bg-background";
 
-  // Derive active conversation from pathname for immediate UI updates
-  const activeConversationId = pathname.startsWith("/c/")
-    ? pathname.replace("/c/", "")
-    : null;
+  // Use context's conversationId for sidebar active state (not pathname)
+  // This ensures immediate visual feedback when switching conversations
+  const activeConversationId = conversationId;
 
   return (
     <ThinkingPanelProvider>

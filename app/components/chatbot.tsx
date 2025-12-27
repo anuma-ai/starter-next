@@ -12,11 +12,6 @@ import {
   useSearch,
 } from "@reverbia/sdk/react";
 
-import {
-  Conversation,
-  ConversationContent,
-  ConversationScrollButton,
-} from "@/components/chat/conversation";
 import { Loader } from "@/components/chat/loader";
 import {
   Message,
@@ -69,11 +64,8 @@ const ChatBotDemo = () => {
     }
   }, [authenticated, identityToken, refetch]);
 
-  const [model, setModel] = useState<string>(
-    "openai/gpt-5.2-2025-12-11"
-  );
+  const [model, setModel] = useState<string>("openai/gpt-5.2-2025-12-11");
 
-  // Helper function to get display name from model ID
   const getModelDisplayName = (modelId: string) => {
     if (modelId.includes("/")) {
       return modelId.split("/").pop() || modelId;
@@ -99,21 +91,13 @@ const ChatBotDemo = () => {
   const displayModels =
     models && models.length > 0
       ? models
-      : [
-          {
-            id: "openai/gpt-5.2-2025-12-11",
-            name: "openai/gpt-5.2-2025-12-11",
-          },
-        ];
+      : [{ id: "openai/gpt-5.2-2025-12-11", name: "openai/gpt-5.2-2025-12-11" }];
 
   const selectedModel = displayModels.find((m: any) => m.id === model);
   const selectedLabel = getModelDisplayName(
-    selectedModel?.name ??
-      selectedModel?.id ??
-      "openai/gpt-5.2-2025-12-11"
+    selectedModel?.name ?? selectedModel?.id ?? "openai/gpt-5.2-2025-12-11"
   );
 
-  // Use chatState from context
   const {
     messages,
     input,
@@ -127,10 +111,8 @@ const ChatBotDemo = () => {
     conversationId,
   } = chatState;
 
-  // State for streaming reasoning text
   const [streamingThinking, setStreamingThinking] = useState<string>("");
 
-  // Subscribe to thinking updates
   useEffect(() => {
     const unsubscribe = subscribeToThinking((text: string) => {
       setStreamingThinking(text);
@@ -138,14 +120,12 @@ const ChatBotDemo = () => {
     return unsubscribe;
   }, [subscribeToThinking]);
 
-  // Reset streaming thinking when loading starts
   useEffect(() => {
     if (isLoading) {
       setStreamingThinking("");
     }
   }, [isLoading]);
 
-  // Update URL when a new conversation is created (without navigation flash)
   useEffect(() => {
     if (
       conversationId &&
@@ -158,7 +138,6 @@ const ChatBotDemo = () => {
     }
   }, [conversationId, pathname, messages.length]);
 
-  // Reset redirect flag when navigating to home
   useEffect(() => {
     if (pathname === "/") {
       hasRedirectedRef.current = false;
@@ -171,65 +150,41 @@ const ChatBotDemo = () => {
         const userMessage = {
           id: `user-${Date.now()}`,
           role: "user" as const,
-          parts: [
-            {
-              type: "text" as const,
-              text: message.text,
-            },
-          ],
+          parts: [{ type: "text" as const, text: message.text }],
         };
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
 
         try {
-          const result = await search(message.text, {
-            search_tool_name: "google-pse",
-          });
-
+          const result = await search(message.text, { search_tool_name: "google-pse" });
           if (result?.results) {
             const assistantMessage = {
               id: `assistant-${Date.now()}`,
               role: "assistant" as const,
-              parts: [
-                {
-                  type: "text",
-                  text:
-                    result.results
-                      .map(
-                        (r: any) => `#### [${r.title}](${r.url})\n${r.snippet}`
-                      )
-                      .join("\n\n") || "No results found.",
-                },
-              ],
+              parts: [{
+                type: "text",
+                text: result.results
+                  .map((r: any) => `#### [${r.title}](${r.url})\n${r.snippet}`)
+                  .join("\n\n") || "No results found.",
+              }],
             };
             // @ts-ignore
             setMessages((prev) => [...prev, assistantMessage]);
           }
         } catch (error) {
           console.error("Failed to perform search:", error);
-          const errorMessage = {
+          // @ts-ignore
+          setMessages((prev) => [...prev, {
             id: `assistant-${Date.now()}`,
             role: "assistant" as const,
-            parts: [
-              {
-                type: "text",
-                text: "Failed to perform search. Please try again.",
-              },
-            ],
-          };
-          // @ts-ignore
-          setMessages((prev) => [...prev, errorMessage]);
+            parts: [{ type: "text", text: "Failed to perform search. Please try again." }],
+          }]);
         }
       } else if (isImageMode) {
         const userMessage = {
           id: `user-${Date.now()}`,
           role: "user" as const,
-          parts: [
-            {
-              type: "text" as const,
-              text: message.text,
-            },
-          ],
+          parts: [{ type: "text" as const, text: message.text }],
         };
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
@@ -240,58 +195,35 @@ const ChatBotDemo = () => {
             model: "openai-dall-e-3",
             response_format: "url",
           });
-
           if (result.data?.images?.[0]?.url) {
-            const assistantMessage = {
+            // @ts-ignore
+            setMessages((prev) => [...prev, {
               id: `assistant-${Date.now()}`,
               role: "assistant" as const,
-              parts: [
-                {
-                  type: "image",
-                  url: result.data.images[0].url,
-                  text: "Generated image",
-                },
-              ],
-            };
-            // @ts-ignore
-            setMessages((prev) => [...prev, assistantMessage]);
+              parts: [{ type: "image", url: result.data.images[0].url, text: "Generated image" }],
+            }]);
           }
         } catch (error) {
           console.error("Failed to generate image:", error);
         }
       } else {
         let enhancedText = message.text;
-
-        // Only process files if they exist
         if (message.files && message.files.length > 0) {
           try {
             const pdfContext = await extractPdfContext(message.files);
             if (pdfContext && pdfContext.length > 100) {
-              enhancedText = enhancedText
-                ? `${enhancedText}\n\n${pdfContext}`
-                : pdfContext;
+              enhancedText = enhancedText ? `${enhancedText}\n\n${pdfContext}` : pdfContext;
             } else {
-              // Fallback to OCR if PDF extraction was unsuccessful or yielded too little text
-              console.log(
-                "PDF extraction insufficient, falling back to OCR..."
-              );
               const ocrContext = await extractOCRContext(message.files);
               if (ocrContext) {
-                enhancedText = enhancedText
-                  ? `${enhancedText}\n\n${ocrContext}`
-                  : ocrContext;
+                enhancedText = enhancedText ? `${enhancedText}\n\n${ocrContext}` : ocrContext;
               }
             }
           } catch (error) {
-            console.error("Error processing PDF attachments:", error);
-            // Try OCR on error as well
             try {
-              console.log("PDF extraction failed, trying OCR...");
               const ocrContext = await extractOCRContext(message.files);
               if (ocrContext) {
-                enhancedText = enhancedText
-                  ? `${enhancedText}\n\n${ocrContext}`
-                  : ocrContext;
+                enhancedText = enhancedText ? `${enhancedText}\n\n${ocrContext}` : ocrContext;
               }
             } catch (ocrError) {
               console.error("Error processing OCR fallback:", ocrError);
@@ -309,197 +241,131 @@ const ChatBotDemo = () => {
         );
       }
     },
-    [
-      model,
-      handleSubmit,
-      isImageMode,
-      generateImage,
-      setMessages,
-      setInput,
-      extractPdfContext,
-      extractOCRContext,
-      isSearchMode,
-      search,
-    ]
+    [model, handleSubmit, isImageMode, generateImage, setMessages, setInput, extractPdfContext, extractOCRContext, isSearchMode, search]
   );
 
   return (
-    <div
-      className={`relative flex min-h-0 flex-1 flex-col ${
-        messages.length === 0 ? "justify-center" : ""
-      }`}
-    >
-      {messages.length > 0 && (
-        <Conversation className="min-h-0 flex-1 px-4">
-          <ConversationContent className="mx-auto max-w-3xl pb-52">
-            {messages.map((message: any) => (
-              <div key={message.id}>
-                {message.parts.map((part: any, i: number) => {
-                  switch ((part as any).type) {
-                    case "text": {
-                      const isLastAssistantMessage =
-                        message.role === "assistant" &&
-                        message.id === messages.at(-1)?.id;
+    <div className={`relative flex min-h-0 flex-1 flex-col bg-background ${messages.length === 0 ? "justify-center" : ""}`}>
+      <div className={`min-h-0 flex-1 px-4 bg-background overflow-y-auto ${messages.length === 0 ? "hidden" : ""}`}>
+        <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
+          {messages.map((message: any) => (
+            <div key={message.id}>
+              {message.parts.map((part: any, i: number) => {
+                switch (part.type) {
+                  case "text": {
+                    const isLastAssistantMessage =
+                      message.role === "assistant" && message.id === messages.at(-1)?.id;
 
-                      return (
-                        <div key={`${message.id}-${i}`}>
-                          {/* Show streaming reasoning above the last assistant message */}
-                          {isLastAssistantMessage && streamingThinking && (
-                            <Reasoning
-                              className="w-full mb-2"
-                              isStreaming={isLoading}
-                              content={streamingThinking}
-                              onOpen={thinkingPanel.openPanel}
-                            />
-                          )}
-                          <Message from={message.role}>
-                            <MessageContent>
-                              {isLastAssistantMessage ? (
-                                // For the last assistant message, use StreamingMessage
-                                // It handles both streaming (empty text) and completed states
-                                <StreamingMessage
-                                  subscribe={subscribeToStreaming}
-                                  initialText={(part as any).text || ""}
-                                  isLoading={isLoading}
-                                />
-                              ) : (
-                                <MessageResponse>
-                                  {(part as any).text}
-                                </MessageResponse>
-                              )}
-                            </MessageContent>
-                          </Message>
-                        </div>
-                      );
-                    }
-                    case "file":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
+                    // Use StreamingMessage only while actively streaming
+                    // Once streaming is done (isLoading=false), use MessageResponse
+                    const useStreaming = isLastAssistantMessage && isLoading;
+
+                    return (
+                      <div key={`${message.id}-${i}`}>
+                        {isLastAssistantMessage && streamingThinking && (
+                          <Reasoning
+                            className="w-full mb-2"
+                            isStreaming={isLoading}
+                            content={streamingThinking}
+                            onOpen={thinkingPanel.openPanel}
+                          />
+                        )}
+                        <Message from={message.role}>
                           <MessageContent>
-                            <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
-                              <div className="flex size-8 items-center justify-center rounded-sm bg-background">
-                                <span className="text-xs font-bold text-muted-foreground">
-                                  PDF
-                                </span>
-                              </div>
-                              <div className="flex flex-col overflow-hidden">
-                                <span className="truncate font-medium">
-                                  {/* @ts-ignore */}
-                                  {part.filename}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {/* @ts-ignore */}
-                                  {part.mediaType}
-                                </span>
-                              </div>
-                            </div>
+                            {useStreaming ? (
+                              <StreamingMessage
+                                subscribe={subscribeToStreaming}
+                                initialText={part.text || ""}
+                                isLoading={isLoading}
+                              />
+                            ) : (
+                              <MessageResponse>{part.text}</MessageResponse>
+                            )}
                           </MessageContent>
                         </Message>
-                      );
-                    case "image_url":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            {/* @ts-ignore */}
-                            <img
-                              /* @ts-ignore */
-                              src={part.image_url?.url}
-                              alt="Uploaded image"
-                              className="max-h-60 max-w-[300px] rounded-lg object-contain"
-                            />
-                          </MessageContent>
-                        </Message>
-                      );
-                    case "reasoning":
-                      return (
-                        <Reasoning
-                          key={`${message.id}-${i}`}
-                          className="w-full"
-                          isStreaming={false}
-                          content={(part as any).text}
-                          onOpen={thinkingPanel.openPanel}
-                        />
-                      );
-                    case "image":
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            {/* @ts-ignore */}
-                            <img
-                              src={(part as any).url}
-                              alt="Generated image"
-                              className="rounded-lg max-w-full"
-                            />
-                          </MessageContent>
-                        </Message>
-                      );
-                    default:
-                      return null;
+                      </div>
+                    );
                   }
-                })}
-              </div>
-            ))}
-            {isGeneratingImage ||
-            isProcessingPdf ||
-            isProcessingOCR ||
-            isSearching ? (
-              <Message from="assistant">
-                <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
-                  <Loader />
-                </MessageContent>
-              </Message>
-            ) : null}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-      )}
+                  case "file":
+                    return (
+                      <Message key={`${message.id}-${i}`} from={message.role}>
+                        <MessageContent>
+                          <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
+                            <div className="flex size-8 items-center justify-center rounded-sm bg-background">
+                              <span className="text-xs font-bold text-muted-foreground">PDF</span>
+                            </div>
+                            <div className="flex flex-col overflow-hidden">
+                              <span className="truncate font-medium">{part.filename}</span>
+                              <span className="text-xs text-muted-foreground">{part.mediaType}</span>
+                            </div>
+                          </div>
+                        </MessageContent>
+                      </Message>
+                    );
+                  case "image_url":
+                    return (
+                      <Message key={`${message.id}-${i}`} from={message.role}>
+                        <MessageContent>
+                          <img src={part.image_url?.url} alt="Uploaded image" className="max-h-60 max-w-[300px] rounded-lg object-contain" />
+                        </MessageContent>
+                      </Message>
+                    );
+                  case "reasoning":
+                    return (
+                      <Reasoning
+                        key={`${message.id}-${i}`}
+                        className="w-full"
+                        isStreaming={false}
+                        content={part.text}
+                        onOpen={thinkingPanel.openPanel}
+                      />
+                    );
+                  case "image":
+                    return (
+                      <Message key={`${message.id}-${i}`} from={message.role}>
+                        <MessageContent>
+                          <img src={part.url} alt="Generated image" className="rounded-lg max-w-full" />
+                        </MessageContent>
+                      </Message>
+                    );
+                  default:
+                    return null;
+                }
+              })}
+            </div>
+          ))}
+          {(isGeneratingImage || isProcessingPdf || isProcessingOCR || isSearching) && (
+            <Message from="assistant">
+              <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
+                <Loader />
+              </MessageContent>
+            </Message>
+          )}
+        </div>
+      </div>
 
-      {/* Prompt input at bottom, sticky to stay visible while scrolling */}
-      <div
-        className={`px-4 pb-4 pt-2 ${
-          messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"
-        }`}
-      >
+      <div className={`px-4 pb-4 pt-2 ${messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"}`}>
         <div className="mx-auto w-full max-w-3xl">
-          <PromptInput
-            accept="image/*,application/pdf"
-            globalDrop
-            multiple
-            onSubmit={onSubmit}
-          >
+          <PromptInput accept="image/*,application/pdf" globalDrop multiple onSubmit={onSubmit}>
             <PromptInputHeader>
               <PromptInputAttachments>
-                {(attachment) => (
-                  <PromptInputAttachment
-                    key={attachment.id}
-                    data={attachment}
-                  />
-                )}
+                {(attachment) => <PromptInputAttachment key={attachment.id} data={attachment} />}
               </PromptInputAttachments>
             </PromptInputHeader>
             <PromptInputBody>
               <PromptInputTextarea
                 disabled={!authenticated}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={
-                  authenticated ? "Ask anything" : "Please sign in to chat"
-                }
+                placeholder={authenticated ? "Ask anything" : "Please sign in to chat"}
                 value={input}
               />
             </PromptInputBody>
             <PromptInputFooter>
               <PromptInputTools className="flex-wrap">
                 <PromptInputAttachButton />
-                <PromptInputSelect
-                  onValueChange={(value) => {
-                    setModel(value);
-                  }}
-                  value={model}
-                >
+                <PromptInputSelect onValueChange={setModel} value={model}>
                   <PromptInputSelectTrigger>
-                    <PromptInputSelectValue placeholder="gpt-oss-120b">
-                      {selectedLabel}
-                    </PromptInputSelectValue>
+                    <PromptInputSelectValue placeholder="gpt-oss-120b">{selectedLabel}</PromptInputSelectValue>
                   </PromptInputSelectTrigger>
                   <PromptInputSelectContent>
                     {displayModels.map((option: any) => (
@@ -509,49 +375,25 @@ const ChatBotDemo = () => {
                     ))}
                   </PromptInputSelectContent>
                 </PromptInputSelect>
-
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsImageMode(!isImageMode);
-                    setIsSearchMode(false);
-                  }}
-                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                    isImageMode
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
+                  onClick={() => { setIsImageMode(!isImageMode); setIsSearchMode(false); }}
+                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${isImageMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
                   title="Toggle Image Generation"
                 >
                   <ImageIcon className="size-4" />
                 </button>
-
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsSearchMode(!isSearchMode);
-                    setIsImageMode(false);
-                  }}
-                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                    isSearchMode
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
+                  onClick={() => { setIsSearchMode(!isSearchMode); setIsImageMode(false); }}
+                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${isSearchMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
                   title="Toggle Web Search"
                 >
                   <Globe className="size-4" />
                 </button>
               </PromptInputTools>
               <PromptInputSubmit
-                disabled={
-                  !input ||
-                  isLoading ||
-                  isGeneratingImage ||
-                  isProcessingPdf ||
-                  isProcessingOCR ||
-                  isSearching ||
-                  !authenticated
-                }
+                disabled={!input || isLoading || isGeneratingImage || isProcessingPdf || isProcessingOCR || isSearching || !authenticated}
                 status={isGeneratingImage || isSearching ? "submitted" : status}
               />
             </PromptInputFooter>

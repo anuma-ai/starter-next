@@ -24,7 +24,7 @@ type ChatState = {
   conversationId: string | null;
   conversations: any[];
   createConversation: () => Promise<any>;
-  setConversationId: (id: string) => void;
+  setConversationId: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
 };
 
