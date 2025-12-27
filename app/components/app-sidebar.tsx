@@ -98,7 +98,7 @@ export function AppSidebar({
                     </SidebarMenuButton>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction showOnHover className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center">
+                        <SidebarMenuAction showOnHover className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer">
                           <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
                         </SidebarMenuAction>
                       </DropdownMenuTrigger>
