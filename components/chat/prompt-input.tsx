@@ -29,6 +29,7 @@ import {
   SquareIcon,
   XIcon,
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { nanoid } from "nanoid";
 import {
   type ChangeEvent,
@@ -554,7 +555,7 @@ export const PromptInput = ({
         type="file"
       />
       <form
-        className={cn("w-full", className)}
+        className={cn("w-full min-w-0 max-w-full overflow-hidden", className)}
         onSubmit={handleSubmit}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -564,7 +565,7 @@ export const PromptInput = ({
       >
         <InputGroup
           className={cn(
-            "overflow-hidden transition-colors duration-200",
+            "w-full max-w-full overflow-hidden transition-colors duration-200",
             isDragging &&
               "border-gray-600 bg-muted/50 ring-2 ring-gray-600/20 dark:border-gray-500 dark:ring-gray-500/20"
           )}
@@ -687,7 +688,7 @@ export const PromptInputHeader = ({
 }: PromptInputHeaderProps) => (
   <InputGroupAddon
     align="block-end"
-    className={cn("order-first flex-wrap gap-1", className)}
+    className={cn("order-first w-full min-w-0 max-w-full flex-wrap gap-1", className)}
     {...props}
   />
 );
@@ -703,7 +704,7 @@ export const PromptInputFooter = ({
 }: PromptInputFooterProps) => (
   <InputGroupAddon
     align="block-end"
-    className={cn("justify-between gap-1", className)}
+    className={cn("w-full min-w-0 max-w-full justify-between gap-1", className)}
     {...props}
   />
 );
@@ -714,7 +715,7 @@ export const PromptInputTools = ({
   className,
   ...props
 }: PromptInputToolsProps) => (
-  <div className={cn("flex items-center gap-1", className)} {...props} />
+  <div className={cn("flex min-w-0 items-center gap-1", className)} {...props} />
 );
 
 export type PromptInputButtonProps = ComponentProps<typeof InputGroupButton>;
@@ -813,7 +814,6 @@ export type PromptInputAttachmentProps = HTMLAttributes<HTMLDivElement> & {
 export function PromptInputAttachment({
   data,
   className,
-  ...props
 }: PromptInputAttachmentProps) {
   const attachments = usePromptInputAttachments();
 
@@ -829,13 +829,15 @@ export function PromptInputAttachment({
   const isImage = mediaType === "image";
 
   return (
-    <div
+    <motion.div
       className={cn(
-        "group relative flex size-20 cursor-default select-none items-center justify-center overflow-hidden rounded-md border border-border",
+        "group relative flex size-20 flex-shrink-0 cursor-default select-none items-center justify-center overflow-hidden rounded-md",
         className
       )}
-      key={data.id}
-      {...props}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.8 }}
+      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
     >
       {isImage ? (
         <img
@@ -860,7 +862,7 @@ export function PromptInputAttachment({
         <XIcon className="size-3 text-white dark:text-black" />
         <span className="sr-only">Remove</span>
       </button>
-    </div>
+    </motion.div>
   );
 }
 
@@ -874,21 +876,27 @@ export type PromptInputAttachmentsProps = Omit<
 export function PromptInputAttachments({
   children,
   className,
-  ...props
 }: PromptInputAttachmentsProps) {
   const attachments = usePromptInputAttachments();
 
-  if (!attachments.files.length) return null;
-
   return (
-    <div
-      className={cn("flex flex-wrap items-center gap-2 p-3", className)}
-      {...props}
-    >
-      {attachments.files.map((file) => (
-        <Fragment key={file.id}>{children(file)}</Fragment>
-      ))}
-    </div>
+    <AnimatePresence>
+      {attachments.files.length > 0 && (
+        <motion.div
+          className={cn("flex w-full min-w-0 max-w-full shrink items-center gap-2 overflow-x-auto overflow-y-hidden p-3", className)}
+          initial={{ maxHeight: 0, opacity: 0 }}
+          animate={{ maxHeight: 200, opacity: 1 }}
+          exit={{ maxHeight: 0, opacity: 0, transition: { delay: 0.15, duration: 0.15 } }}
+          transition={{ duration: 0.15 }}
+        >
+          <AnimatePresence mode="popLayout">
+            {attachments.files.map((file) => (
+              <Fragment key={file.id}>{children(file)}</Fragment>
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
