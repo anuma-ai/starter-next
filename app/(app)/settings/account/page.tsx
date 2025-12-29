@@ -55,7 +55,7 @@ export default function AccountPage() {
               </div>
               {linkedAccounts.map((account, index) => {
                 const accountType = account.type;
-                let label = accountType;
+                let label: string = accountType;
                 let value = "";
 
                 if (accountType === "email") {

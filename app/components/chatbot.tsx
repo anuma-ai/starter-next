@@ -217,7 +217,6 @@ const ChatBotDemo = () => {
             response_format: "url",
           });
           if (result.data?.images?.[0]?.url) {
-            // @ts-ignore
             setMessages((prev) => [
               ...prev,
               {
@@ -226,7 +225,7 @@ const ChatBotDemo = () => {
                 parts: [
                   {
                     type: "image",
-                    url: result.data.images[0].url,
+                    url: result.data.images![0].url,
                     text: "Generated image",
                   },
                 ],
