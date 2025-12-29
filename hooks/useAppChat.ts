@@ -127,13 +127,15 @@ export function useAppChat({
               type: "function",
               function: {
                 name: "calculator",
+                description: "Performs basic arithmetic operations (add, subtract, multiply, divide) on two numbers",
                 arguments: {
                   type: "object",
                   properties: {
-                    a: { type: "number" },
-                    b: { type: "number" },
+                    a: { type: "number", description: "First number" },
+                    b: { type: "number", description: "Second number" },
                     operation: {
                       type: "string",
+                      description: "Operation to perform: add, subtract, multiply, or divide",
                       enum: ["add", "subtract", "multiply", "divide"],
                     },
                   },
