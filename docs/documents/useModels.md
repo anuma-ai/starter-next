@@ -1,3 +1,5 @@
+# Fetching Models
+
 The `useModels` hook from `@reverbia/sdk/react` fetches and manages the list of
 available LLM models from the API. It provides model metadata and supports
 refreshing the list.
