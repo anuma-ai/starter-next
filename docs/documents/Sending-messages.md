@@ -32,7 +32,8 @@ const {
 const streamingTextRef = useRef<string>("");
 
 const handleSendMessage = useCallback(
-  async (text: string, model: string) => {
+  async (text: string, options: SendMessageOptions = {}) => {
+    const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking } = options;
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
@@ -50,34 +51,6 @@ const handleSendMessage = useCallback(
     // Add both messages to state immediately
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
-    // Add conversation to sidebar immediately when first message is sent
-    if (conversationId) {
-      const title = text.length >= 30 ? `${text.slice(0, 30)}...` : text;
-      setConversations((prev) => {
-        const exists = prev.some(
-          (c) => c.id === conversationId || c.conversationId === conversationId
-        );
-        if (!exists) {
-          // New conversation - add it to the top with the message as title
-          return [
-            {
-              id: conversationId,
-              conversationId: conversationId,
-              title,
-            },
-            ...prev,
-          ];
-        }
-        // Existing conversation - update title if not set
-        return prev.map((c) => {
-          if ((c.id === conversationId || c.conversationId === conversationId) && !c.title) {
-            return { ...c, title };
-          }
-          return c;
-        });
-      });
-    }
-
     // Reset streaming text accumulator
     streamingTextRef.current = "";
 
@@ -85,6 +58,12 @@ const handleSendMessage = useCallback(
       content: text,
       model,
       includeHistory: true,
+      ...(temperature !== undefined && { temperature }),
+      ...(maxOutputTokens !== undefined && { maxOutputTokens }),
+      ...(store !== undefined && { store }),
+      ...(reasoning && { reasoning }),
+      ...(thinking && { thinking }),
+      ...(onThinking && { onThinking }),
       onData: (chunk: string) => {
         // Accumulate text
         streamingTextRef.current += chunk;
@@ -112,7 +91,7 @@ const handleSendMessage = useCallback(
 
     return response;
   },
-  [sendMessage, onStreamingData, conversationId]
+  [sendMessage, onStreamingData]
 );
 ```
 
@@ -120,18 +99,37 @@ const handleSendMessage = useCallback(
 
 ```ts
 const handleNewConversation = useCallback(async () => {
-  const newConv = await createConversation();
-  if (newConv) {
-    setMessages([]);
-  }
-  return newConv;
-}, [createConversation]);
+  // Reset to empty state - let SDK auto-create conversation on first message
+  setMessages([]);
+  loadedConversationIdRef.current = null;
+  setConversationId(null as any); // Clear current conversation
+}, [setConversationId]);
 
 const handleSwitchConversation = useCallback(
-  (id: string) => {
+  async (id: string) => {
+    // Preload messages before switching to prevent flicker
+    // This ensures new messages are ready before we update state
+    const msgs = await getMessages(id);
+    const uiMessages: Message[] = msgs.map((msg: any) => {
+      const parts: MessagePart[] = [];
+      if (msg.thinking) {
+        parts.push({ type: "reasoning" as const, text: msg.thinking });
+      }
+      parts.push({ type: "text" as const, text: msg.content });
+      return {
+        id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
+        role: msg.role,
+        parts,
+      };
+    });
+
+    // Update ref first to prevent useEffect from re-loading
+    loadedConversationIdRef.current = id;
+    // Direct state updates
+    setMessages(uiMessages);
     setConversationId(id);
   },
-  [setConversationId]
+  [setConversationId, getMessages]
 );
 
 const handleDeleteConversation = useCallback(

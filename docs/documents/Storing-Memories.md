@@ -19,8 +19,6 @@ const {
   database,
   getToken,
   generateEmbeddings: true,
-  embeddingProvider,
-  embeddingModel,
   baseUrl: process.env.NEXT_PUBLIC_API_URL,
 });
 ```
