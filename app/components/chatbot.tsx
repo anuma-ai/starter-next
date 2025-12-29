@@ -40,6 +40,7 @@ import {
 import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
+import { getBackendUrl } from "@/lib/getBackendUrl";
 
 const ChatBotDemo = () => {
   const pathname = usePathname();
@@ -56,7 +57,7 @@ const ChatBotDemo = () => {
 
   const { models, refetch } = useModels({
     getToken: getIdentityToken,
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+    baseUrl: getBackendUrl(),
   });
 
   useEffect(() => {
@@ -79,14 +80,14 @@ const ChatBotDemo = () => {
 
   const { generateImage, isLoading: isGeneratingImage } = useImageGeneration({
     getToken: getIdentityToken,
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+    baseUrl: getBackendUrl(),
   });
 
   const { extractPdfContext, isProcessing: isProcessingPdf } = usePdf();
   const { extractOCRContext, isProcessing: isProcessingOCR } = useOCR();
   const { search, isLoading: isSearching } = useSearch({
     getToken: getIdentityToken,
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+    baseUrl: getBackendUrl(),
   });
 
   const displayModels =

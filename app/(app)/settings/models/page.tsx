@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { useModels } from "@reverbia/sdk/react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
+import { getBackendUrl } from "@/lib/getBackendUrl";
 
 export default function ModelsPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function ModelsPage() {
 
   const { models, isLoading, error, refetch } = useModels({
     getToken,
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+    baseUrl: getBackendUrl(),
   });
 
   useEffect(() => {

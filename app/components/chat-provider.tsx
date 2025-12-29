@@ -10,6 +10,7 @@ import React, {
 import { useIdentityToken } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 import { useAppChat } from "@/hooks/useAppChat";
+import { getBackendUrl } from "@/lib/getBackendUrl";
 
 type ChatState = {
   messages: any[];
@@ -88,6 +89,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     getToken: getIdentityToken,
     temperature,
     maxOutputTokens,
+    baseUrl: getBackendUrl(),
   });
 
   return (

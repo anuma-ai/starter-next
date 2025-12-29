@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useSearch } from "@reverbia/sdk/react";
+import { getBackendUrl } from "@/lib/getBackendUrl";
 
 /**
  * useSearch Hook Example
@@ -34,7 +35,7 @@ export function useAppSearch({ getToken, baseUrl }: UseSearchProps) {
   //#region hookInit
   const { search, isLoading, error } = useSearch({
     getToken,
-    baseUrl: baseUrl || process.env.NEXT_PUBLIC_API_URL,
+    baseUrl: baseUrl || getBackendUrl(),
   });
   //#endregion hookInit
 

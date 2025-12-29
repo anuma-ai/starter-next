@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useMemoryStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
+import { getBackendUrl } from "@/lib/getBackendUrl";
 
 /**
  * useMemoryStorage Hook Example
@@ -31,7 +32,7 @@ export function useAppMemoryStorage({
     database,
     getToken,
     generateEmbeddings: true,
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+    baseUrl: getBackendUrl(),
   });
   //#endregion hookInit
 

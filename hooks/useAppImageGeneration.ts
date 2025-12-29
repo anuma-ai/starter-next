@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useImageGeneration } from "@reverbia/sdk/react";
+import { getBackendUrl } from "@/lib/getBackendUrl";
 
 /**
  * useImageGeneration Hook Example
@@ -30,7 +31,7 @@ export function useAppImageGeneration({
   //#region hookInit
   const { generateImage, isLoading } = useImageGeneration({
     getToken,
-    baseUrl: baseUrl || process.env.NEXT_PUBLIC_API_URL,
+    baseUrl: baseUrl || getBackendUrl(),
   });
   //#endregion hookInit
 

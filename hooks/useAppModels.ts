@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useModels } from "@reverbia/sdk/react";
+import { getBackendUrl } from "@/lib/getBackendUrl";
 
 /**
  * useModels Hook Example
@@ -19,7 +20,7 @@ export function useAppModels({ getToken, baseUrl }: UseModelsProps) {
   //#region hookInit
   const { models, refetch, isLoading, error } = useModels({
     getToken,
-    baseUrl: baseUrl || process.env.NEXT_PUBLIC_API_URL,
+    baseUrl: baseUrl || getBackendUrl(),
   });
   //#endregion hookInit
 

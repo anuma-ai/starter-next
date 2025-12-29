@@ -17,6 +17,7 @@ export function SettingsView() {
   const router = useRouter();
   const { logout } = usePrivy();
   const [darkMode, setDarkMode] = useState(false);
+  const [useLocalBackend, setUseLocalBackend] = useState(false);
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE);
   const [maxOutputTokens, setMaxOutputTokens] = useState(
     DEFAULT_MAX_OUTPUT_TOKENS
@@ -25,6 +26,9 @@ export function SettingsView() {
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark");
     setDarkMode(isDark);
+
+    const localBackend = localStorage.getItem("use_local_backend") === "true";
+    setUseLocalBackend(localBackend);
 
     const savedTemp = localStorage.getItem("chat_temperature");
     if (savedTemp) setTemperature(parseFloat(savedTemp));
@@ -42,6 +46,13 @@ export function SettingsView() {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
     }
+  };
+
+  const handleBackendToggle = (checked: boolean) => {
+    setUseLocalBackend(checked);
+    localStorage.setItem("use_local_backend", checked.toString());
+    // Reload the page to apply the new backend setting
+    window.location.reload();
   };
 
   const handleTemperatureChange = (value: number[]) => {
@@ -78,6 +89,21 @@ export function SettingsView() {
                 id="dark-mode"
                 checked={darkMode}
                 onCheckedChange={handleDarkModeToggle}
+              />
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+              <div className="space-y-0.5">
+                <Label htmlFor="local-backend" className="text-base">
+                  Use local backend
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Switch between online backend and local (http://localhost:8080)
+                </p>
+              </div>
+              <Switch
+                id="local-backend"
+                checked={useLocalBackend}
+                onCheckedChange={handleBackendToggle}
               />
             </div>
             <button

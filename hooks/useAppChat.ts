@@ -20,6 +20,7 @@ type UseAppChatProps = {
   temperature?: number;
   maxOutputTokens?: number;
   store?: boolean;
+  baseUrl?: string;
 };
 
 //#region hookInit
@@ -29,6 +30,7 @@ export function useAppChat({
   model = "openai/gpt-5.2-2025-12-11",
   temperature,
   maxOutputTokens,
+  baseUrl,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,9 @@ export function useAppChat({
   const handleStreamingData = useCallback(
     (_chunk: string, accumulated: string) => {
       // Notify all subscribers for direct DOM updates (bypasses React batching)
-      streamingCallbacksRef.current.forEach((callback) => callback(accumulated));
+      streamingCallbacksRef.current.forEach((callback) =>
+        callback(accumulated)
+      );
     },
     []
   );
@@ -66,6 +70,7 @@ export function useAppChat({
     database,
     getToken,
     onStreamingData: handleStreamingData,
+    baseUrl,
   });
 
   // Use memory storage for context-aware responses
@@ -90,7 +95,7 @@ export function useAppChat({
     ) => {
       console.log("[APPCHAT sendMessage] START", {
         textPreview: text.slice(0, 50),
-        model: options?.model || model
+        model: options?.model || model,
       });
 
       setError(null);
@@ -117,6 +122,42 @@ export function useAppChat({
           maxOutputTokens: effectiveMaxOutputTokens,
           ...(options?.reasoning && { reasoning: options.reasoning }),
           ...(options?.thinking && { thinking: options.thinking }),
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "calculator",
+                arguments: {
+                  type: "object",
+                  properties: {
+                    a: { type: "number" },
+                    b: { type: "number" },
+                    operation: {
+                      type: "string",
+                      enum: ["add", "subtract", "multiply", "divide"],
+                    },
+                  },
+                  required: ["a", "b", "operation"],
+                },
+              },
+              executor: async (args: any) => {
+                const { a, b, operation } = args;
+                switch (operation) {
+                  case "add":
+                    return a + b;
+                  case "subtract":
+                    return a - b;
+                  case "multiply":
+                    return a * b;
+                  case "divide":
+                    return a / b;
+                  default:
+                    throw new Error(`Unknown operation: ${operation}`);
+                }
+              },
+              autoExecute: true,
+            },
+          ],
           onThinking,
         });
 
@@ -172,7 +213,7 @@ export function useAppChat({
     ) => {
       console.log("[APPCHAT handleSubmit] START", {
         messageText: message.text?.slice(0, 50),
-        hasText: !!message.text
+        hasText: !!message.text,
       });
 
       if (!message.text) {
@@ -180,7 +221,9 @@ export function useAppChat({
         return;
       }
 
-      console.log("[APPCHAT handleSubmit] Clearing input and calling sendMessage");
+      console.log(
+        "[APPCHAT handleSubmit] Clearing input and calling sendMessage"
+      );
       setInput("");
       await sendMessage(message.text, options);
       console.log("[APPCHAT handleSubmit] sendMessage completed");

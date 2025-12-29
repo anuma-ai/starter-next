@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect, useRef } from "react";
 import { useChatStorage } from "@reverbia/sdk/react";
+import type { LlmapiTool } from "@reverbia/sdk";
 import type { Database } from "@nozbe/watermelondb";
 
 type MessagePart =
@@ -24,6 +25,7 @@ type UseChatStorageProps = {
   database: Database;
   getToken: () => Promise<string | null>;
   onStreamingData?: (chunk: string, accumulated: string) => void;
+  baseUrl?: string;
 };
 
 type SendMessageOptions = {
@@ -34,12 +36,18 @@ type SendMessageOptions = {
   reasoning?: { effort?: string; summary?: string };
   thinking?: { type?: string; budget_tokens?: number };
   onThinking?: (chunk: string) => void;
+  tools?: LlmapiTool[];
 };
 
 /**
  * useAppChatStorage Hook Example
  */
-export function useAppChatStorage({ database, getToken, onStreamingData }: UseChatStorageProps) {
+export function useAppChatStorage({
+  database,
+  getToken,
+  onStreamingData,
+  baseUrl,
+}: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
   // Track which conversation the current messages belong to
@@ -59,6 +67,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
     database,
     getToken,
     autoCreateConversation: true,
+    baseUrl,
   });
   //#endregion hookInit
 
@@ -80,7 +89,11 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
             return {
               ...conv,
               id: convId,
-              title: title ? (title.length >= 30 ? `${title}...` : title) : null,
+              title: title
+                ? title.length >= 30
+                  ? `${title}...`
+                  : title
+                : null,
             };
           } catch {
             return null;
@@ -101,7 +114,8 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
         setConversations((prev) => {
           const exists = prev.some(
-            (c) => c.id === conversationId || c.conversationId === conversationId
+            (c) =>
+              c.id === conversationId || c.conversationId === conversationId
           );
           if (!exists) {
             // New conversation - add it to the top with the message as title
@@ -181,7 +195,16 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
-      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking } = options;
+      const {
+        model,
+        temperature,
+        maxOutputTokens,
+        store,
+        reasoning,
+        thinking,
+        onThinking,
+        tools,
+      } = options;
       const userMessage: Message = {
         id: `user-${Date.now()}`,
         role: "user",
@@ -212,6 +235,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         ...(reasoning && { reasoning }),
         ...(thinking && { thinking }),
         ...(onThinking && { onThinking }),
+        ...(tools && { tools }),
         onData: (chunk: string) => {
           // Accumulate text
           streamingTextRef.current += chunk;
