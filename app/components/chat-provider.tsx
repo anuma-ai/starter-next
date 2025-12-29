@@ -48,14 +48,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const savedTemp = localStorage.getItem("chat_temperature");
-    if (savedTemp) setTemperature(parseFloat(savedTemp));
+    if (savedTemp) {
+      const temp = parseFloat(savedTemp);
+      // Validate temperature is within acceptable range (0-1)
+      if (temp >= 0 && temp <= 1) {
+        setTemperature(temp);
+      } else {
+        console.warn(`Invalid temperature ${temp} in localStorage, ignoring`);
+        localStorage.removeItem("chat_temperature");
+      }
+    }
 
     const savedMaxTokens = localStorage.getItem("chat_maxOutputTokens");
     if (savedMaxTokens) setMaxOutputTokens(parseInt(savedMaxTokens, 10));
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "chat_temperature" && e.newValue) {
-        setTemperature(parseFloat(e.newValue));
+        const temp = parseFloat(e.newValue);
+        if (temp >= 0 && temp <= 1) {
+          setTemperature(temp);
+        }
       }
       if (e.key === "chat_maxOutputTokens" && e.newValue) {
         setMaxOutputTokens(parseInt(e.newValue, 10));

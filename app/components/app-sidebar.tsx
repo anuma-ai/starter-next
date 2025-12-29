@@ -98,7 +98,10 @@ export function AppSidebar({
                     </SidebarMenuButton>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction showOnHover className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer">
+                        <SidebarMenuAction
+                          showOnHover
+                          className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
+                        >
                           <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
                         </SidebarMenuAction>
                       </DropdownMenuTrigger>
@@ -107,7 +110,11 @@ export function AppSidebar({
                           onClick={() => onDeleteConversation(conv.id)}
                           className="text-destructive focus:text-destructive"
                         >
-                          <HugeiconsIcon icon={Delete01Icon} size={16} className="mr-2 text-destructive" />
+                          <HugeiconsIcon
+                            icon={Delete01Icon}
+                            size={16}
+                            className="mr-2 text-destructive"
+                          />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>

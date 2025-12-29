@@ -88,6 +88,11 @@ export function useAppChat({
         onThinking?: (chunk: string) => void;
       }
     ) => {
+      console.log("[APPCHAT sendMessage] START", {
+        textPreview: text.slice(0, 50),
+        model: options?.model || model
+      });
+
       setError(null);
       const effectiveModel = options?.model || model;
       const effectiveTemperature = options?.temperature ?? temperature;
@@ -104,6 +109,7 @@ export function useAppChat({
           handleThinkingData(thinkingTextRef.current);
         };
 
+        console.log("[APPCHAT sendMessage] Calling baseSendMessage");
         // Send the message immediately (user message appears right away)
         const response = await baseSendMessage(text, {
           model: effectiveModel,
@@ -132,10 +138,12 @@ export function useAppChat({
           console.error("Failed to extract memories:", err);
         });
 
+        console.log("[APPCHAT sendMessage] END, baseSendMessage completed");
         return response;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to send message";
+        console.error("[APPCHAT sendMessage] ERROR:", errorMessage);
         setError(errorMessage);
         throw err;
       }
@@ -162,9 +170,20 @@ export function useAppChat({
         onThinking?: (chunk: string) => void;
       }
     ) => {
-      if (!message.text) return;
+      console.log("[APPCHAT handleSubmit] START", {
+        messageText: message.text?.slice(0, 50),
+        hasText: !!message.text
+      });
+
+      if (!message.text) {
+        console.log("[APPCHAT handleSubmit] No text, returning");
+        return;
+      }
+
+      console.log("[APPCHAT handleSubmit] Clearing input and calling sendMessage");
       setInput("");
       await sendMessage(message.text, options);
+      console.log("[APPCHAT handleSubmit] sendMessage completed");
     },
     [sendMessage]
   );

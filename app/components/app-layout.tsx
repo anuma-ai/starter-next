@@ -76,28 +76,17 @@ export function AppLayout({ children }: AppLayoutProps) {
   } = chatState;
 
   const handleNewConversation = useCallback(async () => {
-    if (messages.length === 0) {
-      router.push("/");
-      return;
-    }
-    const newConversation = await createConversation();
-    if (newConversation) {
-      const newId = (newConversation as any).conversationId;
-      setConversationId(newId);
-      router.push(`/c/${newId}`);
-    } else {
-      router.push("/");
-    }
-  }, [createConversation, setConversationId, messages.length, router]);
+    // Reset to empty state and navigate to root
+    // Conversation ID will be auto-created when first message is sent
+    await createConversation();
+    router.push("/");
+  }, [createConversation, router]);
 
   const handleSelectConversation = useCallback(
     (id: string) => {
-      console.log("[handleSelectConversation] START, id:", id);
       // Update conversation state and navigate using Next.js router
       setConversationId(id).then(() => {
-        console.log("[handleSelectConversation] setConversationId resolved, navigating to /c/" + id);
         router.push(`/c/${id}`);
-        console.log("[handleSelectConversation] DONE");
       });
     },
     [setConversationId, router]

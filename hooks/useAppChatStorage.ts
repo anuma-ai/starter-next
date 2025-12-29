@@ -92,15 +92,12 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
   }, [getConversations, getMessages, conversationId]);
 
   useEffect(() => {
-    console.log("[useEffect] conversationId changed:", conversationId, "ref:", loadedConversationIdRef.current);
     if (conversationId) {
       // Skip loading if messages were already preloaded by handleSwitchConversation
       if (loadedConversationIdRef.current === conversationId) {
-        console.log("[useEffect] SKIPPING - already preloaded");
         return;
       }
 
-      console.log("[useEffect] Loading messages for:", conversationId);
       // Track the target conversation to handle race conditions
       // when rapidly switching between conversations
       const targetConversationId = conversationId;
@@ -110,11 +107,22 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         // Only update if this is still the target conversation
         // (prevents race conditions when rapidly switching)
         if (loadedConversationIdRef.current !== targetConversationId) {
-          console.log("[useEffect] SKIPPING setMessages - stale conversation");
           return;
         }
 
-        console.log("[useEffect] Setting messages, count:", msgs.length);
+        // CRITICAL FIX: Don't overwrite in-memory messages with empty DB results
+        // This happens when SDK auto-creates a new conversation - the messages
+        // exist in React state but haven't been persisted to DB yet
+        if (msgs.length === 0) {
+          setMessages((currentMessages) => {
+            if (currentMessages.length > 0) {
+              return currentMessages;
+            }
+            return [];
+          });
+          return;
+        }
+
         const uiMessages: Message[] = msgs.map((msg: any) => {
           const parts: MessagePart[] = [];
 
@@ -236,20 +244,17 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
   //#region conversationManagement
   const handleNewConversation = useCallback(async () => {
-    const newConv = await createConversation();
-    if (newConv) {
-      setMessages([]);
-    }
-    return newConv;
-  }, [createConversation]);
+    // Reset to empty state - let SDK auto-create conversation on first message
+    setMessages([]);
+    loadedConversationIdRef.current = null;
+    setConversationId(null as any); // Clear current conversation
+  }, [setConversationId]);
 
   const handleSwitchConversation = useCallback(
     async (id: string) => {
-      console.log("[handleSwitchConversation] START, id:", id);
       // Preload messages before switching to prevent flicker
       // This ensures new messages are ready before we update state
       const msgs = await getMessages(id);
-      console.log("[handleSwitchConversation] Messages loaded, count:", msgs.length);
       const uiMessages: Message[] = msgs.map((msg: any) => {
         const parts: MessagePart[] = [];
         if (msg.thinking) {
@@ -291,6 +296,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
     isLoading,
     sendMessage: handleSendMessage,
     createConversation: handleNewConversation,
+    resetConversation: handleNewConversation, // Alias for clarity
     switchConversation: handleSwitchConversation,
     setConversationId: handleSwitchConversation,
     deleteConversation: handleDeleteConversation,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ImageIcon, Globe } from "lucide-react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import {
@@ -43,6 +43,7 @@ import { useThinkingPanel } from "./thinking-panel-provider";
 
 const ChatBotDemo = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const chatState = useChatContext();
   const { authenticated } = usePrivy();
   const thinkingPanel = useThinkingPanel();
@@ -91,7 +92,12 @@ const ChatBotDemo = () => {
   const displayModels =
     models && models.length > 0
       ? models
-      : [{ id: "openai/gpt-5.2-2025-12-11", name: "openai/gpt-5.2-2025-12-11" }];
+      : [
+          {
+            id: "openai/gpt-5.2-2025-12-11",
+            name: "openai/gpt-5.2-2025-12-11",
+          },
+        ];
 
   const selectedModel = displayModels.find((m: any) => m.id === model);
   const selectedLabel = getModelDisplayName(
@@ -134,9 +140,9 @@ const ChatBotDemo = () => {
       !hasRedirectedRef.current
     ) {
       hasRedirectedRef.current = true;
-      window.history.replaceState(null, "", `/c/${conversationId}`);
+      router.replace(`/c/${conversationId}`);
     }
-  }, [conversationId, pathname, messages.length]);
+  }, [conversationId, pathname, messages.length, router]);
 
   useEffect(() => {
     if (pathname === "/") {
@@ -156,17 +162,24 @@ const ChatBotDemo = () => {
         setInput("");
 
         try {
-          const result = await search(message.text, { search_tool_name: "google-pse" });
+          const result = await search(message.text, {
+            search_tool_name: "google-pse",
+          });
           if (result?.results) {
             const assistantMessage = {
               id: `assistant-${Date.now()}`,
               role: "assistant" as const,
-              parts: [{
-                type: "text",
-                text: result.results
-                  .map((r: any) => `#### [${r.title}](${r.url})\n${r.snippet}`)
-                  .join("\n\n") || "No results found.",
-              }],
+              parts: [
+                {
+                  type: "text",
+                  text:
+                    result.results
+                      .map(
+                        (r: any) => `#### [${r.title}](${r.url})\n${r.snippet}`
+                      )
+                      .join("\n\n") || "No results found.",
+                },
+              ],
             };
             // @ts-ignore
             setMessages((prev) => [...prev, assistantMessage]);
@@ -174,11 +187,19 @@ const ChatBotDemo = () => {
         } catch (error) {
           console.error("Failed to perform search:", error);
           // @ts-ignore
-          setMessages((prev) => [...prev, {
-            id: `assistant-${Date.now()}`,
-            role: "assistant" as const,
-            parts: [{ type: "text", text: "Failed to perform search. Please try again." }],
-          }]);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `assistant-${Date.now()}`,
+              role: "assistant" as const,
+              parts: [
+                {
+                  type: "text",
+                  text: "Failed to perform search. Please try again.",
+                },
+              ],
+            },
+          ]);
         }
       } else if (isImageMode) {
         const userMessage = {
@@ -197,11 +218,20 @@ const ChatBotDemo = () => {
           });
           if (result.data?.images?.[0]?.url) {
             // @ts-ignore
-            setMessages((prev) => [...prev, {
-              id: `assistant-${Date.now()}`,
-              role: "assistant" as const,
-              parts: [{ type: "image", url: result.data.images[0].url, text: "Generated image" }],
-            }]);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `assistant-${Date.now()}`,
+                role: "assistant" as const,
+                parts: [
+                  {
+                    type: "image",
+                    url: result.data.images[0].url,
+                    text: "Generated image",
+                  },
+                ],
+              },
+            ]);
           }
         } catch (error) {
           console.error("Failed to generate image:", error);
@@ -212,18 +242,24 @@ const ChatBotDemo = () => {
           try {
             const pdfContext = await extractPdfContext(message.files);
             if (pdfContext && pdfContext.length > 100) {
-              enhancedText = enhancedText ? `${enhancedText}\n\n${pdfContext}` : pdfContext;
+              enhancedText = enhancedText
+                ? `${enhancedText}\n\n${pdfContext}`
+                : pdfContext;
             } else {
               const ocrContext = await extractOCRContext(message.files);
               if (ocrContext) {
-                enhancedText = enhancedText ? `${enhancedText}\n\n${ocrContext}` : ocrContext;
+                enhancedText = enhancedText
+                  ? `${enhancedText}\n\n${ocrContext}`
+                  : ocrContext;
               }
             }
           } catch (error) {
             try {
               const ocrContext = await extractOCRContext(message.files);
               if (ocrContext) {
-                enhancedText = enhancedText ? `${enhancedText}\n\n${ocrContext}` : ocrContext;
+                enhancedText = enhancedText
+                  ? `${enhancedText}\n\n${ocrContext}`
+                  : ocrContext;
               }
             } catch (ocrError) {
               console.error("Error processing OCR fallback:", ocrError);
@@ -241,12 +277,31 @@ const ChatBotDemo = () => {
         );
       }
     },
-    [model, handleSubmit, isImageMode, generateImage, setMessages, setInput, extractPdfContext, extractOCRContext, isSearchMode, search]
+    [
+      model,
+      handleSubmit,
+      isImageMode,
+      generateImage,
+      setMessages,
+      setInput,
+      extractPdfContext,
+      extractOCRContext,
+      isSearchMode,
+      search,
+    ]
   );
 
   return (
-    <div className={`relative flex min-h-0 flex-1 flex-col bg-background ${messages.length === 0 ? "justify-center" : ""}`}>
-      <div className={`min-h-0 flex-1 px-4 bg-background overflow-y-auto ${messages.length === 0 ? "hidden" : ""}`}>
+    <div
+      className={`relative flex min-h-0 flex-1 flex-col bg-background ${
+        messages.length === 0 ? "justify-center" : ""
+      }`}
+    >
+      <div
+        className={`min-h-0 flex-1 px-4 bg-background overflow-y-auto ${
+          messages.length === 0 ? "hidden" : ""
+        }`}
+      >
         <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
           {messages.map((message: any) => (
             <div key={message.id}>
@@ -254,7 +309,8 @@ const ChatBotDemo = () => {
                 switch (part.type) {
                   case "text": {
                     const isLastAssistantMessage =
-                      message.role === "assistant" && message.id === messages.at(-1)?.id;
+                      message.role === "assistant" &&
+                      message.id === messages.at(-1)?.id;
 
                     // Use StreamingMessage only while actively streaming
                     // Once streaming is done (isLoading=false), use MessageResponse
@@ -292,11 +348,17 @@ const ChatBotDemo = () => {
                         <MessageContent>
                           <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
                             <div className="flex size-8 items-center justify-center rounded-sm bg-background">
-                              <span className="text-xs font-bold text-muted-foreground">PDF</span>
+                              <span className="text-xs font-bold text-muted-foreground">
+                                PDF
+                              </span>
                             </div>
                             <div className="flex flex-col overflow-hidden">
-                              <span className="truncate font-medium">{part.filename}</span>
-                              <span className="text-xs text-muted-foreground">{part.mediaType}</span>
+                              <span className="truncate font-medium">
+                                {part.filename}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {part.mediaType}
+                              </span>
                             </div>
                           </div>
                         </MessageContent>
@@ -306,7 +368,11 @@ const ChatBotDemo = () => {
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
                         <MessageContent>
-                          <img src={part.image_url?.url} alt="Uploaded image" className="max-h-60 max-w-[300px] rounded-lg object-contain" />
+                          <img
+                            src={part.image_url?.url}
+                            alt="Uploaded image"
+                            className="max-h-60 max-w-[300px] rounded-lg object-contain"
+                          />
                         </MessageContent>
                       </Message>
                     );
@@ -324,7 +390,11 @@ const ChatBotDemo = () => {
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
                         <MessageContent>
-                          <img src={part.url} alt="Generated image" className="rounded-lg max-w-full" />
+                          <img
+                            src={part.url}
+                            alt="Generated image"
+                            className="rounded-lg max-w-full"
+                          />
                         </MessageContent>
                       </Message>
                     );
@@ -334,7 +404,10 @@ const ChatBotDemo = () => {
               })}
             </div>
           ))}
-          {(isGeneratingImage || isProcessingPdf || isProcessingOCR || isSearching) && (
+          {(isGeneratingImage ||
+            isProcessingPdf ||
+            isProcessingOCR ||
+            isSearching) && (
             <Message from="assistant">
               <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
                 <Loader />
@@ -344,19 +417,35 @@ const ChatBotDemo = () => {
         </div>
       </div>
 
-      <div className={`px-4 pb-4 pt-2 ${messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"}`}>
+      <div
+        className={`px-4 pb-4 pt-2 ${
+          messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"
+        }`}
+      >
         <div className="mx-auto w-full max-w-3xl">
-          <PromptInput accept="image/*,application/pdf" globalDrop multiple onSubmit={onSubmit}>
+          <PromptInput
+            accept="image/*,application/pdf"
+            globalDrop
+            multiple
+            onSubmit={onSubmit}
+          >
             <PromptInputHeader>
               <PromptInputAttachments>
-                {(attachment) => <PromptInputAttachment key={attachment.id} data={attachment} />}
+                {(attachment) => (
+                  <PromptInputAttachment
+                    key={attachment.id}
+                    data={attachment}
+                  />
+                )}
               </PromptInputAttachments>
             </PromptInputHeader>
             <PromptInputBody>
               <PromptInputTextarea
                 disabled={!authenticated}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={authenticated ? "Ask anything" : "Please sign in to chat"}
+                placeholder={
+                  authenticated ? "Ask anything" : "Please sign in to chat"
+                }
                 value={input}
               />
             </PromptInputBody>
@@ -365,7 +454,9 @@ const ChatBotDemo = () => {
                 <PromptInputAttachButton />
                 <PromptInputSelect onValueChange={setModel} value={model}>
                   <PromptInputSelectTrigger>
-                    <PromptInputSelectValue placeholder="gpt-oss-120b">{selectedLabel}</PromptInputSelectValue>
+                    <PromptInputSelectValue placeholder="gpt-oss-120b">
+                      {selectedLabel}
+                    </PromptInputSelectValue>
                   </PromptInputSelectTrigger>
                   <PromptInputSelectContent>
                     {displayModels.map((option: any) => (
@@ -377,23 +468,45 @@ const ChatBotDemo = () => {
                 </PromptInputSelect>
                 <button
                   type="button"
-                  onClick={() => { setIsImageMode(!isImageMode); setIsSearchMode(false); }}
-                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${isImageMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
+                  onClick={() => {
+                    setIsImageMode(!isImageMode);
+                    setIsSearchMode(false);
+                  }}
+                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                    isImageMode
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
                   title="Toggle Image Generation"
                 >
                   <ImageIcon className="size-4" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setIsSearchMode(!isSearchMode); setIsImageMode(false); }}
-                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${isSearchMode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
+                  onClick={() => {
+                    setIsSearchMode(!isSearchMode);
+                    setIsImageMode(false);
+                  }}
+                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${
+                    isSearchMode
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
                   title="Toggle Web Search"
                 >
                   <Globe className="size-4" />
                 </button>
               </PromptInputTools>
               <PromptInputSubmit
-                disabled={!input || isLoading || isGeneratingImage || isProcessingPdf || isProcessingOCR || isSearching || !authenticated}
+                disabled={
+                  !input ||
+                  isLoading ||
+                  isGeneratingImage ||
+                  isProcessingPdf ||
+                  isProcessingOCR ||
+                  isSearching ||
+                  !authenticated
+                }
                 status={isGeneratingImage || isSearching ? "submitted" : status}
               />
             </PromptInputFooter>

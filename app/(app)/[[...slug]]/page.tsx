@@ -14,20 +14,13 @@ export default function ChatPage() {
   const { setConversationId, conversationId: currentConversationId } =
     useChatContext();
 
-  console.log("[ChatPage] render, urlId:", conversationIdFromUrl, "contextId:", currentConversationId, "initialSyncDone:", initialSyncDone.current);
-
   // Sync URL to state ONLY on initial mount (for direct URL access/refresh)
   // Sidebar navigation updates state directly, so we skip URL sync after mount
   useEffect(() => {
-    console.log("[ChatPage useEffect] urlId:", conversationIdFromUrl, "contextId:", currentConversationId, "initialSyncDone:", initialSyncDone.current);
-    if (initialSyncDone.current) {
-      console.log("[ChatPage useEffect] SKIPPING - already synced");
-      return;
-    }
+    if (initialSyncDone.current) return;
     initialSyncDone.current = true;
 
     if (conversationIdFromUrl && conversationIdFromUrl !== currentConversationId) {
-      console.log("[ChatPage useEffect] Calling setConversationId for initial sync");
       setConversationId(conversationIdFromUrl);
     }
   }, [conversationIdFromUrl, currentConversationId, setConversationId]);
