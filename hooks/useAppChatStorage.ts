@@ -91,6 +91,35 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
     });
   }, [getConversations, getMessages, conversationId]);
 
+  // Add newly created conversations to sidebar when conversationId changes
+  useEffect(() => {
+    if (conversationId && messages.length > 0) {
+      const firstUserMessage = messages.find((m: any) => m.role === "user");
+      if (firstUserMessage && firstUserMessage.parts[0]?.text) {
+        const text = firstUserMessage.parts[0].text;
+        const title = text.length >= 30 ? `${text.slice(0, 30)}...` : text;
+
+        setConversations((prev) => {
+          const exists = prev.some(
+            (c) => c.id === conversationId || c.conversationId === conversationId
+          );
+          if (!exists) {
+            // New conversation - add it to the top with the message as title
+            return [
+              {
+                id: conversationId,
+                conversationId: conversationId,
+                title,
+              },
+              ...prev,
+            ];
+          }
+          return prev;
+        });
+      }
+    }
+  }, [conversationId, messages]);
+
   useEffect(() => {
     if (conversationId) {
       // Skip loading if messages were already preloaded by handleSwitchConversation
@@ -170,34 +199,6 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
       // Add both messages to state immediately
       setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
-      // Add conversation to sidebar immediately when first message is sent
-      if (conversationId) {
-        const title = text.length >= 30 ? `${text.slice(0, 30)}...` : text;
-        setConversations((prev) => {
-          const exists = prev.some(
-            (c) => c.id === conversationId || c.conversationId === conversationId
-          );
-          if (!exists) {
-            // New conversation - add it to the top with the message as title
-            return [
-              {
-                id: conversationId,
-                conversationId: conversationId,
-                title,
-              },
-              ...prev,
-            ];
-          }
-          // Existing conversation - update title if not set
-          return prev.map((c) => {
-            if ((c.id === conversationId || c.conversationId === conversationId) && !c.title) {
-              return { ...c, title };
-            }
-            return c;
-          });
-        });
-      }
-
       // Reset streaming text accumulator
       streamingTextRef.current = "";
 
@@ -238,7 +239,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
       return response;
     },
-    [sendMessage, onStreamingData, conversationId]
+    [sendMessage, onStreamingData]
   );
   //#endregion sendMessage
 
