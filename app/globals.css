@@ -69,11 +69,11 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
+  --sidebar: oklch(0.975 0 0);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
   --sidebar-primary: oklch(0.21 0.006 285.885);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent: oklch(0.94 0.003 286.375);
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.98 0.001 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
@@ -137,7 +137,29 @@
   }
 }
 
+/* Quick fade-in to mask conversation switching flash */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-pulse-dot {
   animation: pulse-dot 1.5s ease-in-out infinite;
   will-change: transform, opacity;
+}
+
+/* Fix shiki syntax highlighting in dark mode - override inline styles */
+.dark [data-streamdown="code-block-body"] {
+  background-color: #1a1a1a !important;
+}
+
+.dark [data-streamdown="code-block-body"] code span span {
+  color: var(--shiki-dark) !important;
+  background-color: transparent !important;
 }

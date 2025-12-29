@@ -1,12 +1,13 @@
 "use client";
 
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  SquarePen,
-  LogOut,
-  MoreHorizontal,
-  Trash2,
-  SlidersHorizontal,
-} from "lucide-react";
+  QuillWrite02Icon,
+  MoreHorizontalIcon,
+  Delete01Icon,
+  Setting07Icon,
+  Search01Icon,
+} from "@hugeicons/core-free-icons";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
@@ -34,8 +36,8 @@ type AppSidebarProps = {
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
-  currentView: "chat" | "settings";
-  onViewChange: (view: "chat" | "settings") => void;
+  currentView: "chat" | "settings" | "conversations";
+  onViewChange: (view: "chat" | "settings" | "conversations") => void;
 };
 
 export function AppSidebar({
@@ -47,7 +49,7 @@ export function AppSidebar({
   currentView,
   onViewChange,
 }: AppSidebarProps) {
-  const { authenticated, user, login, logout, ready } = usePrivy();
+  const { authenticated, login, ready } = usePrivy();
 
   return (
     <Sidebar>
@@ -56,8 +58,17 @@ export function AppSidebar({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={onNewConversation}>
-                <SquarePen className="size-4" />
+                <HugeiconsIcon icon={QuillWrite02Icon} size={16} />
                 <span>New chat</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={currentView === "conversations"}
+                onClick={() => onViewChange("conversations")}
+              >
+                <HugeiconsIcon icon={Search01Icon} size={16} />
+                <span>Search</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -67,12 +78,17 @@ export function AppSidebar({
       {authenticated && (
         <SidebarContent>
           <SidebarGroup>
+            <SidebarGroupLabel className="text-muted-foreground">
+              Conversations
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {conversations.map((conv: any, index: number) => (
+                {conversations.slice(0, 10).map((conv: any, index: number) => (
                   <SidebarMenuItem key={conv.id ?? index}>
                     <SidebarMenuButton
-                      isActive={currentView === "chat" && conversationId === conv.id}
+                      isActive={
+                        currentView === "chat" && conversationId === conv.id
+                      }
                       onClick={() => onSelectConversation(conv.id)}
                     >
                       <span className="truncate">
@@ -82,8 +98,11 @@ export function AppSidebar({
                     </SidebarMenuButton>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction showOnHover>
-                          <MoreHorizontal className="size-4" />
+                        <SidebarMenuAction
+                          showOnHover
+                          className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
+                        >
+                          <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
                         </SidebarMenuAction>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start">
@@ -91,7 +110,11 @@ export function AppSidebar({
                           onClick={() => onDeleteConversation(conv.id)}
                           className="text-destructive focus:text-destructive"
                         >
-                          <Trash2 className="mr-2 size-4 text-destructive" />
+                          <HugeiconsIcon
+                            icon={Delete01Icon}
+                            size={16}
+                            className="mr-2 text-destructive"
+                          />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -117,7 +140,7 @@ export function AppSidebar({
                 isActive={currentView === "settings"}
                 onClick={() => onViewChange("settings")}
               >
-                <SlidersHorizontal className="size-4" />
+                <HugeiconsIcon icon={Setting07Icon} size={16} />
                 <span>Settings</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -127,34 +150,11 @@ export function AppSidebar({
           <Button disabled className="w-full">
             Loading...
           </Button>
-        ) : authenticated ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center gap-2 rounded-md p-2 text-sm hover:bg-accent cursor-pointer">
-                <span className="truncate text-muted-foreground">
-                  {user?.email?.address ?? user?.id ?? "Signed in"}
-                </span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="top"
-              align="start"
-              className="w-[--radix-dropdown-menu-trigger-width]"
-            >
-              <DropdownMenuItem
-                onClick={() => logout()}
-                className="text-destructive focus:text-destructive"
-              >
-                <LogOut className="mr-2 size-4 text-destructive" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
+        ) : !authenticated ? (
           <Button onClick={() => login()} className="w-full">
             Sign in
           </Button>
-        )}
+        ) : null}
       </SidebarFooter>
     </Sidebar>
   );

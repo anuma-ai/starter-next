@@ -4,10 +4,15 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { useChatStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 
-type MessagePart = {
-  type: "text";
-  text: string;
-};
+type MessagePart =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "reasoning";
+      text: string;
+    };
 
 type Message = {
   id: string;
@@ -21,12 +26,24 @@ type UseChatStorageProps = {
   onStreamingData?: (chunk: string, accumulated: string) => void;
 };
 
+type SendMessageOptions = {
+  model?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+  store?: boolean;
+  reasoning?: { effort?: string; summary?: string };
+  thinking?: { type?: string; budget_tokens?: number };
+  onThinking?: (chunk: string) => void;
+};
+
 /**
  * useAppChatStorage Hook Example
  */
 export function useAppChatStorage({ database, getToken, onStreamingData }: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
+  // Track which conversation the current messages belong to
+  const loadedConversationIdRef = useRef<string | null>(null);
 
   //#region hookInit
   const {
@@ -74,14 +91,86 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
     });
   }, [getConversations, getMessages, conversationId]);
 
+  // Add newly created conversations to sidebar when conversationId changes
+  useEffect(() => {
+    if (conversationId && messages.length > 0) {
+      const firstUserMessage = messages.find((m: any) => m.role === "user");
+      if (firstUserMessage && firstUserMessage.parts[0]?.text) {
+        const text = firstUserMessage.parts[0].text;
+        const title = text.length >= 30 ? `${text.slice(0, 30)}...` : text;
+
+        setConversations((prev) => {
+          const exists = prev.some(
+            (c) => c.id === conversationId || c.conversationId === conversationId
+          );
+          if (!exists) {
+            // New conversation - add it to the top with the message as title
+            return [
+              {
+                id: conversationId,
+                conversationId: conversationId,
+                title,
+              },
+              ...prev,
+            ];
+          }
+          return prev;
+        });
+      }
+    }
+  }, [conversationId, messages]);
+
   useEffect(() => {
     if (conversationId) {
+      // Skip loading if messages were already preloaded by handleSwitchConversation
+      if (loadedConversationIdRef.current === conversationId) {
+        return;
+      }
+
+      // Track the target conversation to handle race conditions
+      // when rapidly switching between conversations
+      const targetConversationId = conversationId;
+      loadedConversationIdRef.current = targetConversationId;
+
       getMessages(conversationId).then((msgs) => {
-        const uiMessages: Message[] = msgs.map((msg: any) => ({
-          id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
-          role: msg.role,
-          parts: [{ type: "text" as const, text: msg.content }],
-        }));
+        // Only update if this is still the target conversation
+        // (prevents race conditions when rapidly switching)
+        if (loadedConversationIdRef.current !== targetConversationId) {
+          return;
+        }
+
+        // CRITICAL FIX: Don't overwrite in-memory messages with empty DB results
+        // This happens when SDK auto-creates a new conversation - the messages
+        // exist in React state but haven't been persisted to DB yet
+        if (msgs.length === 0) {
+          setMessages((currentMessages) => {
+            if (currentMessages.length > 0) {
+              return currentMessages;
+            }
+            return [];
+          });
+          return;
+        }
+
+        const uiMessages: Message[] = msgs.map((msg: any) => {
+          const parts: MessagePart[] = [];
+
+          // Add reasoning part if available (before the text content)
+          // SDK stores thinking/reasoning in the 'thinking' field
+          if (msg.thinking) {
+            parts.push({ type: "reasoning" as const, text: msg.thinking });
+          }
+
+          // Add text content
+          parts.push({ type: "text" as const, text: msg.content });
+
+          return {
+            id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
+            role: msg.role,
+            parts,
+          };
+        });
+
         setMessages(uiMessages);
       });
     }
@@ -91,7 +180,8 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
   const streamingTextRef = useRef<string>("");
 
   const handleSendMessage = useCallback(
-    async (text: string, model: string) => {
+    async (text: string, options: SendMessageOptions = {}) => {
+      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking } = options;
       const userMessage: Message = {
         id: `user-${Date.now()}`,
         role: "user",
@@ -116,6 +206,12 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         content: text,
         model,
         includeHistory: true,
+        ...(temperature !== undefined && { temperature }),
+        ...(maxOutputTokens !== undefined && { maxOutputTokens }),
+        ...(store !== undefined && { store }),
+        ...(reasoning && { reasoning }),
+        ...(thinking && { thinking }),
+        ...(onThinking && { onThinking }),
         onData: (chunk: string) => {
           // Accumulate text
           streamingTextRef.current += chunk;
@@ -149,18 +245,37 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
   //#region conversationManagement
   const handleNewConversation = useCallback(async () => {
-    const newConv = await createConversation();
-    if (newConv) {
-      setMessages([]);
-    }
-    return newConv;
-  }, [createConversation]);
+    // Reset to empty state - let SDK auto-create conversation on first message
+    setMessages([]);
+    loadedConversationIdRef.current = null;
+    setConversationId(null as any); // Clear current conversation
+  }, [setConversationId]);
 
   const handleSwitchConversation = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      // Preload messages before switching to prevent flicker
+      // This ensures new messages are ready before we update state
+      const msgs = await getMessages(id);
+      const uiMessages: Message[] = msgs.map((msg: any) => {
+        const parts: MessagePart[] = [];
+        if (msg.thinking) {
+          parts.push({ type: "reasoning" as const, text: msg.thinking });
+        }
+        parts.push({ type: "text" as const, text: msg.content });
+        return {
+          id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
+          role: msg.role,
+          parts,
+        };
+      });
+
+      // Update ref first to prevent useEffect from re-loading
+      loadedConversationIdRef.current = id;
+      // Direct state updates
+      setMessages(uiMessages);
       setConversationId(id);
     },
-    [setConversationId]
+    [setConversationId, getMessages]
   );
 
   const handleDeleteConversation = useCallback(
@@ -182,6 +297,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
     isLoading,
     sendMessage: handleSendMessage,
     createConversation: handleNewConversation,
+    resetConversation: handleNewConversation, // Alias for clarity
     switchConversation: handleSwitchConversation,
     setConversationId: handleSwitchConversation,
     deleteConversation: handleDeleteConversation,

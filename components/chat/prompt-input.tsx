@@ -29,6 +29,7 @@ import {
   SquareIcon,
   XIcon,
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { nanoid } from "nanoid";
 import {
   type ChangeEvent,
@@ -554,7 +555,7 @@ export const PromptInput = ({
         type="file"
       />
       <form
-        className={cn("w-full", className)}
+        className={cn("w-full min-w-0 max-w-full overflow-hidden", className)}
         onSubmit={handleSubmit}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -564,7 +565,7 @@ export const PromptInput = ({
       >
         <InputGroup
           className={cn(
-            "overflow-hidden transition-colors duration-200",
+            "w-full max-w-full overflow-hidden transition-colors duration-200",
             isDragging &&
               "border-gray-600 bg-muted/50 ring-2 ring-gray-600/20 dark:border-gray-500 dark:ring-gray-500/20"
           )}
@@ -687,7 +688,7 @@ export const PromptInputHeader = ({
 }: PromptInputHeaderProps) => (
   <InputGroupAddon
     align="block-end"
-    className={cn("order-first flex-wrap gap-1", className)}
+    className={cn("order-first w-full min-w-0 max-w-full flex-wrap gap-1", className)}
     {...props}
   />
 );
@@ -703,7 +704,7 @@ export const PromptInputFooter = ({
 }: PromptInputFooterProps) => (
   <InputGroupAddon
     align="block-end"
-    className={cn("justify-between gap-1", className)}
+    className={cn("w-full min-w-0 max-w-full justify-between gap-1", className)}
     {...props}
   />
 );
@@ -714,7 +715,7 @@ export const PromptInputTools = ({
   className,
   ...props
 }: PromptInputToolsProps) => (
-  <div className={cn("flex items-center gap-1", className)} {...props} />
+  <div className={cn("flex min-w-0 items-center gap-1", className)} {...props} />
 );
 
 export type PromptInputButtonProps = ComponentProps<typeof InputGroupButton>;
@@ -813,7 +814,6 @@ export type PromptInputAttachmentProps = HTMLAttributes<HTMLDivElement> & {
 export function PromptInputAttachment({
   data,
   className,
-  ...props
 }: PromptInputAttachmentProps) {
   const attachments = usePromptInputAttachments();
 
@@ -827,80 +827,42 @@ export function PromptInputAttachment({
         : "file"
       : "file";
   const isImage = mediaType === "image";
-  const attachmentLabel = filename || (isImage ? "Image" : "Attachment");
 
   return (
-    <HoverCard openDelay={0} closeDelay={0}>
-      <HoverCardTrigger asChild>
-        <div
-          className={cn(
-            "group relative flex h-8 cursor-default select-none items-center gap-1.5 rounded-md border border-border px-1.5 font-medium text-sm transition-all hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-            className
-          )}
-          key={data.id}
-          {...props}
-        >
-          <div className="relative size-5 shrink-0">
-            <div className="absolute inset-0 flex size-5 items-center justify-center overflow-hidden rounded bg-background transition-opacity group-hover:opacity-0">
-              {isImage ? (
-                <img
-                  alt={filename || "attachment"}
-                  className="size-5 object-cover"
-                  height={20}
-                  src={data.url}
-                  width={20}
-                />
-              ) : (
-                <div className="flex size-5 items-center justify-center text-muted-foreground">
-                  <PaperclipIcon className="size-3" />
-                </div>
-              )}
-            </div>
-            <Button
-              aria-label="Remove attachment"
-              className="absolute inset-0 size-5 cursor-pointer rounded p-0 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 [&>svg]:size-2.5"
-              onClick={(e) => {
-                e.stopPropagation();
-                attachments.remove(data.id);
-              }}
-              type="button"
-              variant="ghost"
-            >
-              <XIcon />
-              <span className="sr-only">Remove</span>
-            </Button>
-          </div>
-          <span className="flex-1 truncate">{attachmentLabel}</span>
+    <motion.div
+      className={cn(
+        "group relative flex size-20 flex-shrink-0 cursor-default select-none items-center justify-center overflow-hidden rounded-md",
+        className
+      )}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.8 }}
+      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+    >
+      {isImage ? (
+        <img
+          alt={filename || "attachment"}
+          className="size-full object-cover"
+          src={data.url}
+        />
+      ) : (
+        <div className="flex size-full items-center justify-center text-muted-foreground">
+          <PaperclipIcon className="size-8" />
         </div>
-      </HoverCardTrigger>
-      <HoverCardContent align="start" className="w-auto p-2">
-        <div className="w-auto space-y-3">
-          {isImage && (
-            <div className="flex max-h-96 w-96 items-center justify-center overflow-hidden rounded-md border">
-              <img
-                alt={filename || "attachment preview"}
-                className="max-h-full max-w-full object-contain"
-                height={384}
-                src={data.url}
-                width={448}
-              />
-            </div>
-          )}
-          <div className="flex items-center gap-2.5">
-            <div className="min-w-0 flex-1 space-y-1 px-0.5">
-              <h4 className="truncate font-semibold text-sm leading-none">
-                {filename || (isImage ? "Image" : "Attachment")}
-              </h4>
-              {data.mediaType && (
-                <p className="truncate font-mono text-muted-foreground text-xs">
-                  {data.mediaType}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </HoverCardContent>
-    </HoverCard>
+      )}
+      <button
+        aria-label="Remove attachment"
+        className="absolute right-1 top-1 flex size-5 cursor-pointer items-center justify-center rounded-full bg-black/60 opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/80 group-hover:opacity-100 dark:bg-white/60 dark:hover:bg-white/80"
+        onClick={(e) => {
+          e.stopPropagation();
+          attachments.remove(data.id);
+        }}
+        type="button"
+      >
+        <XIcon className="size-3 text-white dark:text-black" />
+        <span className="sr-only">Remove</span>
+      </button>
+    </motion.div>
   );
 }
 
@@ -914,21 +876,27 @@ export type PromptInputAttachmentsProps = Omit<
 export function PromptInputAttachments({
   children,
   className,
-  ...props
 }: PromptInputAttachmentsProps) {
   const attachments = usePromptInputAttachments();
 
-  if (!attachments.files.length) return null;
-
   return (
-    <div
-      className={cn("flex flex-wrap items-center gap-2 p-3", className)}
-      {...props}
-    >
-      {attachments.files.map((file) => (
-        <Fragment key={file.id}>{children(file)}</Fragment>
-      ))}
-    </div>
+    <AnimatePresence>
+      {attachments.files.length > 0 && (
+        <motion.div
+          className={cn("flex w-full min-w-0 max-w-full shrink items-center gap-2 overflow-x-auto overflow-y-hidden p-3", className)}
+          initial={{ maxHeight: 0, opacity: 0 }}
+          animate={{ maxHeight: 200, opacity: 1 }}
+          exit={{ maxHeight: 0, opacity: 0, transition: { delay: 0.15, duration: 0.15 } }}
+          transition={{ duration: 0.15 }}
+        >
+          <AnimatePresence mode="popLayout">
+            {attachments.files.map((file) => (
+              <Fragment key={file.id}>{children(file)}</Fragment>
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

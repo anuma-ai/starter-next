@@ -5,14 +5,61 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   SidebarProvider,
   SidebarInset,
-  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
 import { useChatContext } from "./chat-provider";
+import { ThinkingPanelProvider } from "./thinking-panel-provider";
+import { ThinkingPanel } from "./thinking-panel";
+import { RightSidebarHandle } from "@/components/ui/right-sidebar";
 
 type AppLayoutProps = {
   children: React.ReactNode;
 };
+
+function SidebarHandle() {
+  const { toggleSidebar, state, openMobile, setOpenMobile } = useSidebar();
+
+  return (
+    <>
+      {/* Desktop handle */}
+      <button
+        onClick={toggleSidebar}
+        className={`fixed top-0 bottom-0 z-50 group/handle cursor-ew-resize hidden md:flex items-center justify-center transition-[left,width,background-color] duration-200 ease-linear ${
+          state === "collapsed" ? "w-8 hover:bg-black/[0.02] dark:hover:bg-muted/50" : "w-5"
+        }`}
+        style={{ left: state === "collapsed" ? 0 : "var(--sidebar-width)" }}
+        aria-label="Toggle Sidebar"
+      >
+        <div className="h-16 w-1.5 rounded-full bg-neutral-300 hover:bg-neutral-400 dark:bg-neutral-600 dark:hover:bg-neutral-500 opacity-0 group-hover/handle:opacity-100 transition-opacity" />
+      </button>
+      {/* Mobile toggle button */}
+      {!openMobile && (
+        <button
+          onClick={() => setOpenMobile(true)}
+          className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-md bg-background border border-border shadow-sm"
+          aria-label="Open Sidebar"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+      )}
+    </>
+  );
+}
 
 export function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
@@ -21,40 +68,36 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const {
     messages,
-    conversationId,
     conversations,
+    conversationId,
     createConversation,
     setConversationId,
     deleteConversation,
   } = chatState;
 
   const handleNewConversation = useCallback(async () => {
-    if (messages.length === 0) {
-      router.push("/");
-      return;
-    }
-    const newConversation = await createConversation();
-    if (newConversation) {
-      const newId = (newConversation as any).conversationId;
-      setConversationId(newId);
-      router.push(`/c/${newId}`);
-    } else {
-      router.push("/");
-    }
-  }, [createConversation, setConversationId, messages.length, router]);
+    // Reset to empty state and navigate to root
+    // Conversation ID will be auto-created when first message is sent
+    await createConversation();
+    router.push("/");
+  }, [createConversation, router]);
 
   const handleSelectConversation = useCallback(
     (id: string) => {
-      setConversationId(id);
-      router.push(`/c/${id}`);
+      // Update conversation state and navigate using Next.js router
+      setConversationId(id).then(() => {
+        router.push(`/c/${id}`);
+      });
     },
     [setConversationId, router]
   );
 
   const handleViewChange = useCallback(
-    (view: "chat" | "settings") => {
+    (view: "chat" | "settings" | "conversations") => {
       if (view === "settings") {
         router.push("/settings");
+      } else if (view === "conversations") {
+        router.push("/conversations");
       } else {
         router.push("/");
       }
@@ -62,31 +105,40 @@ export function AppLayout({ children }: AppLayoutProps) {
     [router]
   );
 
-  const currentView = pathname.startsWith("/settings") ? "settings" : "chat";
+  const currentView = pathname.startsWith("/settings")
+    ? "settings"
+    : pathname.startsWith("/conversations")
+    ? "conversations"
+    : "chat";
   const insetBackground = "bg-background";
 
-  // Derive active conversation from pathname for immediate UI updates
-  const activeConversationId = pathname.startsWith("/c/")
-    ? pathname.replace("/c/", "")
-    : null;
+  // Use context's conversationId for sidebar active state (not pathname)
+  // This ensures immediate visual feedback when switching conversations
+  const activeConversationId = conversationId;
 
   return (
-    <SidebarProvider>
-      <AppSidebar
-        conversations={conversations}
-        conversationId={activeConversationId}
-        onNewConversation={handleNewConversation}
-        onSelectConversation={handleSelectConversation}
-        onDeleteConversation={deleteConversation}
-        currentView={currentView}
-        onViewChange={handleViewChange}
-      />
-      <SidebarInset className={`min-h-dvh ${insetBackground}`}>
-        <header className="flex h-14 shrink-0 items-center gap-2 px-4 bg-transparent">
-          <SidebarTrigger />
-        </header>
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
+    <ThinkingPanelProvider>
+      <SidebarProvider>
+        <AppSidebar
+          conversations={conversations}
+          conversationId={activeConversationId}
+          onNewConversation={handleNewConversation}
+          onSelectConversation={handleSelectConversation}
+          onDeleteConversation={deleteConversation}
+          currentView={currentView}
+          onViewChange={handleViewChange}
+        />
+        <SidebarHandle />
+        <SidebarInset className={`min-h-dvh ${insetBackground}`}>
+          {children}
+        </SidebarInset>
+        {currentView === "chat" && (
+          <>
+            <ThinkingPanel />
+            <RightSidebarHandle />
+          </>
+        )}
+      </SidebarProvider>
+    </ThinkingPanelProvider>
   );
 }
