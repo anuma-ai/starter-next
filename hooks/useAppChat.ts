@@ -59,6 +59,7 @@ export function useAppChat({
     conversationId,
     isLoading,
     sendMessage: baseSendMessage,
+    addMessageOptimistically,
     createConversation,
     switchConversation,
     setConversationId,
@@ -89,6 +90,7 @@ export function useAppChat({
         onThinking?: (chunk: string) => void;
         files?: FileUIPart[];
         displayText?: string;
+        skipOptimisticUpdate?: boolean;
       }
     ) => {
       console.log("[APPCHAT sendMessage] START", {
@@ -122,6 +124,7 @@ export function useAppChat({
           ...(options?.thinking && { thinking: options.thinking }),
           ...(options?.files && { files: options.files }),
           ...(options?.displayText && { displayText: options.displayText }),
+          ...(options?.skipOptimisticUpdate !== undefined && { skipOptimisticUpdate: options.skipOptimisticUpdate }),
           onThinking,
         });
 
@@ -173,6 +176,7 @@ export function useAppChat({
         reasoning?: { effort?: string; summary?: string };
         thinking?: { type?: string; budget_tokens?: number };
         onThinking?: (chunk: string) => void;
+        skipOptimisticUpdate?: boolean;
       }
     ) => {
       console.log("[APPCHAT handleSubmit] START", {
@@ -185,16 +189,20 @@ export function useAppChat({
         return;
       }
 
-      console.log("[APPCHAT handleSubmit] Clearing input and calling sendMessage");
-      setInput("");
+      console.log("[APPCHAT handleSubmit] Calling sendMessage");
+      // Only clear input if we haven't already done it optimistically
+      if (!options?.skipOptimisticUpdate) {
+        setInput("");
+      }
       await sendMessage(message.text, {
         ...options,
         files: message.files,
         displayText: message.displayText,
+        skipOptimisticUpdate: options?.skipOptimisticUpdate,
       });
       console.log("[APPCHAT handleSubmit] sendMessage completed");
     },
-    [sendMessage]
+    [sendMessage, setInput]
   );
 
   const subscribeToStreaming = useCallback(
@@ -235,6 +243,7 @@ export function useAppChat({
     // Chat actions
     sendMessage,
     handleSubmit,
+    addMessageOptimistically,
     createConversation,
     switchConversation,
     setConversationId,

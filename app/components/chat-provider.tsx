@@ -16,6 +16,7 @@ type ChatState = {
   input: string;
   setInput: (value: string) => void;
   handleSubmit: (message: any, options?: any) => Promise<void>;
+  addMessageOptimistically: (text: string, files?: any[], displayText?: string) => string;
   isLoading: boolean;
   status: any;
   setMessages: React.Dispatch<React.SetStateAction<any[]>>;

@@ -49,6 +49,7 @@ type SendMessageOptions = {
   onThinking?: (chunk: string) => void;
   files?: FileUIPart[];
   displayText?: string;
+  skipOptimisticUpdate?: boolean;
 };
 
 /**
@@ -231,61 +232,78 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
   //#region sendMessage
   const streamingTextRef = useRef<string>("");
+  const currentAssistantMessageIdRef = useRef<string | null>(null);
+
+  // Add message optimistically to UI (doesn't send to API yet)
+  const addMessageOptimistically = useCallback((text: string, files?: FileUIPart[], displayText?: string) => {
+    // Mark that we're sending a message to prevent DB reload from overwriting
+    isSendingMessageRef.current = true;
+
+    // Create message parts: text first, then any files
+    const parts: MessagePart[] = [];
+
+    // Add text part if there's text
+    // Use displayText for UI (without OCR)
+    const textForUI = displayText || text;
+    if (textForUI) {
+      parts.push({ type: "text", text: textForUI });
+    }
+
+    // Add file parts (images and other files)
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        if (file.mediaType?.startsWith("image/")) {
+          // For images, create image_url part
+          parts.push({
+            type: "image_url",
+            image_url: { url: file.url },
+          });
+        } else {
+          // For other files (PDFs, etc), create file part
+          parts.push({
+            type: "file",
+            url: file.url,
+            mediaType: file.mediaType || "",
+            filename: file.filename || "",
+          });
+        }
+      });
+    }
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      parts,
+    };
+
+    // Create assistant placeholder message immediately for streaming
+    const assistantMessageId = `assistant-${Date.now()}`;
+    currentAssistantMessageIdRef.current = assistantMessageId;
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      parts: [{ type: "text", text: "" }],
+    };
+
+    // Add both messages to state immediately
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+
+    return assistantMessageId;
+  }, []);
 
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
-      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking, files, displayText } = options;
+      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking, files, displayText, skipOptimisticUpdate } = options;
 
-      // Mark that we're sending a message to prevent DB reload from overwriting
-      isSendingMessageRef.current = true;
+      let assistantMessageId: string;
 
-      // Create message parts: text first, then any files
-      const parts: MessagePart[] = [];
-
-      // Add text part if there's text
-      // Use displayText for UI (without OCR), but send full text to API
-      const textForUI = displayText || text;
-      if (textForUI) {
-        parts.push({ type: "text", text: textForUI });
+      // Add messages optimistically unless skipped
+      if (!skipOptimisticUpdate) {
+        assistantMessageId = addMessageOptimistically(text, files, displayText);
+      } else {
+        // Use the existing assistant message ID
+        assistantMessageId = currentAssistantMessageIdRef.current || `assistant-${Date.now()}`;
       }
-
-      // Add file parts (images and other files)
-      if (files && files.length > 0) {
-        files.forEach((file) => {
-          if (file.mediaType?.startsWith("image/")) {
-            // For images, create image_url part
-            parts.push({
-              type: "image_url",
-              image_url: { url: file.url },
-            });
-          } else {
-            // For other files (PDFs, etc), create file part
-            parts.push({
-              type: "file",
-              url: file.url,
-              mediaType: file.mediaType || "",
-              filename: file.filename || "",
-            });
-          }
-        });
-      }
-
-      const userMessage: Message = {
-        id: `user-${Date.now()}`,
-        role: "user",
-        parts,
-      };
-
-      // Create assistant placeholder message immediately for streaming
-      const assistantMessageId = `assistant-${Date.now()}`;
-      const assistantMessage: Message = {
-        id: assistantMessageId,
-        role: "assistant",
-        parts: [{ type: "text", text: "" }],
-      };
-
-      // Add both messages to state immediately
-      setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
       // Reset streaming text accumulator
       streamingTextRef.current = "";
@@ -402,6 +420,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
     conversationId,
     isLoading,
     sendMessage: handleSendMessage,
+    addMessageOptimistically,
     createConversation: handleNewConversation,
     resetConversation: handleNewConversation, // Alias for clarity
     switchConversation: handleSwitchConversation,

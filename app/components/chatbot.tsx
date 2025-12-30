@@ -42,6 +42,7 @@ const ChatBotDemo = () => {
     input,
     setInput,
     handleSubmit,
+    addMessageOptimistically,
     isLoading,
     status,
     subscribeToStreaming,
@@ -84,6 +85,11 @@ const ChatBotDemo = () => {
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
+      // Step 1: Add message optimistically to UI and clear input immediately
+      addMessageOptimistically(message.text, message.files, message.text);
+      setInput(""); // Clear input immediately for instant feedback
+
+      // Step 2: Process OCR/PDF in background if needed
       let enhancedText = message.text;
       if (message.files && message.files.length > 0) {
         try {
@@ -114,16 +120,18 @@ const ChatBotDemo = () => {
         }
       }
 
+      // Step 3: Send to API with enhanced text (skip adding to UI again since we already did)
       await handleSubmit(
         { ...message, text: enhancedText, displayText: message.text, files: message.files },
         {
           model: "openai/gpt-5.2-2025-12-11",
           reasoning: { effort: "high", summary: "detailed" },
           thinking: { type: "enabled", budget_tokens: 10000 },
+          skipOptimisticUpdate: true,
         }
       );
     },
-    [handleSubmit, extractPdfContext, extractOCRContext]
+    [handleSubmit, addMessageOptimistically, setInput, extractPdfContext, extractOCRContext]
   );
 
   return (
