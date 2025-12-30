@@ -129,7 +129,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           onViewChange={handleViewChange}
         />
         <SidebarHandle />
-        <SidebarInset className={`min-h-dvh ${insetBackground}`}>
+        <SidebarInset className={`min-h-dvh min-w-0 ${insetBackground}`}>
           {children}
         </SidebarInset>
         {currentView === "chat" && (

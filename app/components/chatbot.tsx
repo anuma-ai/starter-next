@@ -2,15 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ImageIcon, Globe } from "lucide-react";
-import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
-import {
-  useModels,
-  useImageGeneration,
-  usePdf,
-  useOCR,
-  useSearch,
-} from "@reverbia/sdk/react";
+import { MenuSquareIcon } from "hugeicons-react";
+import { usePrivy } from "@privy-io/react-auth";
+import { usePdf, useOCR } from "@reverbia/sdk/react";
 
 import { Loader } from "@/components/chat/loader";
 import {
@@ -24,18 +18,9 @@ import {
   PromptInputAttachButton,
   PromptInputAttachment,
   PromptInputAttachments,
-  PromptInputBody,
-  PromptInputFooter,
-  PromptInputHeader,
   type PromptInputMessage,
-  PromptInputSelect,
-  PromptInputSelectContent,
-  PromptInputSelectItem,
-  PromptInputSelectTrigger,
-  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
-  PromptInputTools,
 } from "@/components/chat/prompt-input";
 import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
@@ -47,71 +32,19 @@ const ChatBotDemo = () => {
   const chatState = useChatContext();
   const { authenticated } = usePrivy();
   const thinkingPanel = useThinkingPanel();
-  const { identityToken } = useIdentityToken();
   const hasRedirectedRef = useRef(false);
-
-  const getIdentityToken = useCallback(async (): Promise<string | null> => {
-    return identityToken ?? null;
-  }, [identityToken]);
-
-  const { models, refetch } = useModels({
-    getToken: getIdentityToken,
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-  });
-
-  useEffect(() => {
-    if (authenticated && identityToken) {
-      refetch();
-    }
-  }, [authenticated, identityToken, refetch]);
-
-  const [model, setModel] = useState<string>("openai/gpt-5.2-2025-12-11");
-
-  const getModelDisplayName = (modelId: string) => {
-    if (modelId.includes("/")) {
-      return modelId.split("/").pop() || modelId;
-    }
-    return modelId;
-  };
-
-  const [isImageMode, setIsImageMode] = useState(false);
-  const [isSearchMode, setIsSearchMode] = useState(false);
-
-  const { generateImage, isLoading: isGeneratingImage } = useImageGeneration({
-    getToken: getIdentityToken,
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-  });
 
   const { extractPdfContext, isProcessing: isProcessingPdf } = usePdf();
   const { extractOCRContext, isProcessing: isProcessingOCR } = useOCR();
-  const { search, isLoading: isSearching } = useSearch({
-    getToken: getIdentityToken,
-    baseUrl: process.env.NEXT_PUBLIC_API_URL,
-  });
-
-  const displayModels =
-    models && models.length > 0
-      ? models
-      : [
-          {
-            id: "openai/gpt-5.2-2025-12-11",
-            name: "openai/gpt-5.2-2025-12-11",
-          },
-        ];
-
-  const selectedModel = displayModels.find((m: any) => m.id === model);
-  const selectedLabel = getModelDisplayName(
-    selectedModel?.name ?? selectedModel?.id ?? "openai/gpt-5.2-2025-12-11"
-  );
 
   const {
     messages,
     input,
     setInput,
     handleSubmit,
+    addMessageOptimistically,
     isLoading,
     status,
-    setMessages,
     subscribeToStreaming,
     subscribeToThinking,
     conversationId,
@@ -152,147 +85,58 @@ const ChatBotDemo = () => {
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
-      if (isSearchMode) {
-        const userMessage = {
-          id: `user-${Date.now()}`,
-          role: "user" as const,
-          parts: [{ type: "text" as const, text: message.text }],
-        };
-        setMessages((prev) => [...prev, userMessage]);
-        setInput("");
+      // Step 1: Add message optimistically to UI and clear input immediately
+      addMessageOptimistically(message.text, message.files, message.text);
+      setInput(""); // Clear input immediately for instant feedback
 
+      // Step 2: Process OCR/PDF in background if needed
+      let enhancedText = message.text;
+      if (message.files && message.files.length > 0) {
         try {
-          const result = await search(message.text, {
-            search_tool_name: "google-pse",
-          });
-          if (result?.results) {
-            const assistantMessage = {
-              id: `assistant-${Date.now()}`,
-              role: "assistant" as const,
-              parts: [
-                {
-                  type: "text",
-                  text:
-                    result.results
-                      .map(
-                        (r: any) => `#### [${r.title}](${r.url})\n${r.snippet}`
-                      )
-                      .join("\n\n") || "No results found.",
-                },
-              ],
-            };
-            // @ts-ignore
-            setMessages((prev) => [...prev, assistantMessage]);
-          }
-        } catch (error) {
-          console.error("Failed to perform search:", error);
-          // @ts-ignore
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `assistant-${Date.now()}`,
-              role: "assistant" as const,
-              parts: [
-                {
-                  type: "text",
-                  text: "Failed to perform search. Please try again.",
-                },
-              ],
-            },
-          ]);
-        }
-      } else if (isImageMode) {
-        const userMessage = {
-          id: `user-${Date.now()}`,
-          role: "user" as const,
-          parts: [{ type: "text" as const, text: message.text }],
-        };
-        setMessages((prev) => [...prev, userMessage]);
-        setInput("");
-
-        try {
-          const result = await generateImage({
-            prompt: message.text,
-            model: "openai-dall-e-3",
-            response_format: "url",
-          });
-          if (result.data?.images?.[0]?.url) {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: `assistant-${Date.now()}`,
-                role: "assistant" as const,
-                parts: [
-                  {
-                    type: "image",
-                    url: result.data.images![0].url,
-                    text: "Generated image",
-                  },
-                ],
-              },
-            ]);
-          }
-        } catch (error) {
-          console.error("Failed to generate image:", error);
-        }
-      } else {
-        let enhancedText = message.text;
-        if (message.files && message.files.length > 0) {
-          try {
-            const pdfContext = await extractPdfContext(message.files);
-            if (pdfContext && pdfContext.length > 100) {
+          const pdfContext = await extractPdfContext(message.files);
+          if (pdfContext && pdfContext.length > 100) {
+            enhancedText = enhancedText
+              ? `${enhancedText}\n\n${pdfContext}`
+              : pdfContext;
+          } else {
+            const ocrContext = await extractOCRContext(message.files);
+            if (ocrContext) {
               enhancedText = enhancedText
-                ? `${enhancedText}\n\n${pdfContext}`
-                : pdfContext;
-            } else {
-              const ocrContext = await extractOCRContext(message.files);
-              if (ocrContext) {
-                enhancedText = enhancedText
-                  ? `${enhancedText}\n\n${ocrContext}`
-                  : ocrContext;
-              }
+                ? `${enhancedText}\n\n${ocrContext}`
+                : ocrContext;
             }
-          } catch (error) {
-            try {
-              const ocrContext = await extractOCRContext(message.files);
-              if (ocrContext) {
-                enhancedText = enhancedText
-                  ? `${enhancedText}\n\n${ocrContext}`
-                  : ocrContext;
-              }
-            } catch (ocrError) {
-              console.error("Error processing OCR fallback:", ocrError);
+          }
+        } catch (error) {
+          try {
+            const ocrContext = await extractOCRContext(message.files);
+            if (ocrContext) {
+              enhancedText = enhancedText
+                ? `${enhancedText}\n\n${ocrContext}`
+                : ocrContext;
             }
+          } catch (ocrError) {
+            console.error("Error processing OCR fallback:", ocrError);
           }
         }
-
-        await handleSubmit(
-          { ...message, text: enhancedText, displayText: message.text },
-          {
-            model,
-            reasoning: { effort: "high", summary: "detailed" },
-            thinking: { type: "enabled", budget_tokens: 10000 },
-          }
-        );
       }
+
+      // Step 3: Send to API with enhanced text (skip adding to UI again since we already did)
+      await handleSubmit(
+        { ...message, text: enhancedText, displayText: message.text, files: message.files },
+        {
+          model: "openai/gpt-5.2-2025-12-11",
+          reasoning: { effort: "high", summary: "detailed" },
+          thinking: { type: "enabled", budget_tokens: 10000 },
+          skipOptimisticUpdate: true,
+        }
+      );
     },
-    [
-      model,
-      handleSubmit,
-      isImageMode,
-      generateImage,
-      setMessages,
-      setInput,
-      extractPdfContext,
-      extractOCRContext,
-      isSearchMode,
-      search,
-    ]
+    [handleSubmit, addMessageOptimistically, setInput, extractPdfContext, extractOCRContext]
   );
 
   return (
     <div
-      className={`relative flex min-h-0 flex-1 flex-col bg-background ${
+      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${
         messages.length === 0 ? "justify-center" : ""
       }`}
     >
@@ -342,6 +186,27 @@ const ChatBotDemo = () => {
                     );
                   }
                   case "file":
+                    // User files: no bubble
+                    if (message.role === "user") {
+                      return (
+                        <div key={`${message.id}-${i}`} className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm ml-auto w-fit">
+                          <div className="flex size-8 items-center justify-center rounded-sm bg-background">
+                            <span className="text-xs font-bold text-muted-foreground">
+                              PDF
+                            </span>
+                          </div>
+                          <div className="flex flex-col overflow-hidden">
+                            <span className="truncate font-medium">
+                              {part.filename}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {part.mediaType}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    // Assistant files: with bubble
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
                         <MessageContent>
@@ -364,6 +229,18 @@ const ChatBotDemo = () => {
                       </Message>
                     );
                   case "image_url":
+                    // User images: no bubble
+                    if (message.role === "user") {
+                      return (
+                        <img
+                          key={`${message.id}-${i}`}
+                          src={part.image_url?.url}
+                          alt="Uploaded image"
+                          className="max-h-60 max-w-[300px] rounded-lg object-contain ml-auto"
+                        />
+                      );
+                    }
+                    // Assistant images: with bubble
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
                         <MessageContent>
@@ -403,10 +280,7 @@ const ChatBotDemo = () => {
               })}
             </div>
           ))}
-          {(isGeneratingImage ||
-            isProcessingPdf ||
-            isProcessingOCR ||
-            isSearching) && (
+          {(isProcessingPdf || isProcessingOCR) && (
             <Message from="assistant">
               <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
                 <Loader />
@@ -417,18 +291,21 @@ const ChatBotDemo = () => {
       </div>
 
       <div
-        className={`px-4 pb-4 pt-2 ${
+        className={`min-w-0 px-10 pb-4 pt-2 ${
           messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"
         }`}
       >
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full min-w-0 max-w-3xl overflow-hidden">
           <PromptInput
             accept="image/*,application/pdf"
             globalDrop
             multiple
             onSubmit={onSubmit}
           >
-            <PromptInputHeader>
+            <div
+              data-align="block-end"
+              className="order-first w-full min-w-0 max-w-full overflow-hidden"
+            >
               <PromptInputAttachments>
                 {(attachment) => (
                   <PromptInputAttachment
@@ -437,8 +314,11 @@ const ChatBotDemo = () => {
                   />
                 )}
               </PromptInputAttachments>
-            </PromptInputHeader>
-            <PromptInputBody>
+            </div>
+            <div className="flex w-full min-w-0 items-center gap-1 px-3 py-2">
+              <PromptInputAttachButton>
+                <MenuSquareIcon className="size-4" strokeWidth={2} />
+              </PromptInputAttachButton>
               <PromptInputTextarea
                 disabled={!authenticated}
                 onChange={(e) => setInput(e.target.value)}
@@ -446,69 +326,19 @@ const ChatBotDemo = () => {
                   authenticated ? "Ask anything" : "Please sign in to chat"
                 }
                 value={input}
+                className="flex-1 px-2"
               />
-            </PromptInputBody>
-            <PromptInputFooter>
-              <PromptInputTools className="flex-wrap">
-                <PromptInputAttachButton />
-                <PromptInputSelect onValueChange={setModel} value={model}>
-                  <PromptInputSelectTrigger>
-                    <PromptInputSelectValue placeholder="gpt-oss-120b">
-                      {selectedLabel}
-                    </PromptInputSelectValue>
-                  </PromptInputSelectTrigger>
-                  <PromptInputSelectContent>
-                    {displayModels.map((option: any) => (
-                      <PromptInputSelectItem key={option.id} value={option.id}>
-                        {getModelDisplayName(option.name ?? option.id)}
-                      </PromptInputSelectItem>
-                    ))}
-                  </PromptInputSelectContent>
-                </PromptInputSelect>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsImageMode(!isImageMode);
-                    setIsSearchMode(false);
-                  }}
-                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                    isImageMode
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
-                  title="Toggle Image Generation"
-                >
-                  <ImageIcon className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSearchMode(!isSearchMode);
-                    setIsImageMode(false);
-                  }}
-                  className={`flex items-center justify-center rounded-md p-2 transition-colors ${
-                    isSearchMode
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
-                  title="Toggle Web Search"
-                >
-                  <Globe className="size-4" />
-                </button>
-              </PromptInputTools>
               <PromptInputSubmit
                 disabled={
                   !input ||
                   isLoading ||
-                  isGeneratingImage ||
                   isProcessingPdf ||
                   isProcessingOCR ||
-                  isSearching ||
                   !authenticated
                 }
-                status={isGeneratingImage || isSearching ? "submitted" : status}
+                status={status}
               />
-            </PromptInputFooter>
+            </div>
           </PromptInput>
         </div>
       </div>

@@ -459,6 +459,8 @@ export const PromptInput = ({
   const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     if (event.currentTarget.files) {
       add(event.currentTarget.files);
+      // Reset the input value so the same file can be selected again
+      event.currentTarget.value = "";
     }
   };
 
@@ -565,7 +567,7 @@ export const PromptInput = ({
       >
         <InputGroup
           className={cn(
-            "w-full max-w-full overflow-hidden transition-colors duration-200",
+            "w-full min-w-0 max-w-full overflow-hidden transition-colors duration-200",
             isDragging &&
               "border-gray-600 bg-muted/50 ring-2 ring-gray-600/20 dark:border-gray-500 dark:ring-gray-500/20"
           )}
@@ -883,7 +885,7 @@ export function PromptInputAttachments({
     <AnimatePresence>
       {attachments.files.length > 0 && (
         <motion.div
-          className={cn("flex w-full min-w-0 max-w-full shrink items-center gap-2 overflow-x-auto overflow-y-hidden p-3", className)}
+          className={cn("flex min-w-0 w-full items-center gap-2 overflow-x-auto overflow-y-hidden p-3", className)}
           initial={{ maxHeight: 0, opacity: 0 }}
           animate={{ maxHeight: 200, opacity: 1 }}
           exit={{ maxHeight: 0, opacity: 0, transition: { delay: 0.15, duration: 0.15 } }}
