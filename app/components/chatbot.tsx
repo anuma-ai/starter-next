@@ -128,7 +128,7 @@ const ChatBotDemo = () => {
 
   return (
     <div
-      className={`relative flex min-h-0 flex-1 flex-col bg-background ${
+      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${
         messages.length === 0 ? "justify-center" : ""
       }`}
     >
@@ -250,11 +250,11 @@ const ChatBotDemo = () => {
       </div>
 
       <div
-        className={`px-3 pb-4 pt-2 ${
+        className={`min-w-0 px-3 pb-4 pt-2 ${
           messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"
         }`}
       >
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full min-w-0 max-w-3xl overflow-hidden">
           <PromptInput
             accept="image/*,application/pdf"
             globalDrop
@@ -263,7 +263,7 @@ const ChatBotDemo = () => {
           >
             <div
               data-align="block-end"
-              className="order-first w-full min-w-0 max-w-full"
+              className="order-first w-full min-w-0 max-w-full overflow-hidden"
             >
               <PromptInputAttachments>
                 {(attachment) => (
