@@ -459,6 +459,8 @@ export const PromptInput = ({
   const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     if (event.currentTarget.files) {
       add(event.currentTarget.files);
+      // Reset the input value so the same file can be selected again
+      event.currentTarget.value = "";
     }
   };
 
