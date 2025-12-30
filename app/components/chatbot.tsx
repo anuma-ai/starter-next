@@ -250,7 +250,7 @@ const ChatBotDemo = () => {
       </div>
 
       <div
-        className={`min-w-0 px-3 pb-4 pt-2 ${
+        className={`min-w-0 px-10 pb-4 pt-2 ${
           messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"
         }`}
       >
