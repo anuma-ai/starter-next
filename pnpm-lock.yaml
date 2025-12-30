@@ -86,6 +86,9 @@ importers:
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.1)
+      hugeicons-react:
+        specifier: ^0.3.0
+        version: 0.3.0(react@19.2.1)
       lucide-react:
         specifier: ^0.553.0
         version: 0.553.0(react@19.2.1)
@@ -4244,6 +4247,12 @@ packages:
 
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
+
+  hugeicons-react@0.3.0:
+    resolution: {integrity: sha512-znmC+uX7xVqcIs0q09LvwEvJkjX0U3xgT05BSiRV19farS4lPONOKjYT0JkcQG5cvfV0rXHSEAEVNjbHAu81rg==}
+    deprecated: 'Deprecated. Use @hugeicons/react: https://www.npmjs.com/package/@hugeicons/react'
+    peerDependencies:
+      react: '>=16.0.0'
 
   humanize-ms@1.2.1:
     resolution: {integrity: sha512-Fl70vYtsAFb/C06PTS9dZBo7ihau+Tu/DNCk/OyHhea07S+aeMWpFFkUaXRa8fI+ScZbEI8dfSxwY7gxZ9SAVQ==}
@@ -12926,6 +12935,10 @@ snapshots:
   html-url-attributes@3.0.1: {}
 
   html-void-elements@3.0.0: {}
+
+  hugeicons-react@0.3.0(react@19.2.1):
+    dependencies:
+      react: 19.2.1
 
   humanize-ms@1.2.1:
     dependencies:

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { MenuSquareIcon } from "hugeicons-react";
 import { usePrivy } from "@privy-io/react-auth";
 import { usePdf, useOCR } from "@reverbia/sdk/react";
 
@@ -249,7 +250,7 @@ const ChatBotDemo = () => {
       </div>
 
       <div
-        className={`px-4 pb-4 pt-2 ${
+        className={`px-3 pb-4 pt-2 ${
           messages.length === 0 ? "w-full" : "sticky bottom-0 bg-background"
         }`}
       >
@@ -260,7 +261,10 @@ const ChatBotDemo = () => {
             multiple
             onSubmit={onSubmit}
           >
-            <div data-align="block-end" className="order-first w-full min-w-0 max-w-full">
+            <div
+              data-align="block-end"
+              className="order-first w-full min-w-0 max-w-full"
+            >
               <PromptInputAttachments>
                 {(attachment) => (
                   <PromptInputAttachment
@@ -270,8 +274,10 @@ const ChatBotDemo = () => {
                 )}
               </PromptInputAttachments>
             </div>
-            <div className="flex w-full min-w-0 items-center gap-2 px-3 py-2">
-              <PromptInputAttachButton />
+            <div className="flex w-full min-w-0 items-center gap-1 px-3 py-2">
+              <PromptInputAttachButton>
+                <MenuSquareIcon className="size-4" strokeWidth={2} />
+              </PromptInputAttachButton>
               <PromptInputTextarea
                 disabled={!authenticated}
                 onChange={(e) => setInput(e.target.value)}
@@ -279,7 +285,7 @@ const ChatBotDemo = () => {
                   authenticated ? "Ask anything" : "Please sign in to chat"
                 }
                 value={input}
-                className="flex-1"
+                className="flex-1 px-2"
               />
               <PromptInputSubmit
                 disabled={
