@@ -115,7 +115,7 @@ const ChatBotDemo = () => {
       }
 
       await handleSubmit(
-        { ...message, text: enhancedText, displayText: message.text },
+        { ...message, text: enhancedText, displayText: message.text, files: message.files },
         {
           model: "openai/gpt-5.2-2025-12-11",
           reasoning: { effort: "high", summary: "detailed" },
@@ -178,6 +178,27 @@ const ChatBotDemo = () => {
                     );
                   }
                   case "file":
+                    // User files: no bubble
+                    if (message.role === "user") {
+                      return (
+                        <div key={`${message.id}-${i}`} className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm ml-auto w-fit">
+                          <div className="flex size-8 items-center justify-center rounded-sm bg-background">
+                            <span className="text-xs font-bold text-muted-foreground">
+                              PDF
+                            </span>
+                          </div>
+                          <div className="flex flex-col overflow-hidden">
+                            <span className="truncate font-medium">
+                              {part.filename}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {part.mediaType}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    // Assistant files: with bubble
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
                         <MessageContent>
@@ -200,6 +221,18 @@ const ChatBotDemo = () => {
                       </Message>
                     );
                   case "image_url":
+                    // User images: no bubble
+                    if (message.role === "user") {
+                      return (
+                        <img
+                          key={`${message.id}-${i}`}
+                          src={part.image_url?.url}
+                          alt="Uploaded image"
+                          className="max-h-60 max-w-[300px] rounded-lg object-contain ml-auto"
+                        />
+                      );
+                    }
+                    // Assistant images: with bubble
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
                         <MessageContent>

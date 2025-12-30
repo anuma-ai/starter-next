@@ -3,6 +3,7 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import { useChatStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
+import type { FileUIPart } from "@/types/chat";
 
 type MessagePart =
   | {
@@ -12,6 +13,18 @@ type MessagePart =
   | {
       type: "reasoning";
       text: string;
+    }
+  | {
+      type: "image_url";
+      image_url: {
+        url: string;
+      };
+    }
+  | {
+      type: "file";
+      url: string;
+      mediaType: string;
+      filename: string;
     };
 
 type Message = {
@@ -34,6 +47,8 @@ type SendMessageOptions = {
   reasoning?: { effort?: string; summary?: string };
   thinking?: { type?: string; budget_tokens?: number };
   onThinking?: (chunk: string) => void;
+  files?: FileUIPart[];
+  displayText?: string;
 };
 
 /**
@@ -44,6 +59,8 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
   const [conversations, setConversations] = useState<any[]>([]);
   // Track which conversation the current messages belong to
   const loadedConversationIdRef = useRef<string | null>(null);
+  // Track if we're actively sending a message to prevent DB reload from overwriting
+  const isSendingMessageRef = useRef<boolean>(false);
 
   //#region hookInit
   const {
@@ -95,8 +112,9 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
   useEffect(() => {
     if (conversationId && messages.length > 0) {
       const firstUserMessage = messages.find((m: any) => m.role === "user");
-      if (firstUserMessage && firstUserMessage.parts[0]?.text) {
-        const text = firstUserMessage.parts[0].text;
+      const firstTextPart = firstUserMessage?.parts.find((p) => p.type === "text");
+      if (firstUserMessage && firstTextPart && firstTextPart.type === "text") {
+        const text = firstTextPart.text;
         const title = text.length >= 30 ? `${text.slice(0, 30)}...` : text;
 
         setConversations((prev) => {
@@ -124,6 +142,12 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
     if (conversationId) {
       // Skip loading if messages were already preloaded by handleSwitchConversation
       if (loadedConversationIdRef.current === conversationId) {
+        return;
+      }
+
+      // Skip loading if we're actively sending a message
+      // This prevents DB reload from overwriting our in-memory messages with displayText and file parts
+      if (isSendingMessageRef.current) {
         return;
       }
 
@@ -161,8 +185,37 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
             parts.push({ type: "reasoning" as const, text: msg.thinking });
           }
 
-          // Add text content
-          parts.push({ type: "text" as const, text: msg.content });
+          // Check if we have metadata with displayText and files
+          const metadata = msg.metadata || {};
+          const displayText = metadata.displayText;
+          const storedFiles = metadata.files || [];
+
+          // Add text content - use displayText from metadata if available, otherwise use content
+          const textContent = displayText || msg.content;
+          if (textContent) {
+            parts.push({ type: "text" as const, text: textContent });
+          }
+
+          // Reconstruct file parts from metadata
+          if (storedFiles.length > 0) {
+            storedFiles.forEach((file: any) => {
+              if (file.mediaType?.startsWith("image/")) {
+                // Reconstruct image_url part
+                parts.push({
+                  type: "image_url" as const,
+                  image_url: { url: file.url },
+                });
+              } else {
+                // Reconstruct file part
+                parts.push({
+                  type: "file" as const,
+                  url: file.url,
+                  mediaType: file.mediaType || "",
+                  filename: file.filename || "",
+                });
+              }
+            });
+          }
 
           return {
             id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
@@ -181,11 +234,46 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
-      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking } = options;
+      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking, files, displayText } = options;
+
+      // Mark that we're sending a message to prevent DB reload from overwriting
+      isSendingMessageRef.current = true;
+
+      // Create message parts: text first, then any files
+      const parts: MessagePart[] = [];
+
+      // Add text part if there's text
+      // Use displayText for UI (without OCR), but send full text to API
+      const textForUI = displayText || text;
+      if (textForUI) {
+        parts.push({ type: "text", text: textForUI });
+      }
+
+      // Add file parts (images and other files)
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          if (file.mediaType?.startsWith("image/")) {
+            // For images, create image_url part
+            parts.push({
+              type: "image_url",
+              image_url: { url: file.url },
+            });
+          } else {
+            // For other files (PDFs, etc), create file part
+            parts.push({
+              type: "file",
+              url: file.url,
+              mediaType: file.mediaType || "",
+              filename: file.filename || "",
+            });
+          }
+        });
+      }
+
       const userMessage: Message = {
         id: `user-${Date.now()}`,
         role: "user",
-        parts: [{ type: "text", text }],
+        parts,
       };
 
       // Create assistant placeholder message immediately for streaming
@@ -202,8 +290,19 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
       // Reset streaming text accumulator
       streamingTextRef.current = "";
 
+      // Prepare content: use text for API (includes OCR)
+      const contentForAPI = text;
+
+      // Prepare attachments from files
+      const attachments = files?.map(file => ({
+        type: file.mediaType?.startsWith("image/") ? "image" : "file",
+        data: file.url, // data URL
+        mediaType: file.mediaType,
+        filename: file.filename,
+      }));
+
       const response = await sendMessage({
-        content: text,
+        content: contentForAPI, // Send full text with OCR to API
         model,
         includeHistory: true,
         ...(temperature !== undefined && { temperature }),
@@ -212,6 +311,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         ...(reasoning && { reasoning }),
         ...(thinking && { thinking }),
         ...(onThinking && { onThinking }),
+        ...(attachments && attachments.length > 0 && { attachments }),
         onData: (chunk: string) => {
           // Accumulate text
           streamingTextRef.current += chunk;
@@ -236,6 +336,12 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
           return msg;
         })
       );
+
+      // Now that messages are in state, allow future reloads
+      // Use setTimeout to ensure this happens after the conversationId might have changed
+      setTimeout(() => {
+        isSendingMessageRef.current = false;
+      }, 100);
 
       return response;
     },

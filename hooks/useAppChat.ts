@@ -4,6 +4,7 @@ import { useCallback, useState, useRef } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
 import { useAppMemoryStorage } from "./useAppMemoryStorage";
 import type { Database } from "@nozbe/watermelondb";
+import type { FileUIPart } from "@/types/chat";
 
 /**
  * useAppChat Hook Example
@@ -86,6 +87,8 @@ export function useAppChat({
         reasoning?: { effort?: string; summary?: string };
         thinking?: { type?: string; budget_tokens?: number };
         onThinking?: (chunk: string) => void;
+        files?: FileUIPart[];
+        displayText?: string;
       }
     ) => {
       console.log("[APPCHAT sendMessage] START", {
@@ -117,6 +120,8 @@ export function useAppChat({
           maxOutputTokens: effectiveMaxOutputTokens,
           ...(options?.reasoning && { reasoning: options.reasoning }),
           ...(options?.thinking && { thinking: options.thinking }),
+          ...(options?.files && { files: options.files }),
+          ...(options?.displayText && { displayText: options.displayText }),
           onThinking,
         });
 
@@ -160,7 +165,7 @@ export function useAppChat({
 
   const handleSubmit = useCallback(
     async (
-      message: { text?: string },
+      message: { text?: string; files?: FileUIPart[]; displayText?: string },
       options?: {
         model?: string;
         temperature?: number;
@@ -182,7 +187,11 @@ export function useAppChat({
 
       console.log("[APPCHAT handleSubmit] Clearing input and calling sendMessage");
       setInput("");
-      await sendMessage(message.text, options);
+      await sendMessage(message.text, {
+        ...options,
+        files: message.files,
+        displayText: message.displayText,
+      });
       console.log("[APPCHAT handleSubmit] sendMessage completed");
     },
     [sendMessage]
