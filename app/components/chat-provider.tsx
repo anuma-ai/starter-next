@@ -43,7 +43,7 @@ export function useChatContext() {
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();
-  const { user, signMessage: privySignMessage } = usePrivy();
+  const { user, signMessage: privySignMessage, ready: privyReady } = usePrivy();
 
   // Wrap Privy's signMessage to match SDK's expected signature
   const signMessage = useCallback(
@@ -73,7 +73,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         throw new Error("No embedded wallet available");
       }
       const provider = await embeddedWallet.getEthereumProvider();
-      const accounts = await provider.request({ method: "eth_accounts" });
+      const accounts = (await provider.request({ method: "eth_accounts" })) as string[];
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts available in embedded wallet");
+      }
       const signature = await provider.request({
         method: "personal_sign",
         params: [message, accounts[0]],
@@ -99,7 +102,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const isInitializingRef = useRef(false);
 
   // Check if wallets are ready (connected) before trying to sign
-  const walletsReady = wallets.length > 0 && wallets.some((w) => w.address);
+  // Must wait for Privy to be fully ready AND have wallets with addresses
+  const walletsReady = privyReady && wallets.length > 0 && wallets.some((w) => w.address);
 
   // Request encryption key when user logs in with a wallet (only once per wallet)
   // Wait for wallets to be ready to avoid "Unable to connect to wallet" errors
