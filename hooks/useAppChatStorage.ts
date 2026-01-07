@@ -113,7 +113,9 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
             if (!msgs || msgs.length === 0) return null;
 
             const firstUserMessage = msgs.find((m: any) => m.role === "user");
-            const title = firstUserMessage?.content?.slice(0, 30) || null;
+            // Strip memory context prefix from title
+            const messageText = stripMemoryContext(firstUserMessage?.content || "");
+            const title = messageText?.slice(0, 30) || null;
 
             return {
               ...conv,
