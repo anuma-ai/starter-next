@@ -52,6 +52,26 @@ type SendMessageOptions = {
   skipOptimisticUpdate?: boolean;
 };
 
+// Memory context prefix used when injecting memories into messages
+const MEMORY_CONTEXT_PREFIX = "[Context from user's previous conversations";
+const USER_MESSAGE_MARKER = "User message: ";
+
+/**
+ * Strips memory context prefix from message content if present
+ * Returns the original user message without the injected context
+ */
+function stripMemoryContext(content: string): string {
+  if (!content || !content.startsWith(MEMORY_CONTEXT_PREFIX)) {
+    return content;
+  }
+  // Find "User message: " and extract everything after it
+  const markerIndex = content.indexOf(USER_MESSAGE_MARKER);
+  if (markerIndex !== -1) {
+    return content.slice(markerIndex + USER_MESSAGE_MARKER.length);
+  }
+  return content;
+}
+
 /**
  * useAppChatStorage Hook Example
  */
@@ -191,8 +211,9 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
           const displayText = metadata.displayText;
           const storedFiles = metadata.files || [];
 
-          // Add text content - use displayText from metadata if available, otherwise use content
-          const textContent = displayText || msg.content;
+          // Add text content - use displayText from metadata if available,
+          // otherwise strip memory context prefix from content
+          const textContent = displayText || stripMemoryContext(msg.content);
           if (textContent) {
             parts.push({ type: "text" as const, text: textContent });
           }
@@ -319,8 +340,18 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         filename: file.filename,
       }));
 
+      // Prepare metadata to store displayText (for memory context) and files
+      const metadata = (displayText || (files && files.length > 0)) ? {
+        ...(displayText && { displayText }),
+        ...(files && files.length > 0 && { files: files.map(f => ({
+          url: f.url,
+          mediaType: f.mediaType,
+          filename: f.filename,
+        })) }),
+      } : undefined;
+
       const response = await sendMessage({
-        content: contentForAPI, // Send full text with OCR to API
+        content: contentForAPI, // Send full text with OCR/memory context to API
         model,
         includeHistory: true,
         ...(temperature !== undefined && { temperature }),
@@ -330,6 +361,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         ...(thinking && { thinking }),
         ...(onThinking && { onThinking }),
         ...(attachments && attachments.length > 0 && { attachments }),
+        ...(metadata && { metadata }),
         onData: (chunk: string) => {
           // Accumulate text
           streamingTextRef.current += chunk;
@@ -385,7 +417,38 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         if (msg.thinking) {
           parts.push({ type: "reasoning" as const, text: msg.thinking });
         }
-        parts.push({ type: "text" as const, text: msg.content });
+
+        // Check if we have metadata with displayText and files
+        const metadata = msg.metadata || {};
+        const displayText = metadata.displayText;
+        const storedFiles = metadata.files || [];
+
+        // Add text content - use displayText from metadata if available,
+        // otherwise strip memory context prefix from content
+        const textContent = displayText || stripMemoryContext(msg.content);
+        if (textContent) {
+          parts.push({ type: "text" as const, text: textContent });
+        }
+
+        // Reconstruct file parts from metadata
+        if (storedFiles.length > 0) {
+          storedFiles.forEach((file: any) => {
+            if (file.mediaType?.startsWith("image/")) {
+              parts.push({
+                type: "image_url" as const,
+                image_url: { url: file.url },
+              });
+            } else {
+              parts.push({
+                type: "file" as const,
+                url: file.url,
+                mediaType: file.mediaType || "",
+                filename: file.filename || "",
+              });
+            }
+          });
+        }
+
         return {
           id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
           role: msg.role,
