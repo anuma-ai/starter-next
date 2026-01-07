@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Trash2 } from "lucide-react";
 import { useMemoryStorage, type StoredMemory } from "@reverbia/sdk/react";
@@ -10,11 +11,18 @@ import { useDatabase } from "@/app/providers";
 export default function MemoriesPage() {
   const router = useRouter();
   const database = useDatabase();
+  const { user } = usePrivy();
   const [memories, setMemories] = useState<StoredMemory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Get wallet address from user's linked wallet
+  const walletAddress = user?.wallet?.address;
+
+  // Only pass walletAddress for decryption - the encryption key is already
+  // initialized by chat-provider, so we don't need signMessage here
   const { fetchAllMemories, removeMemoryById } = useMemoryStorage({
     database,
+    walletAddress,
   });
 
   useEffect(() => {

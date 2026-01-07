@@ -5,6 +5,10 @@ import { useAppChatStorage } from "./useAppChatStorage";
 import { useAppMemoryStorage } from "./useAppMemoryStorage";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
+import type {
+  SignMessageFn,
+  EmbeddedWalletSignerFn,
+} from "@reverbia/sdk/react";
 
 /**
  * useAppChat Hook Example
@@ -21,6 +25,10 @@ type UseAppChatProps = {
   temperature?: number;
   maxOutputTokens?: number;
   store?: boolean;
+  // Encryption props for encrypted memories
+  walletAddress?: string;
+  signMessage?: SignMessageFn;
+  embeddedWalletSigner?: EmbeddedWalletSignerFn;
 };
 
 //#region hookInit
@@ -30,6 +38,9 @@ export function useAppChat({
   model = "openai/gpt-5.2-2025-12-11",
   temperature,
   maxOutputTokens,
+  walletAddress,
+  signMessage,
+  embeddedWalletSigner,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +81,13 @@ export function useAppChat({
     onStreamingData: handleStreamingData,
   });
 
-  // Use memory storage for context-aware responses
+  // Use memory storage for context-aware responses (with optional encryption)
   const { extractMemories, findRelevantMemories } = useAppMemoryStorage({
     database,
     getToken,
+    walletAddress,
+    signMessage,
+    embeddedWalletSigner,
   });
   //#endregion hookInit
 
@@ -95,7 +109,7 @@ export function useAppChat({
     ) => {
       console.log("[APPCHAT sendMessage] START", {
         textPreview: text.slice(0, 50),
-        model: options?.model || model
+        model: options?.model || model,
       });
 
       setError(null);
@@ -114,32 +128,38 @@ export function useAppChat({
           handleThinkingData(thinkingTextRef.current);
         };
 
+        // Find relevant memories BEFORE sending to inject context
+        let apiText = text;
+        try {
+          const memories = await findRelevantMemories(text);
+          if (memories.length > 0) {
+            const memoryContext = memories
+              .map((m) => `- ${m.value}`)
+              .join("\n");
+            apiText = `[Context from user's previous conversations - use this information to provide personalized responses:\n${memoryContext}]\n\nUser message: ${text}`;
+            console.log(`Injecting ${memories.length} memories into context`);
+          }
+        } catch (err) {
+          console.error("Failed to find memories:", err);
+          // Continue without memories if search fails
+        }
+
         console.log("[APPCHAT sendMessage] Calling baseSendMessage");
-        // Send the message immediately (user message appears right away)
-        const response = await baseSendMessage(text, {
+        // Send the message with memory context (if any)
+        // displayText shows the original user message in UI
+        const response = await baseSendMessage(apiText, {
           model: effectiveModel,
           temperature: effectiveTemperature,
           maxOutputTokens: effectiveMaxOutputTokens,
           ...(options?.reasoning && { reasoning: options.reasoning }),
           ...(options?.thinking && { thinking: options.thinking }),
           ...(options?.files && { files: options.files }),
-          ...(options?.displayText && { displayText: options.displayText }),
-          ...(options?.skipOptimisticUpdate !== undefined && { skipOptimisticUpdate: options.skipOptimisticUpdate }),
+          displayText: options?.displayText || text, // Show original text in UI
+          ...(options?.skipOptimisticUpdate !== undefined && {
+            skipOptimisticUpdate: options.skipOptimisticUpdate,
+          }),
           onThinking,
         });
-
-        // Search for relevant memories in the background (for future use)
-        findRelevantMemories(text)
-          .then((memories) => {
-            if (memories.length > 0) {
-              console.log(
-                `Found ${memories.length} relevant memories for context`
-              );
-            }
-          })
-          .catch((err) => {
-            console.error("Failed to find memories:", err);
-          });
 
         // Extract memories from the user message in the background
         extractMemories(text, effectiveModel).catch((err) => {
@@ -161,6 +181,7 @@ export function useAppChat({
       model,
       temperature,
       maxOutputTokens,
+      handleThinkingData,
       findRelevantMemories,
       extractMemories,
     ]

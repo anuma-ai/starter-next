@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback } from "react";
-import { useMemoryStorage } from "@reverbia/sdk/react";
+import {
+  useMemoryStorage,
+  type SignMessageFn,
+  type EmbeddedWalletSignerFn,
+} from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 
 /**
@@ -10,16 +14,25 @@ import type { Database } from "@nozbe/watermelondb";
  * The useMemoryStorage hook provides memory extraction and semantic search
  * capabilities. It can automatically extract facts from conversations and
  * store them with embeddings for later retrieval.
+ *
+ * When walletAddress and signMessage are provided, memories will be encrypted
+ * using AES-GCM with a key derived from the user's wallet signature.
  */
 
 type UseMemoryStorageProps = {
   database: Database;
   getToken?: () => Promise<string | null>;
+  walletAddress?: string;
+  signMessage?: SignMessageFn;
+  embeddedWalletSigner?: EmbeddedWalletSignerFn;
 };
 
 export function useAppMemoryStorage({
   database,
   getToken,
+  walletAddress,
+  signMessage,
+  embeddedWalletSigner,
 }: UseMemoryStorageProps) {
   //#region hookInit
   const {
@@ -32,6 +45,10 @@ export function useAppMemoryStorage({
     getToken,
     generateEmbeddings: true,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
+    // Enable encrypted memories when wallet credentials are provided
+    walletAddress,
+    signMessage,
+    embeddedWalletSigner,
   });
   //#endregion hookInit
 
