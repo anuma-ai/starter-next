@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
-import { ImageIcon, CheckIcon } from "lucide-react";
+import { ImageIcon, CheckIcon, CpuIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import { usePdf, useOCR } from "@reverbia/sdk/react";
 
@@ -70,13 +70,16 @@ const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
           <MenuSquareIcon className="size-4" strokeWidth={2} />
         </PromptInputButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top">
+      <DropdownMenuContent align="start" side="top" className="overflow-hidden">
         <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
           <ImageIcon className="size-4" />
           Add photos & files
         </DropdownMenuItem>
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Select model</DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger>
+            <CpuIcon className="size-4" />
+            Select model
+          </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             {MODELS.map((model) => (
               <DropdownMenuItem
