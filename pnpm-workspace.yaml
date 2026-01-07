@@ -1,0 +1,2 @@
+overrides:
+  '@reverbia/sdk': link:../../../Library/pnpm/global/5/node_modules/@reverbia/sdk

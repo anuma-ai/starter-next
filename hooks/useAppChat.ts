@@ -5,6 +5,10 @@ import { useAppChatStorage } from "./useAppChatStorage";
 import { useAppMemoryStorage } from "./useAppMemoryStorage";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
+import type {
+  SignMessageFn,
+  EmbeddedWalletSignerFn,
+} from "@reverbia/sdk/react";
 
 /**
  * useAppChat Hook Example
@@ -21,6 +25,10 @@ type UseAppChatProps = {
   temperature?: number;
   maxOutputTokens?: number;
   store?: boolean;
+  // Encryption props for encrypted memories
+  walletAddress?: string;
+  signMessage?: SignMessageFn;
+  embeddedWalletSigner?: EmbeddedWalletSignerFn;
 };
 
 //#region hookInit
@@ -30,6 +38,9 @@ export function useAppChat({
   model = "openai/gpt-5.2-2025-12-11",
   temperature,
   maxOutputTokens,
+  walletAddress,
+  signMessage,
+  embeddedWalletSigner,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +81,13 @@ export function useAppChat({
     onStreamingData: handleStreamingData,
   });
 
-  // Use memory storage for context-aware responses
+  // Use memory storage for context-aware responses (with optional encryption)
   const { extractMemories, findRelevantMemories } = useAppMemoryStorage({
     database,
     getToken,
+    walletAddress,
+    signMessage,
+    embeddedWalletSigner,
   });
   //#endregion hookInit
 

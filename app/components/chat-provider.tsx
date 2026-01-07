@@ -6,10 +6,12 @@ import React, {
   useCallback,
   useState,
   useEffect,
+  useRef,
 } from "react";
-import { useIdentityToken } from "@privy-io/react-auth";
+import { useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 import { useAppChat } from "@/hooks/useAppChat";
+import { requestEncryptionKey, hasEncryptionKey } from "@reverbia/sdk/react";
 
 type ChatState = {
   messages: any[];
@@ -41,11 +43,108 @@ export function useChatContext() {
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();
+  const { user, signMessage: privySignMessage } = usePrivy();
+
+  // Wrap Privy's signMessage to match SDK's expected signature
+  const signMessage = useCallback(
+    async (message: string) => {
+      const result = await privySignMessage({ message });
+      return result.signature;
+    },
+    [privySignMessage]
+  );
+  const { wallets } = useWallets();
   const database = useDatabase();
   const [temperature, setTemperature] = useState<number | undefined>(undefined);
   const [maxOutputTokens, setMaxOutputTokens] = useState<number | undefined>(
     undefined
   );
+
+  // Get wallet address from user's linked wallet
+  const walletAddress = user?.wallet?.address;
+
+  // Find embedded wallet for silent signing (optional)
+  const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
+
+  // Create embedded wallet signer for silent signing without confirmation modal
+  const embeddedWalletSigner = useCallback(
+    async (message: string) => {
+      if (!embeddedWallet) {
+        throw new Error("No embedded wallet available");
+      }
+      const provider = await embeddedWallet.getEthereumProvider();
+      const accounts = await provider.request({ method: "eth_accounts" });
+      const signature = await provider.request({
+        method: "personal_sign",
+        params: [message, accounts[0]],
+      });
+      return signature as string;
+    },
+    [embeddedWallet]
+  );
+
+  // Use refs to capture latest values without causing effect re-runs
+  const signMessageRef = useRef(signMessage);
+  const embeddedWalletSignerRef = useRef(embeddedWalletSigner);
+  const embeddedWalletRef = useRef(embeddedWallet);
+
+  useEffect(() => {
+    signMessageRef.current = signMessage;
+    embeddedWalletSignerRef.current = embeddedWalletSigner;
+    embeddedWalletRef.current = embeddedWallet;
+  });
+
+  // Track which wallet addresses we've already initialized encryption for
+  const encryptionInitializedRef = useRef<string | null>(null);
+  const isInitializingRef = useRef(false);
+
+  // Check if wallets are ready (connected) before trying to sign
+  const walletsReady = wallets.length > 0 && wallets.some((w) => w.address);
+
+  // Request encryption key when user logs in with a wallet (only once per wallet)
+  // Wait for wallets to be ready to avoid "Unable to connect to wallet" errors
+  useEffect(() => {
+    // Reset tracking when user signs out
+    if (!walletAddress) {
+      encryptionInitializedRef.current = null;
+      return;
+    }
+
+    // Wait for wallets to be ready before trying to sign
+    if (!walletsReady) {
+      return;
+    }
+
+    const initEncryption = async () => {
+      // Skip if already initialized for this wallet or currently initializing
+      if (encryptionInitializedRef.current === walletAddress) return;
+      if (isInitializingRef.current) return;
+      if (hasEncryptionKey(walletAddress)) {
+        encryptionInitializedRef.current = walletAddress;
+        return;
+      }
+
+      isInitializingRef.current = true;
+      try {
+        // Use refs to get latest values without dependency issues
+        const signer = embeddedWalletRef.current
+          ? embeddedWalletSignerRef.current
+          : undefined;
+        await requestEncryptionKey(
+          walletAddress,
+          signMessageRef.current,
+          signer
+        );
+        encryptionInitializedRef.current = walletAddress;
+        console.log("Encryption key initialized for wallet:", walletAddress);
+      } catch (err) {
+        console.error("Failed to initialize encryption key:", err);
+      } finally {
+        isInitializingRef.current = false;
+      }
+    };
+    initEncryption();
+  }, [walletAddress, walletsReady]);
 
   useEffect(() => {
     const savedTemp = localStorage.getItem("chat_temperature");
@@ -89,6 +188,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     getToken: getIdentityToken,
     temperature,
     maxOutputTokens,
+    walletAddress,
+    signMessage,
+    embeddedWalletSigner: embeddedWallet ? embeddedWalletSigner : undefined,
   });
 
   return (
