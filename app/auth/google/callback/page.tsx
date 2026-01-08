@@ -5,8 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   handleCalendarCallback,
   isCalendarCallback,
-  getAndClearReturnUrl,
-} from "@/lib/google-calendar-auth";
+  getAndClearCalendarReturnUrl,
+  handleDriveCallback,
+  isDriveCallback,
+  getAndClearDriveReturnUrl,
+} from "@reverbia/sdk/react";
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
@@ -34,15 +37,27 @@ export default function GoogleCallbackPage() {
           throw new Error("No authorization code received");
         }
 
-        // The SDK's GoogleDriveAuthProvider handles Drive callbacks automatically
-        // For now, we'll handle Calendar callbacks here
-        // Drive callbacks are handled by the SDK's provider
+        // Check if this is a Calendar callback
         if (isCalendarCallback("/auth/google/callback")) {
           await handleCalendarCallback("/auth/google/callback");
           setStatus("success");
 
           // Redirect back to where the user was
-          const returnUrl = getAndClearReturnUrl();
+          const returnUrl = getAndClearCalendarReturnUrl();
+          setTimeout(() => {
+            if (returnUrl) {
+              window.location.href = returnUrl;
+            } else {
+              router.push("/");
+            }
+          }, 1500);
+        } else if (isDriveCallback("/auth/google/callback")) {
+          // Handle Drive callback with our custom auth
+          await handleDriveCallback("/auth/google/callback");
+          setStatus("success");
+
+          // Redirect back to where the user was
+          const returnUrl = getAndClearDriveReturnUrl();
           setTimeout(() => {
             if (returnUrl) {
               window.location.href = returnUrl;
@@ -51,10 +66,9 @@ export default function GoogleCallbackPage() {
             }
           }, 1500);
         } else {
-          // This might be a Drive callback - SDK handles it
-          // Just redirect back
+          // Unknown callback - just redirect back
           setStatus("success");
-          const returnUrl = getAndClearReturnUrl();
+          const returnUrl = getAndClearCalendarReturnUrl() || getAndClearDriveReturnUrl();
           setTimeout(() => {
             if (returnUrl) {
               window.location.href = returnUrl;
@@ -84,7 +98,7 @@ export default function GoogleCallbackPage() {
         )}
         {status === "success" && (
           <>
-            <div className="mb-4 text-4xl">&#10003;</div>
+            <div className="mb-4 text-4xl text-green-600 dark:text-green-400">&#10003;</div>
             <p className="text-green-600 dark:text-green-400">Connected successfully!</p>
             <p className="text-sm text-muted-foreground mt-2">Redirecting...</p>
           </>

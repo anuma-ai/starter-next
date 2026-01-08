@@ -8,11 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import { PrivyProvider } from "@privy-io/react-auth";
-import { GoogleDriveAuthProvider } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import { getDatabase } from "@/lib/database";
-
-const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 type Props = {
   children: ReactNode;
@@ -87,13 +84,8 @@ export function PrivyAuthProvider({ children }: Props) {
   );
 }
 
+// Google auth is now handled directly in chat-provider.tsx and apps/page.tsx
+// using our custom OAuth implementation that requests proper scopes
 export function GoogleAuthProvider({ children }: Props) {
-  return (
-    <GoogleDriveAuthProvider
-      clientId={googleClientId}
-      callbackPath="/auth/google/callback"
-    >
-      {children}
-    </GoogleDriveAuthProvider>
-  );
+  return <>{children}</>;
 }
