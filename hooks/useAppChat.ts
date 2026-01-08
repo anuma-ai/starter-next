@@ -112,6 +112,7 @@ export function useAppChat({
         skipOptimisticUpdate?: boolean;
         tools?: any[];
         toolChoice?: string;
+        apiType?: "responses" | "completions";
       }
     ) => {
       console.log("[APPCHAT sendMessage] START", {
@@ -170,6 +171,7 @@ export function useAppChat({
           }),
           ...(effectiveTools && { tools: effectiveTools }),
           ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
+          ...(options?.apiType && { apiType: options.apiType }),
           onThinking,
         });
 
@@ -212,6 +214,7 @@ export function useAppChat({
         thinking?: { type?: string; budget_tokens?: number };
         onThinking?: (chunk: string) => void;
         skipOptimisticUpdate?: boolean;
+        apiType?: "responses" | "completions";
       }
     ) => {
       console.log("[APPCHAT handleSubmit] START", {

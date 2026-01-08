@@ -172,17 +172,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       isInitializingRef.current = true;
       try {
-        // Use refs to get latest values without dependency issues
-        // Only use embedded wallet signer if the wallet exists AND is ready (has address)
-        const signer = embeddedWalletRef.current && embeddedWalletReadyRef.current
-          ? embeddedWalletSignerRef.current
-          : undefined;
+        // In development, wait a bit for Privy to fully initialize wallet connections
+        if (process.env.NODE_ENV === "development") {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
 
-        console.log("Initializing encryption key with embedded wallet:", {
-          hasEmbeddedWallet: !!embeddedWalletRef.current,
-          embeddedWalletReady: embeddedWalletReadyRef.current,
-          usingSilentSigning: !!signer,
-        });
+        // Use refs to get latest values without dependency issues
+        const embedded = embeddedWalletRef.current;
+        const signer = embedded ? embeddedWalletSignerRef.current : undefined;
+
+        console.log("[Encryption] Initializing for wallet:", walletAddress);
+        console.log("[Encryption] Embedded wallet available:", !!embedded);
+        console.log("[Encryption] Using embedded signer:", !!signer);
 
         await requestEncryptionKey(
           walletAddress,
@@ -191,9 +192,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         );
         encryptionInitializedRef.current = walletAddress;
         setEncryptionReady(true);
-        console.log("Encryption key initialized for wallet:", walletAddress);
+        console.log("[Encryption] Key initialized successfully");
       } catch (err) {
-        console.error("Failed to initialize encryption key:", err);
+        console.error("[Encryption] Failed to initialize:", err);
       } finally {
         isInitializingRef.current = false;
       }

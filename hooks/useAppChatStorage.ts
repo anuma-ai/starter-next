@@ -52,6 +52,7 @@ type SendMessageOptions = {
   skipOptimisticUpdate?: boolean;
   tools?: any[];
   toolChoice?: string;
+  apiType?: "responses" | "completions";
 };
 
 // Memory context prefix used when injecting memories into messages
@@ -77,7 +78,11 @@ function stripMemoryContext(content: string): string {
 /**
  * useAppChatStorage Hook Example
  */
-export function useAppChatStorage({ database, getToken, onStreamingData }: UseChatStorageProps) {
+export function useAppChatStorage({
+  database,
+  getToken,
+  onStreamingData,
+}: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
   // Track which conversation the current messages belong to
@@ -116,13 +121,19 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
             const firstUserMessage = msgs.find((m: any) => m.role === "user");
             // Strip memory context prefix from title
-            const messageText = stripMemoryContext(firstUserMessage?.content || "");
+            const messageText = stripMemoryContext(
+              firstUserMessage?.content || ""
+            );
             const title = messageText?.slice(0, 30) || null;
 
             return {
               ...conv,
               id: convId,
-              title: title ? (title.length >= 30 ? `${title}...` : title) : null,
+              title: title
+                ? title.length >= 30
+                  ? `${title}...`
+                  : title
+                : null,
             };
           } catch {
             return null;
@@ -137,14 +148,17 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
   useEffect(() => {
     if (conversationId && messages.length > 0) {
       const firstUserMessage = messages.find((m: any) => m.role === "user");
-      const firstTextPart = firstUserMessage?.parts.find((p) => p.type === "text");
+      const firstTextPart = firstUserMessage?.parts.find(
+        (p) => p.type === "text"
+      );
       if (firstUserMessage && firstTextPart && firstTextPart.type === "text") {
         const text = firstTextPart.text;
         const title = text.length >= 30 ? `${text.slice(0, 30)}...` : text;
 
         setConversations((prev) => {
           const exists = prev.some(
-            (c) => c.id === conversationId || c.conversationId === conversationId
+            (c) =>
+              c.id === conversationId || c.conversationId === conversationId
           );
           if (!exists) {
             // New conversation - add it to the top with the message as title
@@ -260,65 +274,82 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
   const currentAssistantMessageIdRef = useRef<string | null>(null);
 
   // Add message optimistically to UI (doesn't send to API yet)
-  const addMessageOptimistically = useCallback((text: string, files?: FileUIPart[], displayText?: string) => {
-    // Mark that we're sending a message to prevent DB reload from overwriting
-    isSendingMessageRef.current = true;
+  const addMessageOptimistically = useCallback(
+    (text: string, files?: FileUIPart[], displayText?: string) => {
+      // Mark that we're sending a message to prevent DB reload from overwriting
+      isSendingMessageRef.current = true;
 
-    // Create message parts: text first, then any files
-    const parts: MessagePart[] = [];
+      // Create message parts: text first, then any files
+      const parts: MessagePart[] = [];
 
-    // Add text part if there's text
-    // Use displayText for UI (without OCR)
-    const textForUI = displayText || text;
-    if (textForUI) {
-      parts.push({ type: "text", text: textForUI });
-    }
+      // Add text part if there's text
+      // Use displayText for UI (without OCR)
+      const textForUI = displayText || text;
+      if (textForUI) {
+        parts.push({ type: "text", text: textForUI });
+      }
 
-    // Add file parts (images and other files)
-    if (files && files.length > 0) {
-      files.forEach((file) => {
-        if (file.mediaType?.startsWith("image/")) {
-          // For images, create image_url part
-          parts.push({
-            type: "image_url",
-            image_url: { url: file.url },
-          });
-        } else {
-          // For other files (PDFs, etc), create file part
-          parts.push({
-            type: "file",
-            url: file.url,
-            mediaType: file.mediaType || "",
-            filename: file.filename || "",
-          });
-        }
-      });
-    }
+      // Add file parts (images and other files)
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          if (file.mediaType?.startsWith("image/")) {
+            // For images, create image_url part
+            parts.push({
+              type: "image_url",
+              image_url: { url: file.url },
+            });
+          } else {
+            // For other files (PDFs, etc), create file part
+            parts.push({
+              type: "file",
+              url: file.url,
+              mediaType: file.mediaType || "",
+              filename: file.filename || "",
+            });
+          }
+        });
+      }
 
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      parts,
-    };
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        parts,
+      };
 
-    // Create assistant placeholder message immediately for streaming
-    const assistantMessageId = `assistant-${Date.now()}`;
-    currentAssistantMessageIdRef.current = assistantMessageId;
-    const assistantMessage: Message = {
-      id: assistantMessageId,
-      role: "assistant",
-      parts: [{ type: "text", text: "" }],
-    };
+      // Create assistant placeholder message immediately for streaming
+      const assistantMessageId = `assistant-${Date.now()}`;
+      currentAssistantMessageIdRef.current = assistantMessageId;
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        role: "assistant",
+        parts: [{ type: "text", text: "" }],
+      };
 
-    // Add both messages to state immediately
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+      // Add both messages to state immediately
+      setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
-    return assistantMessageId;
-  }, []);
+      return assistantMessageId;
+    },
+    []
+  );
 
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
-      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking, files, displayText, skipOptimisticUpdate, tools, toolChoice } = options;
+      const {
+        model,
+        temperature,
+        maxOutputTokens,
+        store,
+        reasoning,
+        thinking,
+        onThinking,
+        files,
+        displayText,
+        skipOptimisticUpdate,
+        tools,
+        toolChoice,
+        apiType,
+      } = options;
 
       let assistantMessageId: string;
 
@@ -327,7 +358,8 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         assistantMessageId = addMessageOptimistically(text, files, displayText);
       } else {
         // Use the existing assistant message ID
-        assistantMessageId = currentAssistantMessageIdRef.current || `assistant-${Date.now()}`;
+        assistantMessageId =
+          currentAssistantMessageIdRef.current || `assistant-${Date.now()}`;
       }
 
       // Reset streaming text accumulator
@@ -337,7 +369,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
       const contentForAPI = text;
 
       // Prepare attachments from files
-      const attachments = files?.map(file => ({
+      const attachments = files?.map((file) => ({
         type: file.mediaType?.startsWith("image/") ? "image" : "file",
         data: file.url, // data URL
         mediaType: file.mediaType,
@@ -345,14 +377,20 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
       }));
 
       // Prepare metadata to store displayText (for memory context) and files
-      const metadata = (displayText || (files && files.length > 0)) ? {
-        ...(displayText && { displayText }),
-        ...(files && files.length > 0 && { files: files.map(f => ({
-          url: f.url,
-          mediaType: f.mediaType,
-          filename: f.filename,
-        })) }),
-      } : undefined;
+      const metadata =
+        displayText || (files && files.length > 0)
+          ? {
+              ...(displayText && { displayText }),
+              ...(files &&
+                files.length > 0 && {
+                  files: files.map((f) => ({
+                    url: f.url,
+                    mediaType: f.mediaType,
+                    filename: f.filename,
+                  })),
+                }),
+            }
+          : undefined;
 
       const response = await sendMessage({
         content: contentForAPI, // Send full text with OCR/memory context to API
@@ -368,6 +406,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         ...(metadata && { metadata }),
         ...(tools && tools.length > 0 && { tools }),
         ...(toolChoice && { toolChoice }),
+        ...(apiType && { apiType }),
         onData: (chunk: string) => {
           // Accumulate text
           streamingTextRef.current += chunk;
