@@ -126,6 +126,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Track which wallet addresses we've already initialized encryption for
   const encryptionInitializedRef = useRef<string | null>(null);
   const isInitializingRef = useRef(false);
+  // State to track when encryption is ready (for reactive updates)
+  // Start as false - will be set to true after encryption is verified/initialized
+  const [encryptionReady, setEncryptionReady] = useState(false);
 
   // Check if wallets are ready (connected) before trying to sign
   // Must wait for Privy to be fully ready AND have an embedded wallet with an address
@@ -138,6 +141,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     // Reset tracking when user signs out
     if (!walletAddress) {
       encryptionInitializedRef.current = null;
+      // If no wallet, encryption isn't needed - mark as ready
+      if (privyReady) {
+        setEncryptionReady(true);
+      }
       return;
     }
 
@@ -159,6 +166,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (isInitializingRef.current) return;
       if (hasEncryptionKey(walletAddress)) {
         encryptionInitializedRef.current = walletAddress;
+        setEncryptionReady(true);
         return;
       }
 
@@ -182,6 +190,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           signer
         );
         encryptionInitializedRef.current = walletAddress;
+        setEncryptionReady(true);
         console.log("Encryption key initialized for wallet:", walletAddress);
       } catch (err) {
         console.error("Failed to initialize encryption key:", err);
@@ -190,7 +199,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
     };
     initEncryption();
-  }, [walletAddress, walletsReady]);
+  }, [walletAddress, walletsReady, privyReady]);
 
   useEffect(() => {
     const savedTemp = localStorage.getItem("chat_temperature");
@@ -357,6 +366,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     // Need calendar token AND identity token (Privy session restored)
     if (!calendarToken || !identityToken) return;
 
+    // Need wallets to be ready (Privy fully loaded)
+    if (!walletsReady) return;
+
+    // Need encryption key to be ready (user may need to sign in Privy modal)
+    if (!encryptionReady) return;
+
     // Need a pending message
     if (!pendingMessageRef.current) return;
 
@@ -369,7 +384,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       handleSubmit({ text: pendingMessage });
     }, 500);
-  }, [calendarToken, identityToken, handleSubmit]);
+  }, [calendarToken, identityToken, walletsReady, encryptionReady, handleSubmit]);
 
   const chatState = useMemo(
     () => ({
