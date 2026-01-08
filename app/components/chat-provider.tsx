@@ -7,11 +7,23 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useMemo,
 } from "react";
 import { useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 import { useAppChat } from "@/hooks/useAppChat";
-import { requestEncryptionKey, hasEncryptionKey } from "@reverbia/sdk/react";
+import { requestEncryptionKey, hasEncryptionKey, useGoogleDriveAuth } from "@reverbia/sdk/react";
+import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
+import {
+  getValidCalendarToken,
+  getCalendarAccessToken,
+  startCalendarAuth,
+  hasCalendarCredentials,
+  storePendingMessage,
+  getAndClearPendingMessage,
+} from "@/lib/google-calendar-auth";
+
+const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 type ChatState = {
   messages: any[];
@@ -40,6 +52,12 @@ export function useChatContext() {
   }
   return context;
 }
+
+// Re-export Calendar token utilities for external use
+export {
+  clearCalendarToken as clearGoogleCalendarToken,
+  storeCalendarToken as storeGoogleCalendarToken,
+} from "@/lib/google-calendar-auth";
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();
@@ -210,7 +228,84 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return identityToken ?? null;
   }, [identityToken]);
 
-  const chatState = useAppChat({
+  // Google Drive auth from SDK
+  const {
+    accessToken: driveAccessToken,
+    requestAccess: requestDriveAccess,
+  } = useGoogleDriveAuth();
+
+  // Calendar token state (triggers re-render when updated)
+  const [calendarToken, setCalendarToken] = useState<string | null>(() =>
+    getValidCalendarToken()
+  );
+
+  // Track current message being sent (for OAuth redirect retry)
+  const currentMessageRef = useRef<string | null>(null);
+
+  // Check for Calendar token on mount and after OAuth callback
+  useEffect(() => {
+    const token = getValidCalendarToken();
+    if (token && token !== calendarToken) {
+      setCalendarToken(token);
+    }
+  }, [calendarToken]);
+
+  // Request calendar access - tries to get token or starts OAuth flow
+  const requestCalendarAccess = useCallback(async (): Promise<string> => {
+    // First, check if we have a valid token
+    const validToken = getValidCalendarToken();
+    if (validToken) {
+      setCalendarToken(validToken);
+      return validToken;
+    }
+
+    // Try to get token with refresh if needed
+    if (hasCalendarCredentials()) {
+      const refreshedToken = await getCalendarAccessToken();
+      if (refreshedToken) {
+        setCalendarToken(refreshedToken);
+        return refreshedToken;
+      }
+    }
+
+    // No valid token - start OAuth flow if client ID is configured
+    if (!googleClientId) {
+      throw new Error(
+        "Google Calendar OAuth not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID."
+      );
+    }
+
+    // Store the current message so we can retry after OAuth
+    if (currentMessageRef.current) {
+      storePendingMessage(currentMessageRef.current);
+    }
+
+    // Start OAuth flow - this will redirect the user
+    await startCalendarAuth(googleClientId, "/auth/google/callback");
+
+    // This promise won't resolve since we're redirecting
+    // The token will be available after the callback
+    return new Promise(() => {});
+  }, [calendarToken]);
+
+  // Create Google tools with auth
+  const tools = useMemo(() => {
+    // Google Calendar tools
+    const calendarTools = createChatTools(
+      () => calendarToken,
+      requestCalendarAccess
+    );
+
+    // Google Drive tools
+    const driveTools = createDriveTools(
+      () => driveAccessToken,
+      requestDriveAccess
+    );
+
+    return [...calendarTools, ...driveTools];
+  }, [calendarToken, driveAccessToken, requestCalendarAccess, requestDriveAccess]);
+
+  const baseChatState = useAppChat({
     database,
     model: "openai/gpt-5.2-2025-12-11",
     getToken: getIdentityToken,
@@ -219,7 +314,70 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     walletAddress,
     signMessage,
     embeddedWalletSigner: embeddedWallet ? embeddedWalletSigner : undefined,
+    tools,
   });
+
+  // Wrap handleSubmit to track the current message for OAuth retry
+  const handleSubmit = useCallback(
+    async (message: any, options?: any) => {
+      // Track the message text for potential OAuth redirect
+      if (message?.text) {
+        currentMessageRef.current = message.text;
+      }
+      try {
+        await baseChatState.handleSubmit(message, options);
+      } finally {
+        // Clear after successful send (or error)
+        currentMessageRef.current = null;
+      }
+    },
+    [baseChatState]
+  );
+
+  // Check for pending message after OAuth return and auto-retry
+  // Store the pending message in a ref so we don't lose it if conditions aren't met yet
+  const pendingMessageRef = useRef<string | null>(null);
+  const pendingMessageHandledRef = useRef(false);
+
+  // Check for pending message on mount (before conditions are ready)
+  useEffect(() => {
+    if (pendingMessageRef.current === null && !pendingMessageHandledRef.current) {
+      const message = getAndClearPendingMessage();
+      if (message) {
+        pendingMessageRef.current = message;
+      }
+    }
+  }, []);
+
+  // Retry pending message when all conditions are met
+  useEffect(() => {
+    // Only run once
+    if (pendingMessageHandledRef.current) return;
+
+    // Need calendar token AND identity token (Privy session restored)
+    if (!calendarToken || !identityToken) return;
+
+    // Need a pending message
+    if (!pendingMessageRef.current) return;
+
+    const pendingMessage = pendingMessageRef.current;
+    pendingMessageRef.current = null;
+    pendingMessageHandledRef.current = true;
+
+    console.log("Retrying pending message after OAuth:", pendingMessage);
+    // Small delay to ensure everything is initialized
+    setTimeout(() => {
+      handleSubmit({ text: pendingMessage });
+    }, 500);
+  }, [calendarToken, identityToken, handleSubmit]);
+
+  const chatState = useMemo(
+    () => ({
+      ...baseChatState,
+      handleSubmit,
+    }),
+    [baseChatState, handleSubmit]
+  );
 
   return (
     <ChatContext.Provider value={chatState}>{children}</ChatContext.Provider>

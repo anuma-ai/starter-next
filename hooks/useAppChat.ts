@@ -29,6 +29,9 @@ type UseAppChatProps = {
   walletAddress?: string;
   signMessage?: SignMessageFn;
   embeddedWalletSigner?: EmbeddedWalletSignerFn;
+  // Tools for responses API
+  tools?: any[];
+  toolChoice?: string;
 };
 
 //#region hookInit
@@ -41,6 +44,8 @@ export function useAppChat({
   walletAddress,
   signMessage,
   embeddedWalletSigner,
+  tools,
+  toolChoice,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +110,8 @@ export function useAppChat({
         files?: FileUIPart[];
         displayText?: string;
         skipOptimisticUpdate?: boolean;
+        tools?: any[];
+        toolChoice?: string;
       }
     ) => {
       console.log("[APPCHAT sendMessage] START", {
@@ -147,6 +154,9 @@ export function useAppChat({
         console.log("[APPCHAT sendMessage] Calling baseSendMessage");
         // Send the message with memory context (if any)
         // displayText shows the original user message in UI
+        // Merge tools from hook props and per-request options
+        const effectiveTools = options?.tools || tools;
+        const effectiveToolChoice = options?.toolChoice || toolChoice;
         const response = await baseSendMessage(apiText, {
           model: effectiveModel,
           temperature: effectiveTemperature,
@@ -158,6 +168,8 @@ export function useAppChat({
           ...(options?.skipOptimisticUpdate !== undefined && {
             skipOptimisticUpdate: options.skipOptimisticUpdate,
           }),
+          ...(effectiveTools && { tools: effectiveTools }),
+          ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
           onThinking,
         });
 
@@ -184,6 +196,8 @@ export function useAppChat({
       handleThinkingData,
       findRelevantMemories,
       extractMemories,
+      tools,
+      toolChoice,
     ]
   );
 

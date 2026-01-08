@@ -8,8 +8,11 @@ import {
   type ReactNode,
 } from "react";
 import { PrivyProvider } from "@privy-io/react-auth";
+import { GoogleDriveAuthProvider } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import { getDatabase } from "@/lib/database";
+
+const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 type Props = {
   children: ReactNode;
@@ -73,12 +76,24 @@ export function PrivyAuthProvider({ children }: Props) {
       clientId={privyClientId}
       config={{
         embeddedWallets: {
-          createOnLogin: "users-without-wallets",
-          requireUserPasswordOnCreate: false,
+          ethereum: {
+            createOnLogin: "users-without-wallets",
+          },
         },
       }}
     >
       {children}
     </PrivyProvider>
+  );
+}
+
+export function GoogleAuthProvider({ children }: Props) {
+  return (
+    <GoogleDriveAuthProvider
+      clientId={googleClientId}
+      callbackPath="/auth/google/callback"
+    >
+      {children}
+    </GoogleDriveAuthProvider>
   );
 }

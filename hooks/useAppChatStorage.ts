@@ -50,6 +50,8 @@ type SendMessageOptions = {
   files?: FileUIPart[];
   displayText?: string;
   skipOptimisticUpdate?: boolean;
+  tools?: any[];
+  toolChoice?: string;
 };
 
 // Memory context prefix used when injecting memories into messages
@@ -316,7 +318,7 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
 
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
-      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking, files, displayText, skipOptimisticUpdate } = options;
+      const { model, temperature, maxOutputTokens, store, reasoning, thinking, onThinking, files, displayText, skipOptimisticUpdate, tools, toolChoice } = options;
 
       let assistantMessageId: string;
 
@@ -364,6 +366,8 @@ export function useAppChatStorage({ database, getToken, onStreamingData }: UseCh
         ...(onThinking && { onThinking }),
         ...(attachments && attachments.length > 0 && { attachments }),
         ...(metadata && { metadata }),
+        ...(tools && tools.length > 0 && { tools }),
+        ...(toolChoice && { toolChoice }),
         onData: (chunk: string) => {
           // Accumulate text
           streamingTextRef.current += chunk;
