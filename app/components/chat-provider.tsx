@@ -7,11 +7,32 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useMemo,
 } from "react";
 import { useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 import { useAppChat } from "@/hooks/useAppChat";
-import { requestEncryptionKey, hasEncryptionKey } from "@reverbia/sdk/react";
+import {
+  requestEncryptionKey,
+  hasEncryptionKey,
+  // Google Calendar Auth
+  getValidCalendarToken,
+  getCalendarAccessToken,
+  startCalendarAuth,
+  hasCalendarCredentials,
+  storeCalendarPendingMessage,
+  getAndClearCalendarPendingMessage,
+  // Google Drive Auth (with drive.readonly scope)
+  getValidDriveToken,
+  getDriveAccessToken,
+  startDriveAuth,
+  hasDriveCredentials,
+  storeDrivePendingMessage,
+  getAndClearDrivePendingMessage,
+} from "@reverbia/sdk/react";
+import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
+
+const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 type ChatState = {
   messages: any[];
@@ -41,6 +62,12 @@ export function useChatContext() {
   return context;
 }
 
+// Re-export Calendar token utilities for external use
+export {
+  clearCalendarToken as clearGoogleCalendarToken,
+  storeCalendarToken as storeGoogleCalendarToken,
+} from "@reverbia/sdk/react";
+
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();
   const { user, signMessage: privySignMessage, ready: privyReady } = usePrivy();
@@ -66,11 +93,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Find embedded wallet for silent signing (optional)
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
 
+  // Check if embedded wallet is ready (has address)
+  const embeddedWalletReady = embeddedWallet?.address !== undefined;
+
   // Create embedded wallet signer for silent signing without confirmation modal
   const embeddedWalletSigner = useCallback(
     async (message: string) => {
       if (!embeddedWallet) {
         throw new Error("No embedded wallet available");
+      }
+      if (!embeddedWallet.address) {
+        throw new Error("Embedded wallet not ready (no address)");
       }
       const provider = await embeddedWallet.getEthereumProvider();
       const accounts = (await provider.request({ method: "eth_accounts" })) as string[];
@@ -90,20 +123,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const signMessageRef = useRef(signMessage);
   const embeddedWalletSignerRef = useRef(embeddedWalletSigner);
   const embeddedWalletRef = useRef(embeddedWallet);
+  const embeddedWalletReadyRef = useRef(embeddedWalletReady);
 
   useEffect(() => {
     signMessageRef.current = signMessage;
     embeddedWalletSignerRef.current = embeddedWalletSigner;
     embeddedWalletRef.current = embeddedWallet;
+    embeddedWalletReadyRef.current = embeddedWalletReady;
   });
 
   // Track which wallet addresses we've already initialized encryption for
   const encryptionInitializedRef = useRef<string | null>(null);
   const isInitializingRef = useRef(false);
+  // State to track when encryption is ready (for reactive updates)
+  // Start as false - will be set to true after encryption is verified/initialized
+  const [encryptionReady, setEncryptionReady] = useState(false);
 
   // Check if wallets are ready (connected) before trying to sign
-  // Must wait for Privy to be fully ready AND have wallets with addresses
-  const walletsReady = privyReady && wallets.length > 0 && wallets.some((w) => w.address);
+  // Must wait for Privy to be fully ready AND have an embedded wallet with an address
+  // The embedded wallet is required for signing - wait for Privy to create it
+  const walletsReady = privyReady && embeddedWallet && embeddedWalletReady;
 
   // Request encryption key when user logs in with a wallet (only once per wallet)
   // Wait for wallets to be ready to avoid "Unable to connect to wallet" errors
@@ -111,11 +150,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     // Reset tracking when user signs out
     if (!walletAddress) {
       encryptionInitializedRef.current = null;
+      // If no wallet, encryption isn't needed - mark as ready
+      if (privyReady) {
+        setEncryptionReady(true);
+      }
       return;
     }
 
     // Wait for wallets to be ready before trying to sign
     if (!walletsReady) {
+      console.log("Waiting for embedded wallet to be ready:", {
+        privyReady,
+        hasEmbeddedWallet: !!embeddedWallet,
+        embeddedWalletReady,
+        walletsCount: wallets.length,
+        walletAddress,
+      });
       return;
     }
 
@@ -125,6 +175,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (isInitializingRef.current) return;
       if (hasEncryptionKey(walletAddress)) {
         encryptionInitializedRef.current = walletAddress;
+        setEncryptionReady(true);
         return;
       }
 
@@ -149,6 +200,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           signer
         );
         encryptionInitializedRef.current = walletAddress;
+        setEncryptionReady(true);
         console.log("[Encryption] Key initialized successfully");
       } catch (err) {
         console.error("[Encryption] Failed to initialize:", err);
@@ -157,7 +209,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
     };
     initEncryption();
-  }, [walletAddress, walletsReady]);
+  }, [walletAddress, walletsReady, privyReady]);
 
   useEffect(() => {
     const savedTemp = localStorage.getItem("chat_temperature");
@@ -195,7 +247,129 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return identityToken ?? null;
   }, [identityToken]);
 
-  const chatState = useAppChat({
+  // Calendar token state (triggers re-render when updated)
+  const [calendarToken, setCalendarToken] = useState<string | null>(() =>
+    getValidCalendarToken()
+  );
+
+  // Drive token state (triggers re-render when updated)
+  const [driveToken, setDriveToken] = useState<string | null>(() =>
+    getValidDriveToken()
+  );
+
+  // Track current message being sent (for OAuth redirect retry)
+  const currentMessageRef = useRef<string | null>(null);
+
+  // Check for Calendar token on mount and after OAuth callback
+  useEffect(() => {
+    const token = getValidCalendarToken();
+    if (token && token !== calendarToken) {
+      setCalendarToken(token);
+    }
+  }, [calendarToken]);
+
+  // Check for Drive token on mount and after OAuth callback
+  useEffect(() => {
+    const token = getValidDriveToken();
+    if (token && token !== driveToken) {
+      setDriveToken(token);
+    }
+  }, [driveToken]);
+
+  // Request calendar access - tries to get token or starts OAuth flow
+  const requestCalendarAccess = useCallback(async (): Promise<string> => {
+    // First, check if we have a valid token
+    const validToken = getValidCalendarToken();
+    if (validToken) {
+      setCalendarToken(validToken);
+      return validToken;
+    }
+
+    // Try to get token with refresh if needed
+    if (hasCalendarCredentials()) {
+      const refreshedToken = await getCalendarAccessToken();
+      if (refreshedToken) {
+        setCalendarToken(refreshedToken);
+        return refreshedToken;
+      }
+    }
+
+    // No valid token - start OAuth flow if client ID is configured
+    if (!googleClientId) {
+      throw new Error(
+        "Google Calendar OAuth not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID."
+      );
+    }
+
+    // Store the current message so we can retry after OAuth
+    if (currentMessageRef.current) {
+      storeCalendarPendingMessage(currentMessageRef.current);
+    }
+
+    // Start OAuth flow - this will redirect the user
+    await startCalendarAuth(googleClientId, "/auth/google/callback");
+
+    // This promise won't resolve since we're redirecting
+    // The token will be available after the callback
+    return new Promise(() => {});
+  }, [calendarToken]);
+
+  // Request Drive access - tries to get token or starts OAuth flow
+  const requestDriveAccess = useCallback(async (): Promise<string> => {
+    // First, check if we have a valid token
+    const validToken = getValidDriveToken();
+    if (validToken) {
+      setDriveToken(validToken);
+      return validToken;
+    }
+
+    // Try to get token with refresh if needed
+    if (hasDriveCredentials()) {
+      const refreshedToken = await getDriveAccessToken();
+      if (refreshedToken) {
+        setDriveToken(refreshedToken);
+        return refreshedToken;
+      }
+    }
+
+    // No valid token - start OAuth flow if client ID is configured
+    if (!googleClientId) {
+      throw new Error(
+        "Google Drive OAuth not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID."
+      );
+    }
+
+    // Store the current message so we can retry after OAuth
+    if (currentMessageRef.current) {
+      storeDrivePendingMessage(currentMessageRef.current);
+    }
+
+    // Start OAuth flow - this will redirect the user
+    await startDriveAuth(googleClientId, "/auth/google/callback");
+
+    // This promise won't resolve since we're redirecting
+    // The token will be available after the callback
+    return new Promise(() => {});
+  }, [driveToken]);
+
+  // Create Google tools with auth
+  const tools = useMemo(() => {
+    // Google Calendar tools
+    const calendarTools = createChatTools(
+      () => calendarToken,
+      requestCalendarAccess
+    );
+
+    // Google Drive tools (using our custom auth with drive.readonly scope)
+    const driveTools = createDriveTools(
+      () => driveToken,
+      requestDriveAccess
+    );
+
+    return [...calendarTools, ...driveTools];
+  }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess]);
+
+  const baseChatState = useAppChat({
     database,
     model: "openai/gpt-5.2-2025-12-11",
     getToken: getIdentityToken,
@@ -204,7 +378,92 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     walletAddress,
     signMessage,
     embeddedWalletSigner: embeddedWallet ? embeddedWalletSigner : undefined,
+    tools,
   });
+
+  // Wrap handleSubmit to track the current message for OAuth retry
+  const handleSubmit = useCallback(
+    async (message: any, options?: any) => {
+      // Track the message text for potential OAuth redirect
+      if (message?.text) {
+        currentMessageRef.current = message.text;
+      }
+      try {
+        await baseChatState.handleSubmit(message, options);
+      } finally {
+        // Clear after successful send (or error)
+        currentMessageRef.current = null;
+      }
+    },
+    [baseChatState]
+  );
+
+  // Check for pending message after OAuth return and auto-retry
+  // Store the pending message in a ref so we don't lose it if conditions aren't met yet
+  const pendingMessageRef = useRef<string | null>(null);
+  const pendingMessageSourceRef = useRef<"calendar" | "drive" | null>(null);
+  const pendingMessageHandledRef = useRef(false);
+
+  // Check for pending message on mount (before conditions are ready)
+  useEffect(() => {
+    if (pendingMessageRef.current === null && !pendingMessageHandledRef.current) {
+      // Check for Calendar pending message first
+      const calendarMessage = getAndClearCalendarPendingMessage();
+      if (calendarMessage) {
+        pendingMessageRef.current = calendarMessage;
+        pendingMessageSourceRef.current = "calendar";
+        return;
+      }
+      // Check for Drive pending message
+      const driveMessage = getAndClearDrivePendingMessage();
+      if (driveMessage) {
+        pendingMessageRef.current = driveMessage;
+        pendingMessageSourceRef.current = "drive";
+      }
+    }
+  }, []);
+
+  // Retry pending message when all conditions are met
+  useEffect(() => {
+    // Only run once
+    if (pendingMessageHandledRef.current) return;
+
+    // Need identity token (Privy session restored)
+    if (!identityToken) return;
+
+    // Need wallets to be ready (Privy fully loaded)
+    if (!walletsReady) return;
+
+    // Need encryption key to be ready (user may need to sign in Privy modal)
+    if (!encryptionReady) return;
+
+    // Need a pending message
+    if (!pendingMessageRef.current) return;
+
+    // Check if the required token is available based on the source
+    const source = pendingMessageSourceRef.current;
+    if (source === "calendar" && !calendarToken) return;
+    if (source === "drive" && !driveToken) return;
+
+    const pendingMessage = pendingMessageRef.current;
+    pendingMessageRef.current = null;
+    pendingMessageSourceRef.current = null;
+    pendingMessageHandledRef.current = true;
+
+    console.log("Retrying pending message after OAuth:", pendingMessage, "source:", source);
+    // Small delay to ensure everything is initialized
+    setTimeout(() => {
+      handleSubmit({ text: pendingMessage });
+    }, 500);
+  }, [calendarToken, driveToken, identityToken, walletsReady, encryptionReady, handleSubmit]);
+
+  const chatState = useMemo(
+    () => ({
+      ...baseChatState,
+      handleSubmit,
+    }),
+    [baseChatState, handleSubmit]
+  );
 
   return (
     <ChatContext.Provider value={chatState}>{children}</ChatContext.Provider>

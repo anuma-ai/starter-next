@@ -50,6 +50,8 @@ type SendMessageOptions = {
   files?: FileUIPart[];
   displayText?: string;
   skipOptimisticUpdate?: boolean;
+  tools?: any[];
+  toolChoice?: string;
   apiType?: "responses" | "completions";
 };
 
@@ -344,6 +346,8 @@ export function useAppChatStorage({
         files,
         displayText,
         skipOptimisticUpdate,
+        tools,
+        toolChoice,
         apiType,
       } = options;
 
@@ -400,6 +404,8 @@ export function useAppChatStorage({
         ...(onThinking && { onThinking }),
         ...(attachments && attachments.length > 0 && { attachments }),
         ...(metadata && { metadata }),
+        ...(tools && tools.length > 0 && { tools }),
+        ...(toolChoice && { toolChoice }),
         ...(apiType && { apiType }),
         onData: (chunk: string) => {
           // Accumulate text

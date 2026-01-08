@@ -68,8 +68,24 @@ export function PrivyAuthProvider({ children }: Props) {
   }
 
   return (
-    <PrivyProvider appId={privyAppId} clientId={privyClientId}>
+    <PrivyProvider
+      appId={privyAppId}
+      clientId={privyClientId}
+      config={{
+        embeddedWallets: {
+          ethereum: {
+            createOnLogin: "users-without-wallets",
+          },
+        },
+      }}
+    >
       {children}
     </PrivyProvider>
   );
+}
+
+// Google auth is now handled directly in chat-provider.tsx and apps/page.tsx
+// using our custom OAuth implementation that requests proper scopes
+export function GoogleAuthProvider({ children }: Props) {
+  return <>{children}</>;
 }
