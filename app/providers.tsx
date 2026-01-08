@@ -68,7 +68,16 @@ export function PrivyAuthProvider({ children }: Props) {
   }
 
   return (
-    <PrivyProvider appId={privyAppId} clientId={privyClientId}>
+    <PrivyProvider
+      appId={privyAppId}
+      clientId={privyClientId}
+      config={{
+        embeddedWallets: {
+          createOnLogin: "users-without-wallets",
+          requireUserPasswordOnCreate: false,
+        },
+      }}
+    >
       {children}
     </PrivyProvider>
   );

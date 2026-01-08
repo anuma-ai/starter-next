@@ -66,11 +66,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Find embedded wallet for silent signing (optional)
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
 
+  // Check if embedded wallet is ready (has address)
+  const embeddedWalletReady = embeddedWallet?.address !== undefined;
+
   // Create embedded wallet signer for silent signing without confirmation modal
   const embeddedWalletSigner = useCallback(
     async (message: string) => {
       if (!embeddedWallet) {
         throw new Error("No embedded wallet available");
+      }
+      if (!embeddedWallet.address) {
+        throw new Error("Embedded wallet not ready (no address)");
       }
       const provider = await embeddedWallet.getEthereumProvider();
       const accounts = (await provider.request({ method: "eth_accounts" })) as string[];
@@ -90,11 +96,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const signMessageRef = useRef(signMessage);
   const embeddedWalletSignerRef = useRef(embeddedWalletSigner);
   const embeddedWalletRef = useRef(embeddedWallet);
+  const embeddedWalletReadyRef = useRef(embeddedWalletReady);
 
   useEffect(() => {
     signMessageRef.current = signMessage;
     embeddedWalletSignerRef.current = embeddedWalletSigner;
     embeddedWalletRef.current = embeddedWallet;
+    embeddedWalletReadyRef.current = embeddedWalletReady;
   });
 
   // Track which wallet addresses we've already initialized encryption for
@@ -102,8 +110,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const isInitializingRef = useRef(false);
 
   // Check if wallets are ready (connected) before trying to sign
-  // Must wait for Privy to be fully ready AND have wallets with addresses
-  const walletsReady = privyReady && wallets.length > 0 && wallets.some((w) => w.address);
+  // Must wait for Privy to be fully ready AND have an embedded wallet with an address
+  // The embedded wallet is required for signing - wait for Privy to create it
+  const walletsReady = privyReady && embeddedWallet && embeddedWalletReady;
 
   // Request encryption key when user logs in with a wallet (only once per wallet)
   // Wait for wallets to be ready to avoid "Unable to connect to wallet" errors
@@ -116,6 +125,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     // Wait for wallets to be ready before trying to sign
     if (!walletsReady) {
+      console.log("Waiting for embedded wallet to be ready:", {
+        privyReady,
+        hasEmbeddedWallet: !!embeddedWallet,
+        embeddedWalletReady,
+        walletsCount: wallets.length,
+        walletAddress,
+      });
       return;
     }
 
@@ -131,9 +147,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       isInitializingRef.current = true;
       try {
         // Use refs to get latest values without dependency issues
-        const signer = embeddedWalletRef.current
+        // Only use embedded wallet signer if the wallet exists AND is ready (has address)
+        const signer = embeddedWalletRef.current && embeddedWalletReadyRef.current
           ? embeddedWalletSignerRef.current
           : undefined;
+
+        console.log("Initializing encryption key with embedded wallet:", {
+          hasEmbeddedWallet: !!embeddedWalletRef.current,
+          embeddedWalletReady: embeddedWalletReadyRef.current,
+          usingSilentSigning: !!signer,
+        });
+
         await requestEncryptionKey(
           walletAddress,
           signMessageRef.current,
