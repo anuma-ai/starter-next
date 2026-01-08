@@ -368,12 +368,13 @@ export function useAppChatStorage({
       // Prepare content: use text for API (includes OCR)
       const contentForAPI = text;
 
-      // Prepare attachments from files
-      const attachments = files?.map((file) => ({
-        type: file.mediaType?.startsWith("image/") ? "image" : "file",
-        data: file.url, // data URL
-        mediaType: file.mediaType,
-        filename: file.filename,
+      // Transform FileUIPart to SDK's FileMetadata format
+      const sdkFiles = files?.map((file, index) => ({
+        id: `file-${Date.now()}-${index}`,
+        name: file.filename || `file-${index}`,
+        type: file.mediaType || "application/octet-stream",
+        size: 0, // Size not tracked in FileUIPart
+        url: file.url,
       }));
 
       // Prepare metadata to store displayText (for memory context) and files
@@ -402,7 +403,7 @@ export function useAppChatStorage({
         ...(reasoning && { reasoning }),
         ...(thinking && { thinking }),
         ...(onThinking && { onThinking }),
-        ...(attachments && attachments.length > 0 && { attachments }),
+        ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
         ...(metadata && { metadata }),
         ...(tools && tools.length > 0 && { tools }),
         ...(toolChoice && { toolChoice }),
