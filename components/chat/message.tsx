@@ -47,18 +47,31 @@ export type MessageResponseProps = {
   className?: string;
 };
 
+// Regex to detect standalone image URLs (not already in markdown syntax)
+// Matches URLs ending in image extensions or containing image-related paths
+const IMAGE_URL_REGEX =
+  /(?<!\[.*?\]\()(?<!!.*?\]\()(https?:\/\/[^\s<>"]+?\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[^\s<>"]*)?|https?:\/\/[^\s<>"]*?(?:image|img)[^\s<>"]*?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s<>"]*)?)/gi;
+
+// Convert standalone image URLs to markdown image syntax
+function convertImageUrlsToMarkdown(text: string): string {
+  return text.replace(IMAGE_URL_REGEX, (url) => `\n\n![Generated image](${url})\n\n`);
+}
+
 // Use marked for synchronous markdown rendering (no flicker on re-render)
 export const MessageResponse = memo(
   ({ className, children }: MessageResponseProps) => {
     const html = useMemo(() => {
       if (!children) return "";
-      return marked.parse(children, { async: false }) as string;
+      // Convert standalone image URLs to markdown images before parsing
+      const processedText = convertImageUrlsToMarkdown(children);
+      return marked.parse(processedText, { async: false }) as string;
     }, [children]);
 
     return (
       <div
         className={cn(
           "size-full [&>p]:my-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+          "[&_img]:max-w-full [&_img]:max-h-80 [&_img]:rounded-lg [&_img]:my-4",
           className
         )}
         dangerouslySetInnerHTML={{ __html: html }}
@@ -126,15 +139,22 @@ export const StreamingMessage = ({
     );
   }
 
+  // Convert image URLs for display
+  const processedText = useMemo(
+    () => convertImageUrlsToMarkdown(text),
+    [text]
+  );
+
   return (
     <Streamdown
       className={cn(
         "size-full [&>p]:my-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+        "[&_img]:max-w-full [&_img]:max-h-80 [&_img]:rounded-lg [&_img]:my-4",
         className
       )}
       shikiTheme={["github-light", "github-dark"]}
     >
-      {text}
+      {processedText}
     </Streamdown>
   );
 };
