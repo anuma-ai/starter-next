@@ -1,0 +1,73 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
+import { Button } from "@/components/ui/button";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { SourceCodeSquareIcon, Book03Icon } from "@hugeicons/core-free-icons";
+
+export default function LoginPage() {
+  const { ready, authenticated, login } = usePrivy();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (ready && authenticated) {
+      router.replace("/");
+    }
+  }, [ready, authenticated, router]);
+
+  if (!ready) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (authenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground">Redirecting...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="flex flex-col items-center gap-6">
+        <Button
+          onClick={() => login()}
+          size="lg"
+          className="rounded-full px-8 text-lg"
+        >
+          Sign In
+        </Button>
+        <p className="text-sm text-muted-foreground text-center max-w-sm">
+          This is an example app built with the Anuma SDK. It features AI chat
+          with tool calling, encrypted message storage, and memory.
+        </p>
+        <div className="flex items-center gap-6">
+          <a
+            href="https://github.com/zeta-chain/ai-examples"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <HugeiconsIcon icon={SourceCodeSquareIcon} size={16} />
+            Source
+          </a>
+          <a
+            href="https://ai-docs.zetachain.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <HugeiconsIcon icon={Book03Icon} size={16} />
+            Docs
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
