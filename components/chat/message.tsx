@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { MessageRole } from "@/types/chat";
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ImgHTMLAttributes } from "react";
 import { memo, useEffect, useRef, useState, useMemo } from "react";
 import { marked } from "marked";
 import { Streamdown } from "streamdown";
@@ -92,6 +92,15 @@ export type StreamingMessageProps = {
   isLoading?: boolean;
 };
 
+// Custom image component that doesn't wrap in div (avoids <p><div> hydration error)
+const MarkdownImage = ({
+  src,
+  alt,
+  ...props
+}: ImgHTMLAttributes<HTMLImageElement>) => (
+  <img src={src} alt={alt || ""} loading="lazy" {...props} />
+);
+
 export const StreamingMessage = ({
   subscribe,
   className,
@@ -153,6 +162,7 @@ export const StreamingMessage = ({
         className
       )}
       shikiTheme={["github-light", "github-dark"]}
+      components={{ img: MarkdownImage }}
     >
       {processedText}
     </Streamdown>
