@@ -16,7 +16,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader } from "@/components/chat/loader";
 import {
   Message,
   MessageContent,
@@ -126,17 +125,48 @@ const ChatBotDemo = () => {
   } = chatState;
 
   const [streamingThinking, setStreamingThinking] = useState<string>("");
+  const [streamingText, setStreamingText] = useState<string>("");
+  const [thinkingDuration, setThinkingDuration] = useState<number | undefined>(
+    undefined
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const thinkingStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToThinking((text: string) => {
       setStreamingThinking(text);
+      // Start timing when thinking begins
+      if (text && thinkingStartTimeRef.current === null) {
+        thinkingStartTimeRef.current = Date.now();
+      }
     });
     return unsubscribe;
   }, [subscribeToThinking]);
 
   useEffect(() => {
+    const unsubscribe = subscribeToStreaming((text: string) => {
+      setStreamingText(text);
+      // When streaming text starts and we were thinking, calculate duration
+      if (text && thinkingStartTimeRef.current !== null) {
+        const duration = Math.ceil(
+          (Date.now() - thinkingStartTimeRef.current) / 1000
+        );
+        setThinkingDuration(duration);
+        thinkingStartTimeRef.current = null;
+      }
+    });
+    return unsubscribe;
+  }, [subscribeToStreaming]);
+
+  useEffect(() => {
     if (isLoading) {
       setStreamingThinking("");
+      setStreamingText("");
+      setThinkingDuration(undefined);
+      thinkingStartTimeRef.current = null;
+    } else {
+      // Reset submitting state when loading completes
+      setIsSubmitting(false);
     }
   }, [isLoading]);
 
@@ -160,6 +190,9 @@ const ChatBotDemo = () => {
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
+      // Show loading indicator immediately
+      setIsSubmitting(true);
+
       // Step 1: Add message optimistically to UI and clear input immediately
       addMessageOptimistically(message.text, message.files, message.text);
       setInput(""); // Clear input immediately for instant feedback
@@ -248,29 +281,51 @@ const ChatBotDemo = () => {
                     // Once streaming is done (isLoading=false), use MessageResponse
                     const useStreaming = isLastAssistantMessage && isLoading;
 
+                    // Show reasoning after streaming starts (or completes) if there was thinking
+                    const showReasoning =
+                      isLastAssistantMessage &&
+                      streamingThinking &&
+                      (streamingText || !isLoading);
+
+                    // Show loading indicator inside message when submitting but no text yet
+                    const showInlineLoader =
+                      isLastAssistantMessage && isSubmitting && !streamingText;
+
                     return (
                       <div key={`${message.id}-${i}`}>
-                        {isLastAssistantMessage && streamingThinking && (
+                        {/* Loading indicator: circle, or circle + "Thinking..." */}
+                        {showInlineLoader && (
+                          <div className="flex items-center gap-2 text-muted-foreground text-sm h-5">
+                            <span className="inline-block size-2 animate-pulse rounded-full bg-current flex-shrink-0" />
+                            {streamingThinking && <span>Thinking...</span>}
+                          </div>
+                        )}
+                        {/* After streaming starts: show brain + "Thought for X seconds" if there was thinking */}
+                        {showReasoning && (
                           <Reasoning
                             className="w-full mb-2"
-                            isStreaming={isLoading}
+                            isStreaming={false}
+                            duration={thinkingDuration}
                             content={streamingThinking}
                             onOpen={thinkingPanel.openPanel}
                           />
                         )}
-                        <Message from={message.role}>
-                          <MessageContent>
-                            {useStreaming ? (
-                              <StreamingMessage
-                                subscribe={subscribeToStreaming}
-                                initialText={part.text || ""}
-                                isLoading={isLoading}
-                              />
-                            ) : (
-                              <MessageResponse>{part.text}</MessageResponse>
-                            )}
-                          </MessageContent>
-                        </Message>
+                        {/* Only show message content when we have text or streaming */}
+                        {(part.text || streamingText) && (
+                          <Message from={message.role}>
+                            <MessageContent>
+                              {useStreaming ? (
+                                <StreamingMessage
+                                  subscribe={subscribeToStreaming}
+                                  initialText={part.text || ""}
+                                  isLoading={false}
+                                />
+                              ) : (
+                                <MessageResponse>{part.text}</MessageResponse>
+                              )}
+                            </MessageContent>
+                          </Message>
+                        )}
                       </div>
                     );
                   }
@@ -328,7 +383,7 @@ const ChatBotDemo = () => {
                           key={`${message.id}-${i}`}
                           src={part.image_url?.url}
                           alt="Uploaded image"
-                          className="max-h-60 max-w-[300px] rounded-lg object-contain ml-auto"
+                          className="max-h-60 max-w-[300px] rounded-lg object-contain ml-auto mt-2"
                         />
                       );
                     }
@@ -372,12 +427,12 @@ const ChatBotDemo = () => {
               })}
             </div>
           ))}
+          {/* PDF/OCR processing indicator */}
           {(isProcessingPdf || isProcessingOCR) && (
-            <Message from="assistant">
-              <MessageContent className="w-fit rounded-lg bg-muted px-4 py-3">
-                <Loader />
-              </MessageContent>
-            </Message>
+            <div className="flex items-center gap-2 text-muted-foreground text-sm h-5">
+              <span className="inline-block size-2 animate-pulse rounded-full bg-current flex-shrink-0" />
+              <span>Processing files...</span>
+            </div>
           )}
         </div>
       </div>
