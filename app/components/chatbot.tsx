@@ -296,7 +296,7 @@ const ChatBotDemo = () => {
                         {/* Loading indicator: circle, or circle + "Thinking..." */}
                         {showInlineLoader && (
                           <div className="flex items-center gap-2 text-muted-foreground text-sm h-5">
-                            <span className="inline-block size-2 animate-pulse rounded-full bg-current flex-shrink-0" />
+                            <span className="inline-block size-3 rounded-full bg-foreground flex-shrink-0 animate-[scale-pulse_1.5s_ease-in-out_infinite]" />
                             {streamingThinking && <span>Thinking...</span>}
                           </div>
                         )}
@@ -430,7 +430,7 @@ const ChatBotDemo = () => {
           {/* PDF/OCR processing indicator */}
           {(isProcessingPdf || isProcessingOCR) && (
             <div className="flex items-center gap-2 text-muted-foreground text-sm h-5">
-              <span className="inline-block size-2 animate-pulse rounded-full bg-current flex-shrink-0" />
+              <span className="inline-block size-3 rounded-full bg-foreground flex-shrink-0 animate-[scale-pulse_1.5s_ease-in-out_infinite]" />
               <span>Processing files...</span>
             </div>
           )}
