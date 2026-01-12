@@ -137,6 +137,16 @@
   }
 }
 
+@keyframes scale-pulse {
+  0%,
+  100% {
+    transform: scale(0.75);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
 /* Quick fade-in to mask conversation switching flash */
 @keyframes fadeIn {
   from {

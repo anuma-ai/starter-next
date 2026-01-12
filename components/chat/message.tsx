@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { MessageRole } from "@/types/chat";
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ImgHTMLAttributes } from "react";
 import { memo, useEffect, useRef, useState, useMemo } from "react";
 import { marked } from "marked";
 import { Streamdown } from "streamdown";
@@ -92,6 +92,15 @@ export type StreamingMessageProps = {
   isLoading?: boolean;
 };
 
+// Custom image component that doesn't wrap in div (avoids <p><div> hydration error)
+const MarkdownImage = ({
+  src,
+  alt,
+  ...props
+}: ImgHTMLAttributes<HTMLImageElement>) => (
+  <img src={src} alt={alt || ""} loading="lazy" {...props} />
+);
+
 export const StreamingMessage = ({
   subscribe,
   className,
@@ -132,18 +141,18 @@ export const StreamingMessage = ({
     }
   }, [initialText]);
 
+  // Convert image URLs for display - must be before early return to follow Rules of Hooks
+  const processedText = useMemo(
+    () => convertImageUrlsToMarkdown(text),
+    [text]
+  );
+
   // Show loading indicator when loading and no text yet
   if (!text && isLoading) {
     return (
       <span className="inline-block size-2 animate-pulse rounded-full bg-current opacity-50" />
     );
   }
-
-  // Convert image URLs for display
-  const processedText = useMemo(
-    () => convertImageUrlsToMarkdown(text),
-    [text]
-  );
 
   return (
     <Streamdown
@@ -153,6 +162,7 @@ export const StreamingMessage = ({
         className
       )}
       shikiTheme={["github-light", "github-dark"]}
+      components={{ img: MarkdownImage }}
     >
       {processedText}
     </Streamdown>
