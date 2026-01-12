@@ -40,6 +40,12 @@ export function useAppMemoryStorage({
     searchMemories,
     fetchAllMemories,
     removeMemoryById,
+    // Memory v2: New methods for conflict resolution and access tracking
+    saveMemory,
+    saveMemories,
+    getMemoryHistory,
+    getSupersededMemories,
+    touchMemory,
   } = useMemoryStorage({
     database,
     getToken,
@@ -123,5 +129,11 @@ export function useAppMemoryStorage({
     findRelevantMemories,
     getAllMemories,
     deleteMemory,
+    // Memory v2: New methods for conflict resolution and access tracking
+    saveMemory,
+    saveMemories,
+    getMemoryHistory,
+    getSupersededMemories,
+    touchMemory,
   };
 }

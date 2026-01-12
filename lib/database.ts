@@ -1,20 +1,12 @@
 import { Database } from "@nozbe/watermelondb";
 import LokiJSAdapter from "@nozbe/watermelondb/adapters/lokijs";
 import {
-  ChatMessage,
-  ChatConversation,
-  chatStorageSchema,
-  memoryStorageSchema,
-  StoredMemoryModel,
+  sdkSchema,
+  sdkMigrations,
+  sdkModelClasses,
 } from "@reverbia/sdk/react";
 
 let database: Database | null = null;
-
-// Merge chat storage and memory storage schemas
-const mergedSchema = {
-  version: chatStorageSchema.version + memoryStorageSchema.version,
-  tables: { ...chatStorageSchema.tables, ...memoryStorageSchema.tables },
-};
 
 export function getDatabase(): Database {
   if (database) {
@@ -22,14 +14,15 @@ export function getDatabase(): Database {
   }
 
   const adapter = new LokiJSAdapter({
-    schema: mergedSchema,
+    schema: sdkSchema,
+    migrations: sdkMigrations,
     useWebWorker: false,
     useIncrementalIndexedDB: true,
   });
 
   database = new Database({
     adapter,
-    modelClasses: [ChatMessage, ChatConversation, StoredMemoryModel],
+    modelClasses: sdkModelClasses,
   });
 
   return database;
