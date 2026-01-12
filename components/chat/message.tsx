@@ -132,18 +132,18 @@ export const StreamingMessage = ({
     }
   }, [initialText]);
 
+  // Convert image URLs for display - must be before early return to follow Rules of Hooks
+  const processedText = useMemo(
+    () => convertImageUrlsToMarkdown(text),
+    [text]
+  );
+
   // Show loading indicator when loading and no text yet
   if (!text && isLoading) {
     return (
       <span className="inline-block size-2 animate-pulse rounded-full bg-current opacity-50" />
     );
   }
-
-  // Convert image URLs for display
-  const processedText = useMemo(
-    () => convertImageUrlsToMarkdown(text),
-    [text]
-  );
 
   return (
     <Streamdown
