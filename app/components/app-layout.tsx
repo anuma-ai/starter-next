@@ -83,6 +83,16 @@ export function AppLayout({ children }: AppLayoutProps) {
     deleteConversation,
   } = chatState;
 
+  // Update URL when a new conversation is created (e.g., on first message)
+  // This ensures the URL reflects the conversation ID for proper refresh behavior
+  useEffect(() => {
+    // If we're on root "/" and have a conversationId with messages, update the URL
+    // This happens when SDK auto-creates a conversation on first message
+    if (pathname === "/" && conversationId && messages.length > 0) {
+      router.replace(`/c/${conversationId}`);
+    }
+  }, [conversationId, pathname, messages.length, router]);
+
   const handleNewConversation = useCallback(async () => {
     // Reset to empty state and navigate to root
     // Conversation ID will be auto-created when first message is sent

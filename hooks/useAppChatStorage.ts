@@ -184,14 +184,18 @@ export function useAppChatStorage({
 
   useEffect(() => {
     if (conversationId) {
+      console.log("[CLIENT useAppChatStorage] Loading messages for conversation:", conversationId);
+
       // Skip loading if messages were already preloaded by handleSwitchConversation
       if (loadedConversationIdRef.current === conversationId) {
+        console.log("[CLIENT useAppChatStorage] Skipping - already preloaded for:", conversationId);
         return;
       }
 
       // Skip loading if we're actively sending a message
       // This prevents DB reload from overwriting our in-memory messages with displayText and file parts
       if (isSendingMessageRef.current) {
+        console.log("[CLIENT useAppChatStorage] Skipping - currently sending message");
         return;
       }
 
@@ -201,9 +205,21 @@ export function useAppChatStorage({
       loadedConversationIdRef.current = targetConversationId;
 
       getMessages(conversationId).then(async (msgs) => {
+        console.log("[CLIENT useAppChatStorage] Got messages from DB:", {
+          conversationId,
+          count: msgs.length,
+          messages: msgs.map((m: any) => ({
+            id: m.uniqueId,
+            role: m.role,
+            contentLength: m.content?.length,
+            contentPreview: m.content?.slice(0, 50),
+          })),
+        });
+
         // Only update if this is still the target conversation
         // (prevents race conditions when rapidly switching)
         if (loadedConversationIdRef.current !== targetConversationId) {
+          console.log("[CLIENT useAppChatStorage] Skipping update - conversation changed");
           return;
         }
 
@@ -211,7 +227,9 @@ export function useAppChatStorage({
         // This happens when SDK auto-creates a new conversation - the messages
         // exist in React state but haven't been persisted to DB yet
         if (msgs.length === 0) {
+          console.log("[CLIENT useAppChatStorage] No messages in DB, checking in-memory state");
           setMessages((currentMessages) => {
+            console.log("[CLIENT useAppChatStorage] Current in-memory messages:", currentMessages.length);
             if (currentMessages.length > 0) {
               return currentMessages;
             }
@@ -276,6 +294,14 @@ export function useAppChatStorage({
           })
         );
 
+        console.log("[CLIENT useAppChatStorage] Setting UI messages:", {
+          count: uiMessages.length,
+          messages: uiMessages.map((m) => ({
+            id: m.id,
+            role: m.role,
+            partsCount: m.parts.length,
+          })),
+        });
         setMessages(uiMessages);
       });
     }
