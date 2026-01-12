@@ -4,6 +4,11 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { useChatStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
+import {
+  storeFile,
+  getFile,
+  generateFileId,
+} from "@/lib/fileStorage";
 
 type MessagePart =
   | {
@@ -195,7 +200,7 @@ export function useAppChatStorage({
       const targetConversationId = conversationId;
       loadedConversationIdRef.current = targetConversationId;
 
-      getMessages(conversationId).then((msgs) => {
+      getMessages(conversationId).then(async (msgs) => {
         // Only update if this is still the target conversation
         // (prevents race conditions when rapidly switching)
         if (loadedConversationIdRef.current !== targetConversationId) {
@@ -215,54 +220,61 @@ export function useAppChatStorage({
           return;
         }
 
-        const uiMessages: Message[] = msgs.map((msg: any) => {
-          const parts: MessagePart[] = [];
+        const uiMessages: Message[] = await Promise.all(
+          msgs.map(async (msg: any) => {
+            const parts: MessagePart[] = [];
 
-          // Add reasoning part if available (before the text content)
-          // SDK stores thinking/reasoning in the 'thinking' field
-          if (msg.thinking) {
-            parts.push({ type: "reasoning" as const, text: msg.thinking });
-          }
+            // Add reasoning part if available (before the text content)
+            // SDK stores thinking/reasoning in the 'thinking' field
+            if (msg.thinking) {
+              parts.push({ type: "reasoning" as const, text: msg.thinking });
+            }
 
-          // Check if we have metadata with displayText and files
-          const metadata = msg.metadata || {};
-          const displayText = metadata.displayText;
-          const storedFiles = metadata.files || [];
+            // SDK now stores files directly on the message, not in metadata
+            // FileMetadata format: { id, name, type, size, url? }
+            const storedFiles = msg.files || [];
 
-          // Add text content - use displayText from metadata if available,
-          // otherwise strip memory context prefix from content
-          const textContent = displayText || stripMemoryContext(msg.content);
-          if (textContent) {
-            parts.push({ type: "text" as const, text: textContent });
-          }
+            // Add text content - strip memory context prefix if present
+            const textContent = stripMemoryContext(msg.content);
+            if (textContent) {
+              parts.push({ type: "text" as const, text: textContent });
+            }
 
-          // Reconstruct file parts from metadata
-          if (storedFiles.length > 0) {
-            storedFiles.forEach((file: any) => {
-              if (file.mediaType?.startsWith("image/")) {
-                // Reconstruct image_url part
-                parts.push({
-                  type: "image_url" as const,
-                  image_url: { url: file.url },
-                });
-              } else {
-                // Reconstruct file part
-                parts.push({
-                  type: "file" as const,
-                  url: file.url,
-                  mediaType: file.mediaType || "",
-                  filename: file.filename || "",
-                });
+            // Reconstruct file parts from SDK's files array
+            // Retrieve data URLs from IndexedDB using file IDs
+            if (storedFiles.length > 0) {
+              for (const file of storedFiles) {
+                // SDK FileMetadata uses 'type' for MIME type, 'name' for filename
+                const mimeType = file.type || "";
+                // Try to get the data URL from IndexedDB using the file ID
+                const storedFile = await getFile(file.id);
+                const fileUrl = storedFile?.dataUrl || file.url || "";
+
+                if (mimeType.startsWith("image/")) {
+                  // Reconstruct image_url part
+                  parts.push({
+                    type: "image_url" as const,
+                    image_url: { url: fileUrl },
+                  });
+                } else {
+                  // Reconstruct file part
+                  parts.push({
+                    type: "file" as const,
+                    url: fileUrl,
+                    mediaType: mimeType,
+                    filename: file.name || "",
+                  });
+                }
               }
-            });
-          }
+            }
 
-          return {
-            id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
-            role: msg.role,
-            parts,
-          };
-        });
+            return {
+              id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
+              role: msg.role,
+              parts,
+            };
+          })
+        );
 
         setMessages(uiMessages);
       });
@@ -365,36 +377,71 @@ export function useAppChatStorage({
       // Reset streaming text accumulator
       streamingTextRef.current = "";
 
-      // Prepare content: use text for API (includes OCR)
-      const contentForAPI = text;
+      // Use displayText for storage (clean user input), text for API (may include OCR/context)
+      const textForStorage = displayText || text;
 
-      // Transform FileUIPart to SDK's FileMetadata format
-      const sdkFiles = files?.map((file, index) => ({
-        id: `file-${Date.now()}-${index}`,
-        name: file.filename || `file-${index}`,
-        type: file.mediaType || "application/octet-stream",
-        size: 0, // Size not tracked in FileUIPart
-        url: file.url,
-      }));
+      // Build content parts for the messages array
+      // The SDK extracts and stores the text from this array
+      const contentParts: Array<{
+        type?: string;
+        text?: string;
+        image_url?: { url?: string };
+        file?: { file_url?: string; filename?: string };
+      }> = [];
 
-      // Prepare metadata to store displayText (for memory context) and files
-      const metadata =
-        displayText || (files && files.length > 0)
-          ? {
-              ...(displayText && { displayText }),
-              ...(files &&
-                files.length > 0 && {
-                  files: files.map((f) => ({
-                    url: f.url,
-                    mediaType: f.mediaType,
-                    filename: f.filename,
-                  })),
-                }),
-            }
-          : undefined;
+      // Add text content - use clean text for storage, but we need OCR context for API
+      // The SDK stores whatever is in messages, so we use displayText if available
+      if (textForStorage) {
+        contentParts.push({ type: "text", text: textForStorage });
+      }
+
+      // Add file content (images and other files) to the messages array for the API
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          if (file.mediaType?.startsWith("image/")) {
+            contentParts.push({
+              type: "image_url",
+              image_url: { url: file.url },
+            });
+          } else {
+            contentParts.push({
+              type: "input_file",
+              file: { file_url: file.url, filename: file.filename },
+            });
+          }
+        });
+      }
+
+      // Transform FileUIPart to SDK's FileMetadata format for storage
+      // Store data URLs in IndexedDB since SDK strips them
+      const sdkFiles = await Promise.all(
+        (files || []).map(async (file) => {
+          const fileId = generateFileId();
+          // Store the data URL in IndexedDB for persistence
+          if (file.url) {
+            await storeFile(
+              fileId,
+              file.url,
+              file.filename || "",
+              file.mediaType || "application/octet-stream"
+            );
+          }
+          return {
+            id: fileId,
+            name: file.filename || fileId,
+            type: file.mediaType || "application/octet-stream",
+            size: 0,
+            // Don't pass data URL to SDK - it will be stripped anyway
+            // We retrieve it from IndexedDB using the id
+          };
+        })
+      );
+
+      // If we have OCR/memory context that differs from displayText, pass it via memoryContext
+      const memoryContext = displayText && text !== displayText ? text : undefined;
 
       const response = await sendMessage({
-        content: contentForAPI, // Send full text with OCR/memory context to API
+        messages: [{ role: "user" as const, content: contentParts }],
         model,
         includeHistory: true,
         ...(temperature !== undefined && { temperature }),
@@ -404,7 +451,7 @@ export function useAppChatStorage({
         ...(thinking && { thinking }),
         ...(onThinking && { onThinking }),
         ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
-        ...(metadata && { metadata }),
+        ...(memoryContext && { memoryContext }),
         ...(tools && tools.length > 0 && { tools }),
         ...(toolChoice && { toolChoice }),
         ...(apiType && { apiType }),
@@ -458,49 +505,56 @@ export function useAppChatStorage({
       // Preload messages before switching to prevent flicker
       // This ensures new messages are ready before we update state
       const msgs = await getMessages(id);
-      const uiMessages: Message[] = msgs.map((msg: any) => {
-        const parts: MessagePart[] = [];
-        if (msg.thinking) {
-          parts.push({ type: "reasoning" as const, text: msg.thinking });
-        }
+      const uiMessages: Message[] = await Promise.all(
+        msgs.map(async (msg: any) => {
+          const parts: MessagePart[] = [];
+          if (msg.thinking) {
+            parts.push({ type: "reasoning" as const, text: msg.thinking });
+          }
 
-        // Check if we have metadata with displayText and files
-        const metadata = msg.metadata || {};
-        const displayText = metadata.displayText;
-        const storedFiles = metadata.files || [];
+          // SDK now stores files directly on the message, not in metadata
+          // FileMetadata format: { id, name, type, size, url? }
+          const storedFiles = msg.files || [];
 
-        // Add text content - use displayText from metadata if available,
-        // otherwise strip memory context prefix from content
-        const textContent = displayText || stripMemoryContext(msg.content);
-        if (textContent) {
-          parts.push({ type: "text" as const, text: textContent });
-        }
+          // Add text content - strip memory context prefix if present
+          const textContent = stripMemoryContext(msg.content);
+          if (textContent) {
+            parts.push({ type: "text" as const, text: textContent });
+          }
 
-        // Reconstruct file parts from metadata
-        if (storedFiles.length > 0) {
-          storedFiles.forEach((file: any) => {
-            if (file.mediaType?.startsWith("image/")) {
-              parts.push({
-                type: "image_url" as const,
-                image_url: { url: file.url },
-              });
-            } else {
-              parts.push({
-                type: "file" as const,
-                url: file.url,
-                mediaType: file.mediaType || "",
-                filename: file.filename || "",
-              });
+          // Reconstruct file parts from SDK's files array
+          // Retrieve data URLs from IndexedDB using file IDs
+          if (storedFiles.length > 0) {
+            for (const file of storedFiles) {
+              // SDK FileMetadata uses 'type' for MIME type, 'name' for filename
+              const mimeType = file.type || "";
+              // Try to get the data URL from IndexedDB using the file ID
+              const storedFile = await getFile(file.id);
+              const fileUrl = storedFile?.dataUrl || file.url || "";
+
+              if (mimeType.startsWith("image/")) {
+                parts.push({
+                  type: "image_url" as const,
+                  image_url: { url: fileUrl },
+                });
+              } else {
+                parts.push({
+                  type: "file" as const,
+                  url: fileUrl,
+                  mediaType: mimeType,
+                  filename: file.name || "",
+                });
+              }
             }
-          });
-        }
+          }
 
-        return {
-          id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
-          role: msg.role,
-          parts,
-        };
-      });
+          return {
+            id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
+            role: msg.role,
+            parts,
+          };
+        })
+      );
 
       // Update ref first to prevent useEffect from re-loading
       loadedConversationIdRef.current = id;

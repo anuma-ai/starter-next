@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import {
   SidebarProvider,
   SidebarInset,
@@ -64,7 +65,14 @@ function SidebarHandle() {
 export function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { ready, authenticated } = usePrivy();
   const chatState = useChatContext();
+
+  useEffect(() => {
+    if (ready && !authenticated) {
+      router.replace("/login");
+    }
+  }, [ready, authenticated, router]);
 
   const {
     messages,
@@ -115,6 +123,15 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Use context's conversationId for sidebar active state (not pathname)
   // This ensures immediate visual feedback when switching conversations
   const activeConversationId = conversationId;
+
+  // Show loading state while auth is initializing or user is not authenticated
+  if (!ready || !authenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <ThinkingPanelProvider>
