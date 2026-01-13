@@ -15,7 +15,20 @@ handles syncing between local storage and the server.
 
 ## Sending Messages
 
-{@includeCode ../hooks/useAppChatStorage.ts#sendMessage}
+### Optimistic UI Updates
+
+Add messages to the UI immediately before the API responds. This creates a
+snappy user experience by showing the user's message right away along with an
+empty assistant placeholder that will be filled as the response streams in.
+
+{@includeCode ../hooks/useAppChatStorage.ts#optimisticUpdate}
+
+### Handling the Send
+
+The main handler builds content parts, stores files in IndexedDB for
+persistence, and calls the SDK's `sendMessage` with streaming support.
+
+{@includeCode ../hooks/useAppChatStorage.ts#handleSend}
 
 ## Conversation Management
 

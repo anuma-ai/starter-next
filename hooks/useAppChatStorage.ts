@@ -285,7 +285,7 @@ export function useAppChatStorage({
   const streamingTextRef = useRef<string>("");
   const currentAssistantMessageIdRef = useRef<string | null>(null);
 
-  // Add message optimistically to UI (doesn't send to API yet)
+  //#region optimisticUpdate
   const addMessageOptimistically = useCallback(
     (text: string, files?: FileUIPart[], displayText?: string) => {
       // Mark that we're sending a message to prevent DB reload from overwriting
@@ -344,7 +344,9 @@ export function useAppChatStorage({
     },
     []
   );
+  //#endregion optimisticUpdate
 
+  //#region handleSend
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
       const {
@@ -490,6 +492,7 @@ export function useAppChatStorage({
     },
     [sendMessage, onStreamingData]
   );
+  //#endregion handleSend
   //#endregion sendMessage
 
   //#region conversationManagement
