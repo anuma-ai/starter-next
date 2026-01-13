@@ -4,8 +4,8 @@ import { CHAT_INPUT_PLACEHOLDER } from "@/lib/constants";
 
 const authFile = path.join(__dirname, "../playwright/.auth/user.json");
 
-const PRIVY_TEST_EMAIL = process.env.TEST_USER_EMAIL;
 const PRIVY_TEST_OTP = process.env.TEST_USER_OTP;
+const PRIVY_TEST_EMAIL = process.env.TEST_USER_EMAIL;
 
 if (!PRIVY_TEST_EMAIL || !PRIVY_TEST_OTP) {
   throw new Error("TEST_USER_EMAIL and TEST_USER_OTP must be set");
