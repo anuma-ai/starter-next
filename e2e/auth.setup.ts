@@ -12,7 +12,6 @@ if (!PRIVY_TEST_EMAIL || !PRIVY_TEST_OTP) {
 }
 
 setup("authenticate via Privy", async ({ page }) => {
-  // Navigate to the login page
   await page.goto("/login");
 
   // Wait for page to be ready
