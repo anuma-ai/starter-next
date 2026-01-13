@@ -52,17 +52,15 @@ const addMessageOptimistically = useCallback(
       parts.push({ type: "text", text: textForUI });
     }
 
-    // Add file parts (images and other files)
+    //#region imagePartsUI
     if (files && files.length > 0) {
       files.forEach((file) => {
         if (file.mediaType?.startsWith("image/")) {
-          // For images, create image_url part
           parts.push({
             type: "image_url",
             image_url: { url: file.url },
           });
         } else {
-          // For other files (PDFs, etc), create file part
           parts.push({
             type: "file",
             url: file.url,
@@ -72,6 +70,7 @@ const addMessageOptimistically = useCallback(
         }
       });
     }
+    //#endregion imagePartsUI
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -153,7 +152,7 @@ const handleSendMessage = useCallback(
       contentParts.push({ type: "text", text: textForStorage });
     }
 
-    // Add file content (images and other files) to the messages array for the API
+    //#region imageContentParts
     if (files && files.length > 0) {
       files.forEach((file) => {
         if (file.mediaType?.startsWith("image/")) {
@@ -169,13 +168,12 @@ const handleSendMessage = useCallback(
         }
       });
     }
+    //#endregion imageContentParts
 
-    // Transform FileUIPart to SDK's FileMetadata format for storage
-    // Store data URLs in IndexedDB since SDK strips them
+    //#region fileStorage
     const sdkFiles = await Promise.all(
       (files || []).map(async (file) => {
         const fileId = generateFileId();
-        // Store the data URL in IndexedDB for persistence
         if (file.url) {
           await storeFile(
             fileId,
@@ -189,11 +187,10 @@ const handleSendMessage = useCallback(
           name: file.filename || fileId,
           type: file.mediaType || "application/octet-stream",
           size: 0,
-          // Don't pass data URL to SDK - it will be stripped anyway
-          // We retrieve it from IndexedDB using the id
         };
       })
     );
+    //#endregion fileStorage
 
     // If we have OCR/memory context that differs from displayText, pass it via memoryContext
     const memoryContext = displayText && text !== displayText ? text : undefined;
@@ -247,6 +244,86 @@ const handleSendMessage = useCallback(
     return response;
   },
   [sendMessage, onStreamingData]
+);
+```
+
+## Sending Images
+
+Images can be sent alongside text messages. They're added to the UI immediately
+and sent to the API as `image_url` content parts.
+
+### Adding Images to UI
+
+When building message parts for optimistic UI updates, images are converted to
+`image_url` parts while other files become `file` parts.
+
+```ts
+if (files && files.length > 0) {
+  files.forEach((file) => {
+    if (file.mediaType?.startsWith("image/")) {
+      parts.push({
+        type: "image_url",
+        image_url: { url: file.url },
+      });
+    } else {
+      parts.push({
+        type: "file",
+        url: file.url,
+        mediaType: file.mediaType || "",
+        filename: file.filename || "",
+      });
+    }
+  });
+}
+```
+
+### Building Image Content for API
+
+The content array sent to the API uses the same structure, with images as
+`image_url` and other files as `input_file`.
+
+```ts
+if (files && files.length > 0) {
+  files.forEach((file) => {
+    if (file.mediaType?.startsWith("image/")) {
+      contentParts.push({
+        type: "image_url",
+        image_url: { url: file.url },
+      });
+    } else {
+      contentParts.push({
+        type: "input_file",
+        file: { file_url: file.url, filename: file.filename },
+      });
+    }
+  });
+}
+```
+
+### Persisting Files
+
+Files are stored in IndexedDB for persistence across sessions. The SDK receives
+file metadata without the data URL (which would be stripped anyway).
+
+```ts
+const sdkFiles = await Promise.all(
+  (files || []).map(async (file) => {
+    const fileId = generateFileId();
+    if (file.url) {
+      await storeFile(
+        fileId,
+        file.url,
+        file.filename || "",
+        file.mediaType || "application/octet-stream"
+      );
+    }
+    return {
+      id: fileId,
+      name: file.filename || fileId,
+      type: file.mediaType || "application/octet-stream",
+      size: 0,
+    };
+  })
 );
 ```
 

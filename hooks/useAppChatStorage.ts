@@ -301,17 +301,15 @@ export function useAppChatStorage({
         parts.push({ type: "text", text: textForUI });
       }
 
-      // Add file parts (images and other files)
+      //#region imagePartsUI
       if (files && files.length > 0) {
         files.forEach((file) => {
           if (file.mediaType?.startsWith("image/")) {
-            // For images, create image_url part
             parts.push({
               type: "image_url",
               image_url: { url: file.url },
             });
           } else {
-            // For other files (PDFs, etc), create file part
             parts.push({
               type: "file",
               url: file.url,
@@ -321,6 +319,7 @@ export function useAppChatStorage({
           }
         });
       }
+      //#endregion imagePartsUI
 
       const userMessage: Message = {
         id: `user-${Date.now()}`,
@@ -397,7 +396,7 @@ export function useAppChatStorage({
         contentParts.push({ type: "text", text: textForStorage });
       }
 
-      // Add file content (images and other files) to the messages array for the API
+      //#region imageContentParts
       if (files && files.length > 0) {
         files.forEach((file) => {
           if (file.mediaType?.startsWith("image/")) {
@@ -413,13 +412,12 @@ export function useAppChatStorage({
           }
         });
       }
+      //#endregion imageContentParts
 
-      // Transform FileUIPart to SDK's FileMetadata format for storage
-      // Store data URLs in IndexedDB since SDK strips them
+      //#region fileStorage
       const sdkFiles = await Promise.all(
         (files || []).map(async (file) => {
           const fileId = generateFileId();
-          // Store the data URL in IndexedDB for persistence
           if (file.url) {
             await storeFile(
               fileId,
@@ -433,11 +431,10 @@ export function useAppChatStorage({
             name: file.filename || fileId,
             type: file.mediaType || "application/octet-stream",
             size: 0,
-            // Don't pass data URL to SDK - it will be stripped anyway
-            // We retrieve it from IndexedDB using the id
           };
         })
       );
+      //#endregion fileStorage
 
       // If we have OCR/memory context that differs from displayText, pass it via memoryContext
       const memoryContext = displayText && text !== displayText ? text : undefined;
