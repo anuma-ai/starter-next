@@ -8,6 +8,10 @@ import { usePrivy } from "@privy-io/react-auth";
 import { usePdf, useOCR } from "@reverbia/sdk/react";
 
 import {
+  CHAT_INPUT_PLACEHOLDER,
+  CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED,
+} from "@/lib/constants";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -471,7 +475,9 @@ const ChatBotDemo = () => {
                 disabled={!authenticated}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
-                  authenticated ? "Ask anything" : "Please sign in to chat"
+                  authenticated
+                    ? CHAT_INPUT_PLACEHOLDER
+                    : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
                 }
                 value={input}
                 className="flex-1 px-2"

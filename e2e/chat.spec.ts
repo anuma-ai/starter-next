@@ -1,4 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
+import { CHAT_INPUT_PLACEHOLDER } from "@/lib/constants";
 
 // Helper to handle Privy's "Sign and continue" button if it appears
 async function handlePrivySignAndContinue(page: Page) {
@@ -20,7 +21,7 @@ test.describe("Chat", () => {
     await handlePrivySignAndContinue(page);
 
     // Verify the chat input is visible
-    const promptInput = page.getByPlaceholder("Ask anything");
+    const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
     await expect(promptInput).toBeVisible();
 
     // Verify submit button is visible
@@ -36,7 +37,7 @@ test.describe("Chat", () => {
     await handlePrivySignAndContinue(page);
 
     // Wait for the chat interface to be ready
-    const promptInput = page.getByPlaceholder("Ask anything");
+    const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
     await expect(promptInput).toBeVisible();
 
     // Type a simple prompt
@@ -59,7 +60,7 @@ test.describe("Chat", () => {
     await page.goto("/");
     await handlePrivySignAndContinue(page);
 
-    const promptInput = page.getByPlaceholder("Ask anything");
+    const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
     await expect(promptInput).toBeVisible();
 
     // Type a message

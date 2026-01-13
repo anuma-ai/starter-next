@@ -1,11 +1,16 @@
 import { test as setup, expect } from "@playwright/test";
 import path from "path";
+import { CHAT_INPUT_PLACEHOLDER } from "@/lib/constants";
 
 const authFile = path.join(__dirname, "../playwright/.auth/user.json");
 
-// Privy test account credentials (from Privy dashboard)
-const PRIVY_TEST_EMAIL = process.env.TEST_USER_EMAIL || "test-9758@privy.io";
-const PRIVY_TEST_OTP = process.env.TEST_USER_OTP || "886979";
+// Privy test account credentials (set via environment variables)
+const PRIVY_TEST_EMAIL = process.env.TEST_USER_EMAIL;
+const PRIVY_TEST_OTP = process.env.TEST_USER_OTP;
+
+if (!PRIVY_TEST_EMAIL || !PRIVY_TEST_OTP) {
+  throw new Error("TEST_USER_EMAIL and TEST_USER_OTP must be set");
+}
 
 setup("authenticate via Privy", async ({ page }) => {
   // Navigate to the login page
@@ -62,7 +67,7 @@ setup("authenticate via Privy", async ({ page }) => {
   await page.waitForURL("/", { timeout: 60000 });
 
   // Verify we're authenticated by checking for chat input on home page
-  await expect(page.getByPlaceholder("Ask anything")).toBeVisible({
+  await expect(page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER)).toBeVisible({
     timeout: 10000,
   });
 
