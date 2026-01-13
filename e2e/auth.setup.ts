@@ -4,7 +4,6 @@ import { CHAT_INPUT_PLACEHOLDER } from "@/lib/constants";
 
 const authFile = path.join(__dirname, "../playwright/.auth/user.json");
 
-// Privy test account credentials (set via environment variables)
 const PRIVY_TEST_EMAIL = process.env.TEST_USER_EMAIL;
 const PRIVY_TEST_OTP = process.env.TEST_USER_OTP;
 
