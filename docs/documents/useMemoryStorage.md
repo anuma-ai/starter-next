@@ -22,6 +22,10 @@ const {
   getToken,
   generateEmbeddings: true,
   baseUrl: process.env.NEXT_PUBLIC_API_URL,
+  // Enable encrypted memories when wallet credentials are provided
+  walletAddress,
+  signMessage,
+  embeddedWalletSigner,
 });
 ```
 
