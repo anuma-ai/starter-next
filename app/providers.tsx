@@ -45,6 +45,7 @@ export function DatabaseProvider({ children }: Props) {
 
 const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 const privyClientId = process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID;
+const privyTestMode = process.env.NEXT_PUBLIC_PRIVY_TEST_MODE === "true";
 
 export function PrivyAuthProvider({ children }: Props) {
   const [isMounted, setIsMounted] = useState(false);
@@ -77,6 +78,10 @@ export function PrivyAuthProvider({ children }: Props) {
             createOnLogin: "users-without-wallets",
           },
         },
+        ...(privyTestMode && {
+          // Enable test mode for E2E testing - use OTP "000000" to authenticate
+          loginMethods: ["email"],
+        }),
       }}
     >
       {children}
