@@ -302,8 +302,13 @@ const ChatBotDemo = () => {
                       (streamingText || !isLoading);
 
                     // Show loading indicator inside message when submitting but no text yet
+                    // Don't show if files are being processed (we show "Processing files..." instead)
                     const showInlineLoader =
-                      isLastAssistantMessage && isSubmitting && !streamingText;
+                      isLastAssistantMessage &&
+                      isSubmitting &&
+                      !streamingText &&
+                      !isProcessingPdf &&
+                      !isProcessingOCR;
 
                     return (
                       <div key={`${message.id}-${i}`}>
