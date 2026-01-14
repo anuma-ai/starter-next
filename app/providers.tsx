@@ -10,6 +10,7 @@ import {
 import { PrivyProvider } from "@privy-io/react-auth";
 import type { Database } from "@nozbe/watermelondb";
 import { getDatabase } from "@/lib/database";
+import { BackupAuthProvider as SDKBackupAuthProvider } from "@reverbia/sdk/react";
 
 type Props = {
   children: ReactNode;
@@ -93,4 +94,39 @@ export function PrivyAuthProvider({ children }: Props) {
 // using our custom OAuth implementation that requests proper scopes
 export function GoogleAuthProvider({ children }: Props) {
   return <>{children}</>;
+}
+
+const dropboxAppKey = process.env.NEXT_PUBLIC_DROPBOX_APP_KEY;
+const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+function BackupAuthProviderInner({ children }: Props) {
+  // Note: We intentionally don't pass walletAddress here because:
+  // 1. The encryption key is stored in-memory and lost on OAuth redirects
+  // 2. This would cause errors when the provider tries to encrypt tokens
+  // 3. OAuth tokens will be stored in sessionStorage (unencrypted but temporary)
+  // 4. The actual backup data is still encrypted by our exportConversation function
+  return (
+    <SDKBackupAuthProvider
+      dropboxAppKey={dropboxAppKey}
+      dropboxCallbackPath="/auth/dropbox/callback"
+      googleClientId={googleClientId}
+      googleCallbackPath="/auth/google/callback"
+    >
+      {children}
+    </SDKBackupAuthProvider>
+  );
+}
+
+export function BackupAuthProvider({ children }: Props) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <>{children}</>;
+  }
+
+  return <BackupAuthProviderInner>{children}</BackupAuthProviderInner>;
 }

@@ -128,6 +128,22 @@ export function SettingsView() {
                 className="text-muted-foreground"
               />
             </button>
+            <button
+              onClick={() => router.push("/settings/backups")}
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <div className="space-y-0.5 text-left">
+                <span className="text-base">Backups</span>
+                <p className="text-sm text-muted-foreground">
+                  Backup conversations to Google Drive or Dropbox
+                </p>
+              </div>
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={20}
+                className="text-muted-foreground"
+              />
+            </button>
           </div>
 
           <div className="rounded-xl bg-white dark:bg-card p-1 mt-4">
