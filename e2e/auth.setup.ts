@@ -20,25 +20,18 @@ setup("authenticate via Privy", async ({ page }) => {
   // Click the Sign In button to open Privy modal
   await page.getByRole("button", { name: "Sign In" }).click();
 
-  // Wait for Privy modal to appear
-  await page.waitForTimeout(3000);
-
-  // Find and fill email input
+  // Wait for email input to appear in Privy modal
   const emailInput = page.getByPlaceholder(/email/i);
+  await emailInput.waitFor({ timeout: 30000 });
   await emailInput.fill(PRIVY_TEST_EMAIL);
 
   // Click continue button
   await page.getByRole("button", { name: /continue|submit|log in/i }).click();
 
-  // Wait for OTP input to appear
-  await page.waitForTimeout(2000);
-
-  // Find OTP inputs
+  // Find and wait for OTP inputs to appear
   const otpInputs = page.locator(
     '[data-testid*="otp"] input, input[inputmode="numeric"], input[autocomplete="one-time-code"]'
   );
-
-  // Wait for OTP inputs
   await otpInputs.first().waitFor({ timeout: 30000 });
 
   const inputCount = await otpInputs.count();

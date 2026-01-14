@@ -59,7 +59,8 @@ test.describe("Chat", () => {
     await expect(promptInput).toHaveValue("", { timeout: 5000 });
   });
 
-  test("user can attach an image and ask about it", { timeout: 120000 }, async ({ page }) => {
+  test("user can attach an image and ask about it", async ({ page }) => {
+    test.setTimeout(120000);
     await page.goto("/");
 
     // Wait for the chat interface to be ready
@@ -89,6 +90,33 @@ test.describe("Chat", () => {
     // Wait for the assistant response that mentions "cat"
     await expect(page.locator(".is-assistant")).toContainText(/cat/i, {
       timeout: 60000,
+    });
+  });
+
+  test("user can ask to generate an image", async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto("/");
+
+    // Wait for the chat interface to be ready
+    const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
+    await expect(promptInput).toBeVisible();
+
+    // Ask to generate an image of a cat (explicit request for actual image generation)
+    const prompt = "Generate an actual image of a cat. Use image generation, not ASCII art.";
+    await promptInput.fill(prompt);
+
+    // Submit the prompt
+    await page.getByRole("button", { name: "Submit" }).click();
+
+    // Wait for the user message to appear
+    await expect(page.getByText(prompt)).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Wait for the generated image to appear in the assistant's response
+    // The image may be rendered inline via markdown or as a separate image part
+    await expect(page.locator(".is-assistant img")).toBeVisible({
+      timeout: 90000,
     });
   });
 });
