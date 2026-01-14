@@ -29,6 +29,13 @@ import {
   SquareIcon,
   XIcon,
 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  File01Icon,
+  Image02Icon,
+  SourceCodeSquareIcon,
+} from "@hugeicons/core-free-icons";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { nanoid } from "nanoid";
 import {
@@ -385,6 +392,8 @@ export const PromptInput = ({
   }, [usingProvider, controller]);
 
   const [isDragging, setIsDragging] = useState(false);
+  const [globalIsDragging, setGlobalIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes("Files")) {
@@ -424,6 +433,18 @@ export const PromptInput = ({
   useEffect(() => {
     if (!globalDrop) return;
 
+    const onDragEnter = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        dragCounterRef.current++;
+        setGlobalIsDragging(true);
+      }
+    };
+    const onDragLeave = (e: DragEvent) => {
+      dragCounterRef.current--;
+      if (dragCounterRef.current === 0) {
+        setGlobalIsDragging(false);
+      }
+    };
     const onDragOver = (e: DragEvent) => {
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
@@ -433,13 +454,19 @@ export const PromptInput = ({
       if (e.dataTransfer?.types?.includes("Files")) {
         e.preventDefault();
       }
+      dragCounterRef.current = 0;
+      setGlobalIsDragging(false);
       if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
         add(e.dataTransfer.files);
       }
     };
+    document.addEventListener("dragenter", onDragEnter);
+    document.addEventListener("dragleave", onDragLeave);
     document.addEventListener("dragover", onDragOver);
     document.addEventListener("drop", onDrop);
     return () => {
+      document.removeEventListener("dragenter", onDragEnter);
+      document.removeEventListener("dragleave", onDragLeave);
       document.removeEventListener("dragover", onDragOver);
       document.removeEventListener("drop", onDrop);
     };
@@ -568,13 +595,56 @@ export const PromptInput = ({
         <InputGroup
           className={cn(
             "w-full min-w-0 max-w-full overflow-hidden transition-colors duration-200",
-            isDragging &&
+            !globalDrop &&
+              isDragging &&
               "border-gray-600 bg-muted/50 ring-2 ring-gray-600/20 dark:border-gray-500 dark:ring-gray-500/20"
           )}
         >
           {children}
         </InputGroup>
       </form>
+      {globalDrop &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {globalIsDragging && (
+              <motion.div
+                className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <motion.div
+                  className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-muted-foreground/30 bg-background/50 px-16 py-12"
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <div className="relative flex h-20 w-28 items-center justify-center">
+                    <div className="absolute left-0 top-2 flex size-12 -rotate-12 items-center justify-center rounded-xl bg-primary/90 shadow-lg">
+                      <HugeiconsIcon icon={File01Icon} className="size-6 text-primary-foreground" />
+                    </div>
+                    <div className="absolute right-0 top-0 flex size-12 rotate-12 items-center justify-center rounded-xl bg-primary/80 shadow-lg">
+                      <HugeiconsIcon icon={SourceCodeSquareIcon} className="size-6 text-primary-foreground" />
+                    </div>
+                    <div className="absolute bottom-0 left-1/2 z-10 flex size-14 -translate-x-1/2 items-center justify-center rounded-xl bg-primary shadow-lg">
+                      <HugeiconsIcon icon={Image02Icon} className="size-7 text-primary-foreground" />
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-xl font-semibold">Add anything</h3>
+                    <p className="mt-1 text-muted-foreground">
+                      Drop any file here to add it to the conversation
+                    </p>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </>
   );
 
