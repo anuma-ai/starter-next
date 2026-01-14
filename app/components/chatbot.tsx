@@ -56,6 +56,16 @@ const MODELS = [
     name: "Grok 4.1 Fast",
     apiType: "completions" as const,
   },
+  {
+    id: "fireworks/accounts/fireworks/models/qwen3-235b-a22b-instruct-2507",
+    name: "Anuma Private - Fast",
+    apiType: "completions" as const,
+  },
+  {
+    id: "fireworks/accounts/fireworks/models/glm-4p7",
+    name: "Anuma Private - Thinking",
+    apiType: "completions" as const,
+  },
 ];
 
 type PromptMenuProps = {
@@ -292,8 +302,13 @@ const ChatBotDemo = () => {
                       (streamingText || !isLoading);
 
                     // Show loading indicator inside message when submitting but no text yet
+                    // Don't show if files are being processed (we show "Processing files..." instead)
                     const showInlineLoader =
-                      isLastAssistantMessage && isSubmitting && !streamingText;
+                      isLastAssistantMessage &&
+                      isSubmitting &&
+                      !streamingText &&
+                      !isProcessingPdf &&
+                      !isProcessingOCR;
 
                     return (
                       <div key={`${message.id}-${i}`}>

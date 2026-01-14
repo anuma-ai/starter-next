@@ -80,6 +80,7 @@ export function useAppChat({
     switchConversation,
     setConversationId,
     deleteConversation,
+    refreshConversations,
   } = useAppChatStorage({
     database,
     getToken,
@@ -286,6 +287,7 @@ export function useAppChat({
     switchConversation,
     setConversationId,
     deleteConversation,
+    refreshConversations,
     subscribeToStreaming,
     subscribeToThinking,
 
