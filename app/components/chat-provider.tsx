@@ -75,7 +75,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Wrap Privy's signMessage to match SDK's expected signature
   const signMessage = useCallback(
     async (message: string) => {
-      const result = await privySignMessage({ message });
+      const result = await privySignMessage(
+        { message },
+        { uiOptions: { showWalletUIs: false } }
+      );
       return result.signature;
     },
     [privySignMessage]
@@ -105,18 +108,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (!embeddedWallet.address) {
         throw new Error("Embedded wallet not ready (no address)");
       }
-      const provider = await embeddedWallet.getEthereumProvider();
-      const accounts = (await provider.request({ method: "eth_accounts" })) as string[];
-      if (!accounts || accounts.length === 0) {
-        throw new Error("No accounts available in embedded wallet");
-      }
-      const signature = await provider.request({
-        method: "personal_sign",
-        params: [message, accounts[0]],
-      });
-      return signature as string;
+      const result = await privySignMessage(
+        { message },
+        { uiOptions: { showWalletUIs: false } }
+      );
+      return result.signature;
     },
-    [embeddedWallet]
+    [embeddedWallet, privySignMessage]
   );
 
   // Use refs to capture latest values without causing effect re-runs
