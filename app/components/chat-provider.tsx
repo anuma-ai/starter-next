@@ -50,6 +50,7 @@ type ChatState = {
   createConversation: () => Promise<any>;
   setConversationId: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
+  refreshConversations: () => Promise<void>;
 };
 
 const ChatContext = createContext<ChatState | null>(null);

@@ -112,42 +112,45 @@ export function useAppChatStorage({
   });
   //#endregion hookInit
 
+  const refreshConversations = useCallback(async () => {
+    const list = await getConversations();
+    // Load first message for each conversation to use as title
+    const conversationsWithTitles = await Promise.all(
+      list.map(async (conv: any) => {
+        const convId = conv.conversationId || conv.id;
+        if (!convId) return null;
+
+        try {
+          const msgs = await getMessages(convId);
+          if (!msgs || msgs.length === 0) return null;
+
+          const firstUserMessage = msgs.find((m: any) => m.role === "user");
+          // Strip memory context prefix from title
+          const messageText = stripMemoryContext(
+            firstUserMessage?.content || ""
+          );
+          const title = messageText?.slice(0, 30) || null;
+
+          return {
+            ...conv,
+            id: convId,
+            title: title
+              ? title.length >= 30
+                ? `${title}...`
+                : title
+              : null,
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+    setConversations(conversationsWithTitles.filter(Boolean));
+  }, [getConversations, getMessages]);
+
   useEffect(() => {
-    getConversations().then(async (list) => {
-      // Load first message for each conversation to use as title
-      const conversationsWithTitles = await Promise.all(
-        list.map(async (conv: any) => {
-          const convId = conv.conversationId || conv.id;
-          if (!convId) return null;
-
-          try {
-            const msgs = await getMessages(convId);
-            if (!msgs || msgs.length === 0) return null;
-
-            const firstUserMessage = msgs.find((m: any) => m.role === "user");
-            // Strip memory context prefix from title
-            const messageText = stripMemoryContext(
-              firstUserMessage?.content || ""
-            );
-            const title = messageText?.slice(0, 30) || null;
-
-            return {
-              ...conv,
-              id: convId,
-              title: title
-                ? title.length >= 30
-                  ? `${title}...`
-                  : title
-                : null,
-            };
-          } catch {
-            return null;
-          }
-        })
-      );
-      setConversations(conversationsWithTitles.filter(Boolean));
-    });
-  }, [getConversations, getMessages, conversationId]);
+    refreshConversations();
+  }, [refreshConversations, conversationId]);
 
   // Add newly created conversations to sidebar when conversationId changes
   useEffect(() => {
@@ -589,5 +592,6 @@ export function useAppChatStorage({
     switchConversation: handleSwitchConversation,
     setConversationId: handleSwitchConversation,
     deleteConversation: handleDeleteConversation,
+    refreshConversations,
   };
 }

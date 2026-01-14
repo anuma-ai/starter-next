@@ -56,6 +56,16 @@ const MODELS = [
     name: "Grok 4.1 Fast",
     apiType: "completions" as const,
   },
+  {
+    id: "fireworks/accounts/fireworks/models/qwen3-235b-a22b-instruct-2507",
+    name: "Anuma Private - Fast",
+    apiType: "completions" as const,
+  },
+  {
+    id: "fireworks/accounts/fireworks/models/glm-4p7",
+    name: "Anuma Private - Thinking",
+    apiType: "completions" as const,
+  },
 ];
 
 type PromptMenuProps = {

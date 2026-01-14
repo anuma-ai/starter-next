@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { useAppBackup } from "@/hooks/useAppBackup";
+import { useChatContext } from "@/app/components/chat-provider";
 
 type BackupProvider = {
   id: string;
@@ -20,6 +21,7 @@ type BackupProvider = {
 
 export default function BackupsPage() {
   const router = useRouter();
+  const { refreshConversations } = useChatContext();
   const {
     dropbox,
     googleDrive,
@@ -139,6 +141,8 @@ export default function BackupsPage() {
           status: "success",
           message: `Restored ${result.restored} of ${result.total} conversations`,
         });
+        // Refresh sidebar conversations list
+        await refreshConversations();
       } else {
         setBackupProgress({
           provider: providerId,
@@ -146,6 +150,8 @@ export default function BackupsPage() {
           status: "success",
           message: "Restore completed successfully",
         });
+        // Refresh sidebar conversations list
+        await refreshConversations();
       }
     } catch (err) {
       setBackupProgress({
