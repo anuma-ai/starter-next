@@ -267,11 +267,11 @@ const ChatBotDemo = () => {
                       streamingThinking &&
                       (streamingText || !isLoading);
 
-                    // Show loading indicator inside message when submitting but no text yet
-                    // Don't show if files are being processed (we show "Processing files..." instead)
+                    // Show loading indicator inside message when waiting for response
+                    // Keep showing until streaming text actually starts
                     const showInlineLoader =
                       isLastAssistantMessage &&
-                      isSubmitting &&
+                      (isSubmitting || isLoading) &&
                       !streamingText;
 
                     return (
