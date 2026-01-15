@@ -12,14 +12,14 @@ export default function AccountPage() {
   const linkedAccounts = user?.linkedAccounts || [];
 
   return (
-    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
+    <div className="flex flex-1 flex-col p-8 pt-16 md:pt-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
       <div className="mx-auto w-full max-w-2xl pb-8">
-        <div className="mb-6 flex items-center h-8">
+        <div className="mb-6 flex items-center h-8 relative">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.push("/settings")}
-            className="absolute"
+            className="absolute left-0 top-1/2 -translate-y-1/2"
           >
             <ChevronLeft className="size-5" />
           </Button>
