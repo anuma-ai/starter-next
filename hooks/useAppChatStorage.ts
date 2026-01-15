@@ -434,6 +434,7 @@ export function useAppChatStorage({
             name: file.filename || fileId,
             type: file.mediaType || "application/octet-stream",
             size: 0,
+            url: file.url, // Include URL for SDK file preprocessing
           };
         })
       );

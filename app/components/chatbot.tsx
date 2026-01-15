@@ -3,9 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
-import { ImageIcon, CheckIcon, CpuIcon } from "lucide-react";
+import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
-import { usePdf, useOCR } from "@reverbia/sdk/react";
 
 import {
   CHAT_INPUT_PLACEHOLDER,
@@ -122,8 +121,9 @@ const ChatBotDemo = () => {
 
   const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
 
-  const { extractPdfContext, isProcessing: isProcessingPdf } = usePdf();
-  const { extractOCRContext, isProcessing: isProcessingOCR } = useOCR();
+  // Note: File preprocessing (PDF, Excel, Word) is now handled automatically
+  // by the SDK via useChatStorage's fileProcessors option. No need for manual
+  // usePdf() or useOCR() calls here.
 
   const {
     messages,
@@ -211,43 +211,16 @@ const ChatBotDemo = () => {
       addMessageOptimistically(message.text, message.files, message.text);
       setInput(""); // Clear input immediately for instant feedback
 
-      // Step 2: Process OCR/PDF in background if needed
-      let enhancedText = message.text;
-      if (message.files && message.files.length > 0) {
-        try {
-          const pdfContext = await extractPdfContext(message.files);
-          if (pdfContext && pdfContext.length > 100) {
-            enhancedText = enhancedText
-              ? `${enhancedText}\n\n${pdfContext}`
-              : pdfContext;
-          } else {
-            const ocrContext = await extractOCRContext(message.files);
-            if (ocrContext) {
-              enhancedText = enhancedText
-                ? `${enhancedText}\n\n${ocrContext}`
-                : ocrContext;
-            }
-          }
-        } catch (error) {
-          try {
-            const ocrContext = await extractOCRContext(message.files);
-            if (ocrContext) {
-              enhancedText = enhancedText
-                ? `${enhancedText}\n\n${ocrContext}`
-                : ocrContext;
-            }
-          } catch (ocrError) {
-            console.error("Error processing OCR fallback:", ocrError);
-          }
-        }
-      }
+      // Step 2: File preprocessing is now handled automatically by useChatStorage
+      // The SDK will extract text from PDF, Excel, and Word files automatically
+      // No need for manual processing here
 
-      // Step 3: Send to API with enhanced text (skip adding to UI again since we already did)
+      // Step 3: Send to API (skip adding to UI again since we already did)
       const currentModel = MODELS.find((m) => m.id === selectedModel);
       await handleSubmit(
         {
           ...message,
-          text: enhancedText,
+          text: message.text,
           displayText: message.text,
           files: message.files,
         },
@@ -260,14 +233,7 @@ const ChatBotDemo = () => {
         }
       );
     },
-    [
-      handleSubmit,
-      addMessageOptimistically,
-      setInput,
-      extractPdfContext,
-      extractOCRContext,
-      selectedModel,
-    ]
+    [handleSubmit, addMessageOptimistically, setInput, selectedModel]
   );
 
   return (
@@ -306,9 +272,7 @@ const ChatBotDemo = () => {
                     const showInlineLoader =
                       isLastAssistantMessage &&
                       isSubmitting &&
-                      !streamingText &&
-                      !isProcessingPdf &&
-                      !isProcessingOCR;
+                      !streamingText;
 
                     return (
                       <div key={`${message.id}-${i}`}>
@@ -348,25 +312,30 @@ const ChatBotDemo = () => {
                       </div>
                     );
                   }
-                  case "file":
+                  case "file": {
+                    const ext = part.filename?.split(".").pop()?.toLowerCase();
+                    const isSpreadsheet = ext === "xlsx" || ext === "xls" || ext === "csv";
+                    const isDocument = ext === "docx" || ext === "doc" || ext === "pdf" || ext === "txt";
+                    const FileTypeIcon = isSpreadsheet ? FileSpreadsheetIcon : isDocument ? FileTextIcon : FileIcon;
+                    const fileTypeLabel = isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
+                    const iconBgColor = isSpreadsheet ? "bg-green-500" : "bg-blue-500";
+
                     // User files: no bubble
                     if (message.role === "user") {
                       return (
                         <div
                           key={`${message.id}-${i}`}
-                          className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm ml-auto w-fit"
+                          className="flex items-center gap-3 rounded-xl bg-muted/50 border border-border p-2 pr-4 text-sm ml-auto w-fit mt-2"
                         >
-                          <div className="flex size-8 items-center justify-center rounded-sm bg-background">
-                            <span className="text-xs font-bold text-muted-foreground">
-                              PDF
-                            </span>
+                          <div className={`flex size-10 items-center justify-center rounded-lg ${iconBgColor}`}>
+                            <FileTypeIcon className="size-5 text-white" />
                           </div>
                           <div className="flex flex-col overflow-hidden">
                             <span className="truncate font-medium">
                               {part.filename}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {part.mediaType}
+                              {fileTypeLabel}
                             </span>
                           </div>
                         </div>
@@ -376,24 +345,23 @@ const ChatBotDemo = () => {
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
                         <MessageContent>
-                          <div className="flex items-center gap-2 rounded-md border bg-accent/10 p-2 text-sm">
-                            <div className="flex size-8 items-center justify-center rounded-sm bg-background">
-                              <span className="text-xs font-bold text-muted-foreground">
-                                PDF
-                              </span>
+                          <div className="flex items-center gap-3 rounded-xl bg-muted/50 border border-border p-2 pr-4 text-sm">
+                            <div className={`flex size-10 items-center justify-center rounded-lg ${iconBgColor}`}>
+                              <FileTypeIcon className="size-5 text-white" />
                             </div>
                             <div className="flex flex-col overflow-hidden">
                               <span className="truncate font-medium">
                                 {part.filename}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {part.mediaType}
+                                {fileTypeLabel}
                               </span>
                             </div>
                           </div>
                         </MessageContent>
                       </Message>
                     );
+                  }
                   case "image_url":
                     // User images: no bubble
                     if (message.role === "user") {
@@ -446,13 +414,7 @@ const ChatBotDemo = () => {
               })}
             </div>
           ))}
-          {/* PDF/OCR processing indicator */}
-          {(isProcessingPdf || isProcessingOCR) && (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm h-5">
-              <span className="inline-block size-3 rounded-full bg-foreground flex-shrink-0 animate-[scale-pulse_1.5s_ease-in-out_infinite]" />
-              <span>Processing files...</span>
-            </div>
-          )}
+          {/* File preprocessing is now handled automatically by the SDK */}
         </div>
       </div>
 
@@ -463,7 +425,7 @@ const ChatBotDemo = () => {
       >
         <div className="mx-auto w-full min-w-0 max-w-3xl overflow-hidden">
           <PromptInput
-            accept="image/*,application/pdf"
+            accept="image/*,application/pdf,.xlsx,.xls,.docx"
             globalDrop
             multiple
             onSubmit={onSubmit}
@@ -501,8 +463,6 @@ const ChatBotDemo = () => {
                 disabled={
                   !input ||
                   isLoading ||
-                  isProcessingPdf ||
-                  isProcessingOCR ||
                   !authenticated
                 }
                 status={status}
