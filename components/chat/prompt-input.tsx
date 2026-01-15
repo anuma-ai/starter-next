@@ -513,24 +513,14 @@ export const PromptInput = ({
     // Files are already data URLs (converted in add function), so just extract without id
     const convertedFiles: FileUIPart[] = files.map(({ id, ...item }) => item);
 
-    try {
-      const result = onSubmit({ text, files: convertedFiles }, event);
+    // Clear attachments immediately on submit for instant feedback
+    clear();
+    if (usingProvider) {
+      controller.textInput.clear();
+    }
 
-      if (result instanceof Promise) {
-        result
-          .then(() => {
-            clear();
-            if (usingProvider) {
-              controller.textInput.clear();
-            }
-          })
-          .catch(() => {});
-      } else {
-        clear();
-        if (usingProvider) {
-          controller.textInput.clear();
-        }
-      }
+    try {
+      onSubmit({ text, files: convertedFiles }, event);
     } catch (error) {}
   };
 
