@@ -390,7 +390,7 @@ export function useAppChatStorage({
         type?: string;
         text?: string;
         image_url?: { url?: string };
-        file?: { file_url?: string; filename?: string };
+        file?: { file_id?: string; file_url?: string; filename?: string };
       }> = [];
 
       // Add text content - use clean text for storage, but we need OCR context for API
@@ -399,46 +399,55 @@ export function useAppChatStorage({
         contentParts.push({ type: "text", text: textForStorage });
       }
 
-      //#region imageContentParts
-      if (files && files.length > 0) {
-        files.forEach((file) => {
-          if (file.mediaType?.startsWith("image/")) {
-            contentParts.push({
-              type: "image_url",
-              image_url: { url: file.url },
-            });
-          } else {
-            contentParts.push({
-              type: "input_file",
-              file: { file_url: file.url, filename: file.filename },
-            });
-          }
-        });
-      }
-      //#endregion imageContentParts
+      //#region fileProcessing
+      // Process files: create stable IDs, add to contentParts, and prepare for SDK
+      const fileEntries = files || [];
+      const enrichedFiles = fileEntries.map((file) => ({
+        ...file,
+        // Ensure each file has a stable ID (use existing or generate)
+        stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      }));
 
-      //#region fileStorage
+      // Add files to content parts
+      enrichedFiles.forEach((file) => {
+        if (file.mediaType?.startsWith("image/")) {
+          contentParts.push({
+            type: "image_url",
+            image_url: { url: file.url },
+          });
+        } else {
+          contentParts.push({
+            type: "input_file",
+            file: {
+              file_id: file.stableId, // Use stable ID for matching during preprocessing
+              file_url: file.url,
+              filename: file.filename
+            },
+          });
+        }
+      });
+
+      // Create SDK files with same IDs
       const sdkFiles = await Promise.all(
-        (files || []).map(async (file) => {
-          const fileId = generateFileId();
+        enrichedFiles.map(async (file) => {
           if (file.url) {
             await storeFile(
-              fileId,
+              file.stableId,
               file.url,
               file.filename || "",
               file.mediaType || "application/octet-stream"
             );
           }
           return {
-            id: fileId,
-            name: file.filename || fileId,
+            id: file.stableId, // Same ID as used in contentParts
+            name: file.filename || file.stableId,
             type: file.mediaType || "application/octet-stream",
             size: 0,
             url: file.url, // Include URL for SDK file preprocessing
           };
         })
       );
-      //#endregion fileStorage
+      //#endregion fileProcessing
 
       // If we have OCR/memory context that differs from displayText, pass it via memoryContext
       const memoryContext = displayText && text !== displayText ? text : undefined;

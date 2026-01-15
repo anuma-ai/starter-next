@@ -153,38 +153,38 @@ export function PromptInputProvider({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openRef = useRef<() => void>(() => {});
 
-  const add = useCallback((files: File[] | FileList) => {
+  const add = useCallback(async (files: File[] | FileList) => {
     const incoming = Array.from(files);
     if (incoming.length === 0) return;
 
-    setAttachements((prev) =>
-      prev.concat(
-        incoming.map((file) => ({
-          id: nanoid(),
-          type: "file" as const,
-          url: URL.createObjectURL(file),
-          mediaType: file.type,
-          filename: file.name,
-        }))
-      )
-    );
+    // Convert files to data URLs immediately to avoid blob URL lifecycle issues
+    const fileDataPromises = incoming.map(async (file) => {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      return {
+        id: nanoid(),
+        type: "file" as const,
+        url: dataUrl,
+        mediaType: file.type,
+        filename: file.name,
+      };
+    });
+
+    const fileData = await Promise.all(fileDataPromises);
+    setAttachements((prev) => prev.concat(fileData));
   }, []);
 
   const remove = useCallback((id: string) => {
-    setAttachements((prev) => {
-      const found = prev.find((f) => f.id === id);
-      if (found?.url) URL.revokeObjectURL(found.url);
-      return prev.filter((f) => f.id !== id);
-    });
+    setAttachements((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
   const clear = useCallback(() => {
-    setAttachements((prev) => {
-      for (const f of prev) {
-        if (f.url) URL.revokeObjectURL(f.url);
-      }
-      return [];
-    });
+    setAttachements([]);
   }, []);
 
   const openFileDialog = useCallback(() => {
@@ -315,7 +315,7 @@ export const PromptInput = ({
   );
 
   const addLocal = useCallback(
-    (fileList: File[] | FileList) => {
+    async (fileList: File[] | FileList) => {
       const incoming = Array.from(fileList);
       const accepted = incoming.filter((f) => matchesAccept(f));
       if (incoming.length && accepted.length === 0) {
@@ -336,33 +336,41 @@ export const PromptInput = ({
         return;
       }
 
-      setItems((prev) => {
-        const capacity =
-          typeof maxFiles === "number"
-            ? Math.max(0, maxFiles - prev.length)
-            : undefined;
-        const capped =
-          typeof capacity === "number" ? sized.slice(0, capacity) : sized;
-        if (typeof capacity === "number" && sized.length > capacity) {
-          onError?.({
-            code: "max_files",
-            message: "Too many files. Some were not added.",
-          });
-        }
-        const next: (FileUIPart & { id: string })[] = [];
-        for (const file of capped) {
-          next.push({
-            id: nanoid(),
-            type: "file",
-            url: URL.createObjectURL(file),
-            mediaType: file.type,
-            filename: file.name,
-          });
-        }
-        return prev.concat(next);
+      const capacity =
+        typeof maxFiles === "number"
+          ? Math.max(0, maxFiles - items.length)
+          : undefined;
+      const capped =
+        typeof capacity === "number" ? sized.slice(0, capacity) : sized;
+      if (typeof capacity === "number" && sized.length > capacity) {
+        onError?.({
+          code: "max_files",
+          message: "Too many files. Some were not added.",
+        });
+      }
+
+      // Convert files to data URLs immediately
+      const fileDataPromises = capped.map(async (file) => {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        return {
+          id: nanoid(),
+          type: "file" as const,
+          url: dataUrl,
+          mediaType: file.type,
+          filename: file.name,
+        };
       });
+
+      const next = await Promise.all(fileDataPromises);
+      setItems((prev) => prev.concat(next));
     },
-    [matchesAccept, maxFiles, maxFileSize, onError]
+    [matchesAccept, maxFiles, maxFileSize, onError, items.length]
   );
 
   const add = usingProvider
@@ -371,22 +379,11 @@ export const PromptInput = ({
 
   const remove = usingProvider
     ? (id: string) => controller.attachments.remove(id)
-    : (id: string) =>
-        setItems((prev) => {
-          const found = prev.find((file) => file.id === id);
-          if (found?.url) URL.revokeObjectURL(found.url);
-          return prev.filter((file) => file.id !== id);
-        });
+    : (id: string) => setItems((prev) => prev.filter((file) => file.id !== id));
 
   const clear = usingProvider
     ? () => controller.attachments.clear()
-    : () =>
-        setItems((prev) => {
-          for (const file of prev) {
-            if (file.url) URL.revokeObjectURL(file.url);
-          }
-          return [];
-        });
+    : () => setItems([]);
 
   const openFileDialog = usingProvider
     ? () => controller.attachments.openFileDialog()
@@ -478,40 +475,11 @@ export const PromptInput = ({
     };
   }, [add, globalDrop]);
 
-  useEffect(
-    () => () => {
-      if (!usingProvider) {
-        for (const f of files) {
-          if (f.url) URL.revokeObjectURL(f.url);
-        }
-      }
-    },
-    [usingProvider, files]
-  );
-
   const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     if (event.currentTarget.files) {
       add(event.currentTarget.files);
       // Reset the input value so the same file can be selected again
       event.currentTarget.value = "";
-    }
-  };
-
-  const convertBlobUrlToDataUrl = async (url: string): Promise<string> => {
-    if (!url.startsWith("blob:")) return url;
-
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (err) {
-      console.error("Failed to convert blob URL to data URL:", err);
-      return url;
     }
   };
 
@@ -542,38 +510,28 @@ export const PromptInput = ({
       form.reset();
     }
 
-    Promise.all(
-      files.map(async ({ id, ...item }) => {
-        if (item.url && item.url.startsWith("blob:")) {
-          return {
-            ...item,
-            url: await convertBlobUrlToDataUrl(item.url),
-          };
-        }
-        return item;
-      })
-    ).then((convertedFiles: FileUIPart[]) => {
-      try {
-        const result = onSubmit({ text, files: convertedFiles }, event);
+    // Files are already data URLs (converted in add function), so just extract without id
+    const convertedFiles: FileUIPart[] = files.map(({ id, ...item }) => item);
 
-        if (result instanceof Promise) {
-          result
-            .then(() => {
-              clear();
-              if (usingProvider) {
-                controller.textInput.clear();
-              }
-            })
-            .catch(() => {});
-        } else {
-          clear();
-          if (usingProvider) {
-            controller.textInput.clear();
-          }
+    try {
+      const result = onSubmit({ text, files: convertedFiles }, event);
+
+      if (result instanceof Promise) {
+        result
+          .then(() => {
+            clear();
+            if (usingProvider) {
+              controller.textInput.clear();
+            }
+          })
+          .catch(() => {});
+      } else {
+        clear();
+        if (usingProvider) {
+          controller.textInput.clear();
         }
-      } catch (error) {}
-    });
-    clear();
+      }
+    } catch (error) {}
   };
 
   const inner = (
