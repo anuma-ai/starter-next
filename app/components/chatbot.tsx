@@ -262,18 +262,34 @@ const ChatBotDemo = () => {
                     const useStreaming = isLastAssistantMessage && isLoading;
 
                     // Show reasoning after streaming starts (or completes) if there was thinking
+                    // Only for assistant messages
                     const showReasoning =
+                      message.role === "assistant" &&
                       isLastAssistantMessage &&
                       streamingThinking &&
                       (streamingText || !isLoading);
 
                     // Show loading indicator inside message when waiting for response
                     // Keep showing until streaming text actually starts
+                    // Only for assistant messages
                     const showInlineLoader =
+                      message.role === "assistant" &&
                       isLastAssistantMessage &&
                       (isSubmitting || isLoading) &&
                       !streamingText;
 
+                    // For user messages, just render the message
+                    if (message.role === "user") {
+                      return (
+                        <Message key={`${message.id}-${i}`} from={message.role}>
+                          <MessageContent>
+                            <MessageResponse>{part.text}</MessageResponse>
+                          </MessageContent>
+                        </Message>
+                      );
+                    }
+
+                    // For assistant messages, include loader and reasoning
                     return (
                       <div key={`${message.id}-${i}`}>
                         {/* Loading indicator: circle, or circle + "Thinking..." */}
@@ -387,6 +403,8 @@ const ChatBotDemo = () => {
                       </Message>
                     );
                   case "reasoning":
+                    // Only show reasoning for assistant messages
+                    if (message.role !== "assistant") return null;
                     return (
                       <Reasoning
                         key={`${message.id}-${i}`}
