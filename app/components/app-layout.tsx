@@ -13,6 +13,8 @@ import { useChatContext } from "./chat-provider";
 import { ThinkingPanelProvider } from "./thinking-panel-provider";
 import { ThinkingPanel } from "./thinking-panel";
 import { RightSidebarHandle } from "@/components/ui/right-sidebar";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -38,24 +40,10 @@ function SidebarHandle() {
       {!openMobile && (
         <button
           onClick={() => setOpenMobile(true)}
-          className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-md bg-background border border-border shadow-sm"
+          className="fixed top-5 left-5 z-50 md:hidden text-muted-foreground"
           aria-label="Open Sidebar"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
+          <HugeiconsIcon icon={SidebarLeftIcon} size={20} />
         </button>
       )}
     </>

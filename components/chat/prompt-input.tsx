@@ -28,6 +28,9 @@ import {
   PaperclipIcon,
   SquareIcon,
   XIcon,
+  FileTextIcon,
+  FileSpreadsheetIcon,
+  FileIcon,
 } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -150,38 +153,38 @@ export function PromptInputProvider({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openRef = useRef<() => void>(() => {});
 
-  const add = useCallback((files: File[] | FileList) => {
+  const add = useCallback(async (files: File[] | FileList) => {
     const incoming = Array.from(files);
     if (incoming.length === 0) return;
 
-    setAttachements((prev) =>
-      prev.concat(
-        incoming.map((file) => ({
-          id: nanoid(),
-          type: "file" as const,
-          url: URL.createObjectURL(file),
-          mediaType: file.type,
-          filename: file.name,
-        }))
-      )
-    );
+    // Convert files to data URLs immediately to avoid blob URL lifecycle issues
+    const fileDataPromises = incoming.map(async (file) => {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      return {
+        id: nanoid(),
+        type: "file" as const,
+        url: dataUrl,
+        mediaType: file.type,
+        filename: file.name,
+      };
+    });
+
+    const fileData = await Promise.all(fileDataPromises);
+    setAttachements((prev) => prev.concat(fileData));
   }, []);
 
   const remove = useCallback((id: string) => {
-    setAttachements((prev) => {
-      const found = prev.find((f) => f.id === id);
-      if (found?.url) URL.revokeObjectURL(found.url);
-      return prev.filter((f) => f.id !== id);
-    });
+    setAttachements((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
   const clear = useCallback(() => {
-    setAttachements((prev) => {
-      for (const f of prev) {
-        if (f.url) URL.revokeObjectURL(f.url);
-      }
-      return [];
-    });
+    setAttachements([]);
   }, []);
 
   const openFileDialog = useCallback(() => {
@@ -302,6 +305,9 @@ export const PromptInput = ({
           const prefix = type.slice(0, -2);
           return f.type.startsWith(prefix);
         }
+        if (type.startsWith(".")) {
+          return f.name.toLowerCase().endsWith(type.toLowerCase());
+        }
         return f.type === type;
       });
     },
@@ -309,7 +315,7 @@ export const PromptInput = ({
   );
 
   const addLocal = useCallback(
-    (fileList: File[] | FileList) => {
+    async (fileList: File[] | FileList) => {
       const incoming = Array.from(fileList);
       const accepted = incoming.filter((f) => matchesAccept(f));
       if (incoming.length && accepted.length === 0) {
@@ -330,33 +336,41 @@ export const PromptInput = ({
         return;
       }
 
-      setItems((prev) => {
-        const capacity =
-          typeof maxFiles === "number"
-            ? Math.max(0, maxFiles - prev.length)
-            : undefined;
-        const capped =
-          typeof capacity === "number" ? sized.slice(0, capacity) : sized;
-        if (typeof capacity === "number" && sized.length > capacity) {
-          onError?.({
-            code: "max_files",
-            message: "Too many files. Some were not added.",
-          });
-        }
-        const next: (FileUIPart & { id: string })[] = [];
-        for (const file of capped) {
-          next.push({
-            id: nanoid(),
-            type: "file",
-            url: URL.createObjectURL(file),
-            mediaType: file.type,
-            filename: file.name,
-          });
-        }
-        return prev.concat(next);
+      const capacity =
+        typeof maxFiles === "number"
+          ? Math.max(0, maxFiles - items.length)
+          : undefined;
+      const capped =
+        typeof capacity === "number" ? sized.slice(0, capacity) : sized;
+      if (typeof capacity === "number" && sized.length > capacity) {
+        onError?.({
+          code: "max_files",
+          message: "Too many files. Some were not added.",
+        });
+      }
+
+      // Convert files to data URLs immediately
+      const fileDataPromises = capped.map(async (file) => {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        return {
+          id: nanoid(),
+          type: "file" as const,
+          url: dataUrl,
+          mediaType: file.type,
+          filename: file.name,
+        };
       });
+
+      const next = await Promise.all(fileDataPromises);
+      setItems((prev) => prev.concat(next));
     },
-    [matchesAccept, maxFiles, maxFileSize, onError]
+    [matchesAccept, maxFiles, maxFileSize, onError, items.length]
   );
 
   const add = usingProvider
@@ -365,22 +379,11 @@ export const PromptInput = ({
 
   const remove = usingProvider
     ? (id: string) => controller.attachments.remove(id)
-    : (id: string) =>
-        setItems((prev) => {
-          const found = prev.find((file) => file.id === id);
-          if (found?.url) URL.revokeObjectURL(found.url);
-          return prev.filter((file) => file.id !== id);
-        });
+    : (id: string) => setItems((prev) => prev.filter((file) => file.id !== id));
 
   const clear = usingProvider
     ? () => controller.attachments.clear()
-    : () =>
-        setItems((prev) => {
-          for (const file of prev) {
-            if (file.url) URL.revokeObjectURL(file.url);
-          }
-          return [];
-        });
+    : () => setItems([]);
 
   const openFileDialog = usingProvider
     ? () => controller.attachments.openFileDialog()
@@ -472,40 +475,11 @@ export const PromptInput = ({
     };
   }, [add, globalDrop]);
 
-  useEffect(
-    () => () => {
-      if (!usingProvider) {
-        for (const f of files) {
-          if (f.url) URL.revokeObjectURL(f.url);
-        }
-      }
-    },
-    [usingProvider, files]
-  );
-
   const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     if (event.currentTarget.files) {
       add(event.currentTarget.files);
       // Reset the input value so the same file can be selected again
       event.currentTarget.value = "";
-    }
-  };
-
-  const convertBlobUrlToDataUrl = async (url: string): Promise<string> => {
-    if (!url.startsWith("blob:")) return url;
-
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (err) {
-      console.error("Failed to convert blob URL to data URL:", err);
-      return url;
     }
   };
 
@@ -536,38 +510,18 @@ export const PromptInput = ({
       form.reset();
     }
 
-    Promise.all(
-      files.map(async ({ id, ...item }) => {
-        if (item.url && item.url.startsWith("blob:")) {
-          return {
-            ...item,
-            url: await convertBlobUrlToDataUrl(item.url),
-          };
-        }
-        return item;
-      })
-    ).then((convertedFiles: FileUIPart[]) => {
-      try {
-        const result = onSubmit({ text, files: convertedFiles }, event);
+    // Files are already data URLs (converted in add function), so just extract without id
+    const convertedFiles: FileUIPart[] = files.map(({ id, ...item }) => item);
 
-        if (result instanceof Promise) {
-          result
-            .then(() => {
-              clear();
-              if (usingProvider) {
-                controller.textInput.clear();
-              }
-            })
-            .catch(() => {});
-        } else {
-          clear();
-          if (usingProvider) {
-            controller.textInput.clear();
-          }
-        }
-      } catch (error) {}
-    });
+    // Clear attachments immediately on submit for instant feedback
     clear();
+    if (usingProvider) {
+      controller.textInput.clear();
+    }
+
+    try {
+      onSubmit({ text, files: convertedFiles }, event);
+    } catch (error) {}
   };
 
   const inner = (
@@ -890,20 +844,53 @@ export function PromptInputAttachment({
   const attachments = usePromptInputAttachments();
 
   const filename = data.filename || "";
-  const mediaType =
-    (data.mediaType?.startsWith("image/") ||
-      data.mediaType === "application/pdf") &&
-    data.url
-      ? data.mediaType?.startsWith("image/")
-        ? "image"
-        : "file"
-      : "file";
-  const isImage = mediaType === "image";
+  const isImage = data.mediaType?.startsWith("image/") && data.url;
+
+  // Determine file type for non-image files
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const isSpreadsheet = ext === "xlsx" || ext === "xls" || ext === "csv";
+  const isDocument = ext === "docx" || ext === "doc" || ext === "pdf" || ext === "txt";
+  const FileTypeIcon = isSpreadsheet ? FileSpreadsheetIcon : isDocument ? FileTextIcon : FileIcon;
+  const fileTypeLabel = isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
+  const iconBgColor = isSpreadsheet ? "bg-green-500" : "bg-blue-500";
+
+  if (isImage) {
+    return (
+      <motion.div
+        className={cn(
+          "group relative flex size-20 flex-shrink-0 cursor-default select-none items-center justify-center overflow-hidden rounded-md",
+          className
+        )}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.8 }}
+        transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+      >
+        <img
+          alt={filename || "attachment"}
+          className="size-full object-cover"
+          src={data.url}
+        />
+        <button
+          aria-label="Remove attachment"
+          className="absolute right-1 top-1 flex size-5 cursor-pointer items-center justify-center rounded-full bg-black/60 opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/80 group-hover:opacity-100 dark:bg-white/60 dark:hover:bg-white/80"
+          onClick={(e) => {
+            e.stopPropagation();
+            attachments.remove(data.id);
+          }}
+          type="button"
+        >
+          <XIcon className="size-3 text-white dark:text-black" />
+          <span className="sr-only">Remove</span>
+        </button>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
       className={cn(
-        "group relative flex size-20 flex-shrink-0 cursor-default select-none items-center justify-center overflow-hidden rounded-md",
+        "group relative flex flex-shrink-0 cursor-default select-none items-center gap-3 rounded-xl bg-muted/50 border border-border p-2 pr-4",
         className
       )}
       initial={{ opacity: 0, scale: 0.8 }}
@@ -911,17 +898,17 @@ export function PromptInputAttachment({
       exit={{ opacity: 0, scale: 0.8 }}
       transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
     >
-      {isImage ? (
-        <img
-          alt={filename || "attachment"}
-          className="size-full object-cover"
-          src={data.url}
-        />
-      ) : (
-        <div className="flex size-full items-center justify-center text-muted-foreground">
-          <PaperclipIcon className="size-8" />
-        </div>
-      )}
+      <div className={`flex size-10 items-center justify-center rounded-lg ${iconBgColor}`}>
+        <FileTypeIcon className="size-5 text-white" />
+      </div>
+      <div className="flex flex-col overflow-hidden">
+        <span className="truncate text-sm font-medium max-w-[150px]">
+          {filename}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {fileTypeLabel}
+        </span>
+      </div>
       <button
         aria-label="Remove attachment"
         className="absolute right-1 top-1 flex size-5 cursor-pointer items-center justify-center rounded-full bg-black/60 opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/80 group-hover:opacity-100 dark:bg-white/60 dark:hover:bg-white/80"

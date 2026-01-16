@@ -28,6 +28,10 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    video: {
+      mode: "on",
+      size: { width: 1920, height: 1080 },
+    },
   },
 
   projects: [
@@ -44,17 +48,18 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
+        viewport: { width: 1920, height: 1080 },
       },
       dependencies: ["setup"],
     },
   ],
 
-  // Start the dev server before running tests
+  // Build and start the production server before running tests
   webServer: {
-    command: `pnpm dev --port ${port}`,
+    command: `pnpm build && pnpm start --port ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: 180000,
     env: {
       NEXT_PUBLIC_PRIVY_TEST_MODE: "true",
     },

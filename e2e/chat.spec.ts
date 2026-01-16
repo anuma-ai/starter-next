@@ -119,4 +119,76 @@ test.describe("Chat", () => {
       timeout: 90000,
     });
   });
+
+  test("user can attach an Excel file and ask about it", async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto("/");
+
+    // Wait for the chat interface to be ready
+    const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
+    await expect(promptInput).toBeVisible();
+
+    // Attach the Excel file via the hidden file input
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles("e2e/fixtures/example.xlsx");
+
+    // Wait for the file attachment preview to appear
+    await expect(page.getByText("example.xlsx")).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Type a question about the spreadsheet
+    const prompt = "What data is in this spreadsheet? List the names.";
+    await promptInput.fill(prompt);
+
+    // Submit the prompt
+    await page.getByRole("button", { name: "Submit" }).click();
+
+    // Wait for the user message to appear
+    await expect(page.getByText(prompt)).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Wait for the assistant response that mentions at least one name from the spreadsheet
+    await expect(page.locator(".is-assistant")).toContainText(
+      /Alice|Bob|Charlie/i,
+      { timeout: 90000 }
+    );
+  });
+
+  test("user can attach a Word document and ask about it", async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto("/");
+
+    // Wait for the chat interface to be ready
+    const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
+    await expect(promptInput).toBeVisible();
+
+    // Attach the Word document via the hidden file input
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles("e2e/fixtures/example.docx");
+
+    // Wait for the file attachment preview to appear
+    await expect(page.getByText("example.docx")).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Type a question about the document
+    const prompt = "What is the content of this document? Summarize it briefly.";
+    await promptInput.fill(prompt);
+
+    // Submit the prompt
+    await page.getByRole("button", { name: "Submit" }).click();
+
+    // Wait for the user message to appear
+    await expect(page.getByText(prompt)).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Wait for the assistant response that mentions content from the document
+    await expect(page.locator(".is-assistant")).toContainText(
+      /test|sample|document/i,
+      { timeout: 90000 }
+    );
+  });
 });
