@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import type { MessageRole } from "@/types/chat";
 import type { HTMLAttributes, ImgHTMLAttributes } from "react";
 import { memo, useEffect, useRef, useState, useMemo } from "react";
-import { marked } from "marked";
 import { Streamdown } from "streamdown";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
@@ -57,25 +56,26 @@ function convertImageUrlsToMarkdown(text: string): string {
   return text.replace(IMAGE_URL_REGEX, (url) => `\n\n![Generated image](${url})\n\n`);
 }
 
-// Use marked for synchronous markdown rendering (no flicker on re-render)
+// Use Streamdown for consistent syntax highlighting and copy functionality
 export const MessageResponse = memo(
   ({ className, children }: MessageResponseProps) => {
-    const html = useMemo(() => {
-      if (!children) return "";
-      // Convert standalone image URLs to markdown images before parsing
-      const processedText = convertImageUrlsToMarkdown(children);
-      return marked.parse(processedText, { async: false }) as string;
-    }, [children]);
+    const processedText = useMemo(
+      () => (children ? convertImageUrlsToMarkdown(children) : ""),
+      [children]
+    );
 
     return (
-      <div
+      <Streamdown
         className={cn(
           "size-full [&>p]:my-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
           "[&_img]:max-w-full [&_img]:max-h-80 [&_img]:rounded-lg [&_img]:my-4",
           className
         )}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+        shikiTheme={["github-light", "github-dark"]}
+        components={{ img: MarkdownImage }}
+      >
+        {processedText}
+      </Streamdown>
     );
   },
   (prevProps, nextProps) => prevProps.children === nextProps.children

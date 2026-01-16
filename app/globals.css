@@ -164,12 +164,21 @@
   will-change: transform, opacity;
 }
 
+/* Code block styling */
+[data-streamdown="code-block-body"] {
+  line-height: 1.6 !important;
+}
+
+[data-streamdown="code-block-body"] code {
+  line-height: 1.6 !important;
+}
+
 /* Fix shiki syntax highlighting in dark mode - override inline styles */
 .dark [data-streamdown="code-block-body"] {
   background-color: #1a1a1a !important;
 }
 
-.dark [data-streamdown="code-block-body"] code span span {
+.dark [data-streamdown="code-block-body"] code span {
   color: var(--shiki-dark) !important;
   background-color: transparent !important;
 }
