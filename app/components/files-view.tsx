@@ -47,7 +47,10 @@ function getFileIcon(mimeType: string, filename: string) {
   if (["xlsx", "xls", "csv"].includes(ext)) {
     return { Icon: FileSpreadsheetIcon, color: "text-green-500" };
   }
-  if (["docx", "doc", "pdf", "txt"].includes(ext)) {
+  if (ext === "pdf") {
+    return { Icon: FileTextIcon, color: "text-red-500" };
+  }
+  if (["docx", "doc", "txt"].includes(ext)) {
     return { Icon: FileTextIcon, color: "text-blue-500" };
   }
   return { Icon: FileIcon, color: "text-gray-500" };
