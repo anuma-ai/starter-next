@@ -1,11 +1,43 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { usePrivy } from "@privy-io/react-auth";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, Delete01Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon } from "lucide-react";
+import { Search01Icon, Delete01Icon, MoreHorizontalIcon, Message01Icon } from "@hugeicons/core-free-icons";
+import { ImageIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, LayoutGridIcon, ListIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { getAllFiles, deleteFile, type StoredFile } from "@/lib/fileStorage";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  useChatStorage,
+  type StoredFileWithContext,
+  readEncryptedFile,
+  deleteEncryptedFile,
+  hasEncryptionKey,
+  getEncryptionKey,
+} from "@reverbia/sdk/react";
+import { useDatabase } from "@/app/providers";
+
+// Extended file type that includes SDK metadata plus data URL for rendering
+interface FileWithDataUrl extends StoredFileWithContext {
+  dataUrl: string;
+}
+
+type ViewMode = "grid" | "list";
 
 function getFileIcon(mimeType: string, filename: string) {
   if (mimeType.startsWith("image/")) {
@@ -30,24 +62,81 @@ function formatFileSize(dataUrl: string): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Helper to convert blob to data URL
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function FilesView() {
-  const [files, setFiles] = useState<StoredFile[]>([]);
+  const router = useRouter();
+  const database = useDatabase();
+  const { user } = usePrivy();
+  const walletAddress = user?.wallet?.address;
+
+  const [files, setFiles] = useState<FileWithDataUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<FileWithDataUrl | null>(null);
 
-  useEffect(() => {
-    loadFiles();
-  }, []);
+  // Use SDK's getAllFiles to get file metadata from messages
+  const { getAllFiles } = useChatStorage({
+    database,
+    autoCreateConversation: false,
+    walletAddress,
+  });
 
-  async function loadFiles() {
+  const loadFiles = useCallback(async () => {
+    if (!walletAddress || !hasEncryptionKey(walletAddress)) {
+      setFiles([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const allFiles = await getAllFiles();
-      setFiles(allFiles);
+      // Get file metadata from SDK (stored on messages)
+      const sdkFiles = await getAllFiles();
+      const encryptionKey = await getEncryptionKey(walletAddress);
+
+      // Read encrypted files from OPFS
+      const filesWithDataUrls = await Promise.all(
+        sdkFiles.map(async (file) => {
+          let dataUrl = "";
+
+          try {
+            const result = await readEncryptedFile(file.id, encryptionKey);
+            if (result) {
+              dataUrl = await blobToDataUrl(result.blob);
+            }
+          } catch (err) {
+            // File not in OPFS
+            console.debug(`File ${file.id} not found in OPFS`);
+          }
+
+          return {
+            ...file,
+            dataUrl,
+          };
+        })
+      );
+
+      // Filter out files without data URLs (can't be displayed)
+      setFiles(filesWithDataUrls.filter((f) => f.dataUrl));
     } finally {
       setLoading(false);
     }
-  }
+  }, [getAllFiles, walletAddress]);
+
+  useEffect(() => {
+    loadFiles();
+  }, [loadFiles]);
 
   const filteredFiles = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -56,21 +145,41 @@ export function FilesView() {
     const query = searchQuery.toLowerCase();
     return files.filter((file) => {
       return (
-        file.filename.toLowerCase().includes(query) ||
-        file.mimeType.toLowerCase().includes(query)
+        file.name.toLowerCase().includes(query) ||
+        file.type.toLowerCase().includes(query)
       );
     });
   }, [files, searchQuery]);
 
-  const handleDelete = async (id: string) => {
-    await deleteFile(id);
-    setFiles((prev) => prev.filter((f) => f.id !== id));
+  const handleDeleteClick = (file: FileWithDataUrl) => {
+    setFileToDelete(file);
+    setDeleteDialogOpen(true);
   };
 
-  const handleDownload = (file: StoredFile) => {
+  const handleDeleteConfirm = async () => {
+    if (fileToDelete) {
+      try {
+        await deleteEncryptedFile(fileToDelete.id);
+      } catch (err) {
+        console.error("Failed to delete file:", err);
+      }
+
+      setFiles((prev) => prev.filter((f) => f.id !== fileToDelete.id));
+      setDeleteDialogOpen(false);
+      setFileToDelete(null);
+    }
+  };
+
+  const handleShowInChat = (file: FileWithDataUrl) => {
+    if (file.conversationId) {
+      router.push(`/c/${file.conversationId}`);
+    }
+  };
+
+  const handleDownload = (file: FileWithDataUrl) => {
     const link = document.createElement("a");
     link.href = file.dataUrl;
-    link.download = file.filename || "download";
+    link.download = file.name || "download";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -79,7 +188,29 @@ export function FilesView() {
   return (
     <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
       <div className="mx-auto w-full max-w-4xl">
-        <h1 className="mb-6 text-2xl font-semibold">Files</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Files</h1>
+          <div className="flex items-center gap-1 bg-white dark:bg-card rounded-lg p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className={`h-8 w-8 p-0 ${viewMode === "grid" ? "bg-muted" : ""}`}
+              aria-label="Grid view"
+            >
+              <LayoutGridIcon className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className={`h-8 w-8 p-0 ${viewMode === "list" ? "bg-muted" : ""}`}
+              aria-label="List view"
+            >
+              <ListIcon className="size-4" />
+            </Button>
+          </div>
+        </div>
 
         <div className="relative mb-6">
           <HugeiconsIcon
@@ -108,11 +239,11 @@ export function FilesView() {
                 : "No files stored yet"}
             </p>
           </div>
-        ) : (
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredFiles.map((file) => {
-              const { Icon, color } = getFileIcon(file.mimeType, file.filename);
-              const isImage = file.mimeType.startsWith("image/");
+              const { Icon, color } = getFileIcon(file.type, file.name);
+              const isImage = file.type.startsWith("image/");
               const date = new Date(file.createdAt);
               const formattedDate = date.toLocaleDateString("en-US", {
                 month: "short",
@@ -131,7 +262,7 @@ export function FilesView() {
                     {isImage ? (
                       <img
                         src={file.dataUrl}
-                        alt={file.filename}
+                        alt={file.name}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -142,7 +273,7 @@ export function FilesView() {
                   {/* File info */}
                   <div className="p-3">
                     <p className="font-medium truncate text-sm">
-                      {file.filename || "Unnamed file"}
+                      {file.name || "Unnamed file"}
                     </p>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs text-muted-foreground">
@@ -154,23 +285,149 @@ export function FilesView() {
                     </div>
                   </div>
 
-                  {/* Delete button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(file.id);
-                    }}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
-                    aria-label="Delete file"
-                  >
-                    <HugeiconsIcon icon={Delete01Icon} size={14} />
-                  </button>
+                  {/* Context menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                        aria-label="More options"
+                      >
+                        <HugeiconsIcon icon={MoreHorizontalIcon} size={14} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {file.conversationId && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShowInChat(file);
+                          }}
+                        >
+                          <HugeiconsIcon icon={Message01Icon} size={16} className="mr-2" />
+                          Show in chat
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(file);
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <HugeiconsIcon icon={Delete01Icon} size={16} className="mr-2 text-destructive" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-xl bg-white dark:bg-card overflow-hidden">
+            {filteredFiles.map((file, index) => {
+              const { Icon, color } = getFileIcon(file.type, file.name);
+              const isImage = file.type.startsWith("image/");
+              const date = new Date(file.createdAt);
+              const formattedDate = date.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              });
+
+              return (
+                <div
+                  key={file.id}
+                  className={`group flex items-center gap-4 px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors ${
+                    index !== filteredFiles.length - 1 ? "border-b border-border" : ""
+                  }`}
+                  onClick={() => handleDownload(file)}
+                >
+                  {/* Thumbnail / Icon */}
+                  <div className="size-12 rounded-lg bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
+                    {isImage ? (
+                      <img
+                        src={file.dataUrl}
+                        alt={file.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Icon className={`size-6 ${color}`} />
+                    )}
+                  </div>
+
+                  {/* File info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate text-sm">
+                      {file.name || "Unnamed file"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formattedDate} · {formatFileSize(file.dataUrl)}
+                    </p>
+                  </div>
+
+                  {/* Context menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted hover:text-foreground"
+                        aria-label="More options"
+                      >
+                        <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {file.conversationId && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShowInChat(file);
+                          }}
+                        >
+                          <HugeiconsIcon icon={Message01Icon} size={16} className="mr-2" />
+                          Show in chat
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(file);
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <HugeiconsIcon icon={Delete01Icon} size={16} className="mr-2 text-destructive" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete file</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{fileToDelete?.name || "this file"}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

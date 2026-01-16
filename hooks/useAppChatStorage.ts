@@ -4,11 +4,6 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { useChatStorage } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
-import {
-  storeFile,
-  getFile,
-  generateFileId,
-} from "@/lib/fileStorage";
 
 type MessagePart =
   | {
@@ -42,6 +37,8 @@ type UseChatStorageProps = {
   database: Database;
   getToken: () => Promise<string | null>;
   onStreamingData?: (chunk: string, accumulated: string) => void;
+  /** Wallet address to enable encrypted file storage in OPFS */
+  walletAddress?: string;
 };
 
 type SendMessageOptions = {
@@ -87,6 +84,7 @@ export function useAppChatStorage({
   database,
   getToken,
   onStreamingData,
+  walletAddress,
 }: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
@@ -105,10 +103,13 @@ export function useAppChatStorage({
     createConversation,
     setConversationId,
     deleteConversation,
+    getAllFiles,
   } = useChatStorage({
     database,
     getToken,
     autoCreateConversation: true,
+    // Enable encrypted file storage in OPFS when wallet is connected
+    walletAddress,
   });
   //#endregion hookInit
 
@@ -244,23 +245,18 @@ export function useAppChatStorage({
             }
 
             // Reconstruct file parts from SDK's files array
-            // Retrieve data URLs from IndexedDB using file IDs
+            // SDK with encryption resolves file URLs automatically
             if (storedFiles.length > 0) {
               for (const file of storedFiles) {
-                // SDK FileMetadata uses 'type' for MIME type, 'name' for filename
                 const mimeType = file.type || "";
-                // Try to get the data URL from IndexedDB using the file ID
-                const storedFile = await getFile(file.id);
-                const fileUrl = storedFile?.dataUrl || file.url || "";
+                const fileUrl = file.url || "";
 
                 if (mimeType.startsWith("image/")) {
-                  // Reconstruct image_url part
                   parts.push({
                     type: "image_url" as const,
                     image_url: { url: fileUrl },
                   });
                 } else {
-                  // Reconstruct file part
                   parts.push({
                     type: "file" as const,
                     url: fileUrl,
@@ -427,26 +423,14 @@ export function useAppChatStorage({
         }
       });
 
-      // Create SDK files with same IDs
-      const sdkFiles = await Promise.all(
-        enrichedFiles.map(async (file) => {
-          if (file.url) {
-            await storeFile(
-              file.stableId,
-              file.url,
-              file.filename || "",
-              file.mediaType || "application/octet-stream"
-            );
-          }
-          return {
-            id: file.stableId, // Same ID as used in contentParts
-            name: file.filename || file.stableId,
-            type: file.mediaType || "application/octet-stream",
-            size: 0,
-            url: file.url, // Include URL for SDK file preprocessing
-          };
-        })
-      );
+      // Create SDK files - SDK handles encrypted storage automatically
+      const sdkFiles = enrichedFiles.map((file) => ({
+        id: file.stableId,
+        name: file.filename || file.stableId,
+        type: file.mediaType || "application/octet-stream",
+        size: 0,
+        url: file.url, // SDK will encrypt and store in OPFS
+      }));
       //#endregion fileProcessing
 
       // If we have OCR/memory context that differs from displayText, pass it via memoryContext
@@ -539,11 +523,8 @@ export function useAppChatStorage({
           // Retrieve data URLs from IndexedDB using file IDs
           if (storedFiles.length > 0) {
             for (const file of storedFiles) {
-              // SDK FileMetadata uses 'type' for MIME type, 'name' for filename
               const mimeType = file.type || "";
-              // Try to get the data URL from IndexedDB using the file ID
-              const storedFile = await getFile(file.id);
-              const fileUrl = storedFile?.dataUrl || file.url || "";
+              const fileUrl = file.url || "";
 
               if (mimeType.startsWith("image/")) {
                 parts.push({
@@ -603,5 +584,6 @@ export function useAppChatStorage({
     setConversationId: handleSwitchConversation,
     deleteConversation: handleDeleteConversation,
     refreshConversations,
+    getAllFiles,
   };
 }
