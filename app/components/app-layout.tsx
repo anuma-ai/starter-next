@@ -89,11 +89,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   );
 
   const handleViewChange = useCallback(
-    (view: "chat" | "settings" | "conversations") => {
+    (view: "chat" | "settings" | "conversations" | "files") => {
       if (view === "settings") {
         router.push("/settings");
       } else if (view === "conversations") {
         router.push("/conversations");
+      } else if (view === "files") {
+        router.push("/files");
       } else {
         router.push("/");
       }
@@ -105,6 +107,8 @@ export function AppLayout({ children }: AppLayoutProps) {
     ? "settings"
     : pathname.startsWith("/conversations")
     ? "conversations"
+    : pathname.startsWith("/files")
+    ? "files"
     : "chat";
   const insetBackground = "bg-background";
 

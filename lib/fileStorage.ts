@@ -59,3 +59,12 @@ export async function deleteFile(id: string): Promise<void> {
 export function generateFileId(): string {
   return `file-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
+
+/**
+ * Get all stored files, sorted by creation date (newest first)
+ */
+export async function getAllFiles(): Promise<StoredFile[]> {
+  return db.files.orderBy("createdAt").reverse().toArray();
+}
+
+export type { StoredFile };
