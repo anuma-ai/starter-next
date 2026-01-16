@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, Delete01Icon, MoreHorizontalIcon, Message01Icon } from "@hugeicons/core-free-icons";
+import { Search01Icon, Delete01Icon, MoreHorizontalIcon, Message01Icon, Download01Icon } from "@hugeicons/core-free-icons";
 import { ImageIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, LayoutGridIcon, ListIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -257,8 +257,7 @@ export function FilesView() {
               return (
                 <div
                   key={file.id}
-                  className="group relative rounded-xl bg-white dark:bg-card overflow-hidden hover:ring-2 hover:ring-primary/20 transition-all cursor-pointer"
-                  onClick={() => handleDownload(file)}
+                  className="group relative rounded-xl bg-white dark:bg-card overflow-hidden hover:ring-2 hover:ring-primary/20 transition-all"
                 >
                   {/* Preview area */}
                   <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
@@ -293,13 +292,22 @@ export function FilesView() {
                     <DropdownMenuTrigger asChild>
                       <button
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 cursor-pointer"
                         aria-label="More options"
                       >
                         <HugeiconsIcon icon={MoreHorizontalIcon} size={14} />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(file);
+                        }}
+                      >
+                        <HugeiconsIcon icon={Download01Icon} size={16} className="mr-2" />
+                        Download
+                      </DropdownMenuItem>
                       {file.conversationId && (
                         <DropdownMenuItem
                           onClick={(e) => {
@@ -342,10 +350,9 @@ export function FilesView() {
               return (
                 <div
                   key={file.id}
-                  className={`group flex items-center gap-4 px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors ${
+                  className={`group flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors ${
                     index !== filteredFiles.length - 1 ? "border-b border-border" : ""
                   }`}
-                  onClick={() => handleDownload(file)}
                 >
                   {/* Thumbnail / Icon */}
                   <div className="size-12 rounded-lg bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
@@ -375,13 +382,22 @@ export function FilesView() {
                     <DropdownMenuTrigger asChild>
                       <button
                         onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted hover:text-foreground"
+                        className="p-1.5 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted hover:text-foreground cursor-pointer"
                         aria-label="More options"
                       >
                         <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(file);
+                        }}
+                      >
+                        <HugeiconsIcon icon={Download01Icon} size={16} className="mr-2" />
+                        Download
+                      </DropdownMenuItem>
                       {file.conversationId && (
                         <DropdownMenuItem
                           onClick={(e) => {
