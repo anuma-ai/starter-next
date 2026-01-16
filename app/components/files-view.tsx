@@ -234,17 +234,18 @@ export function FilesView() {
           <h1 className="text-2xl font-semibold">Files</h1>
           <div className="flex items-center gap-2">
             {/* Sort dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-3 bg-white dark:bg-card"
-                >
-                  <ArrowUpDownIcon className="size-4 mr-2" />
-                  {sortBy === "date" ? "Date" : sortBy === "name" ? "Name" : "Size"}
-                </Button>
-              </DropdownMenuTrigger>
+            <div className="flex items-center bg-white dark:bg-card rounded-lg p-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2"
+                  >
+                    <ArrowUpDownIcon className="size-4 mr-2" />
+                    {sortBy === "date" ? "Date" : sortBy === "name" ? "Name" : "Size"}
+                  </Button>
+                </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleSortClick("date")}>
                   <CheckIcon className={`size-4 mr-2 ${sortBy === "date" ? "" : "invisible"}`} />
@@ -280,7 +281,8 @@ export function FilesView() {
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+              </DropdownMenu>
+            </div>
 
             {/* View mode toggle */}
             <div className="flex items-center gap-1 bg-white dark:bg-card rounded-lg p-1">
