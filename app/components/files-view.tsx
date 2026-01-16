@@ -380,7 +380,7 @@ export function FilesView() {
               return (
                 <div
                   key={file.id}
-                  className="group relative rounded-xl bg-white dark:bg-card overflow-hidden hover:ring-2 hover:ring-primary/20 transition-all"
+                  className="group relative rounded-xl bg-white dark:bg-card overflow-hidden transition-transform duration-200 hover:scale-[1.02]"
                 >
                   {/* Preview area */}
                   <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
