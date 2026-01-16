@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Search01Icon, Delete01Icon, MoreHorizontalIcon, Message01Icon, Download01Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, LayoutGridIcon, ListIcon, ArrowUpDownIcon, CheckIcon } from "lucide-react";
+import { ImageIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, LayoutGridIcon, ListIcon, ArrowUpIcon, ArrowDownIcon, CheckIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,10 +103,16 @@ export function FilesView() {
   });
 
   const loadFiles = useCallback(async () => {
-    if (!walletAddress || !hasEncryptionKey(walletAddress)) {
+    if (!walletAddress) {
       setFiles([]);
       setLoading(false);
       return;
+    }
+
+    // Check if encryption key is ready
+    if (!hasEncryptionKey(walletAddress)) {
+      // Return true to indicate we should retry
+      return true;
     }
 
     setLoading(true);
@@ -142,10 +148,30 @@ export function FilesView() {
     } finally {
       setLoading(false);
     }
+    return false;
   }, [getAllFiles, walletAddress]);
 
+  // Poll for encryption key availability on page load
   useEffect(() => {
-    loadFiles();
+    let retryCount = 0;
+    const maxRetries = 20; // Try for up to 10 seconds (20 * 500ms)
+    let timeoutId: NodeJS.Timeout;
+
+    const attemptLoad = async () => {
+      const shouldRetry = await loadFiles();
+      if (shouldRetry && retryCount < maxRetries) {
+        retryCount++;
+        timeoutId = setTimeout(attemptLoad, 500);
+      }
+    };
+
+    attemptLoad();
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [loadFiles]);
 
   const filteredFiles = useMemo(() => {
@@ -242,7 +268,11 @@ export function FilesView() {
                     size="sm"
                     className="h-8 px-2"
                   >
-                    <ArrowUpDownIcon className="size-4 mr-2" />
+                    {sortDirection === "asc" ? (
+                      <ArrowUpIcon className="size-4 mr-2" />
+                    ) : (
+                      <ArrowDownIcon className="size-4 mr-2" />
+                    )}
                     {sortBy === "date" ? "Date" : sortBy === "name" ? "Name" : "Size"}
                   </Button>
                 </DropdownMenuTrigger>
