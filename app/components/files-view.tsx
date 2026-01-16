@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Search01Icon, Delete01Icon, MoreHorizontalIcon, Message01Icon, Download01Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, LayoutGridIcon, ListIcon } from "lucide-react";
+import { ImageIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, LayoutGridIcon, ListIcon, ArrowUpDownIcon, CheckIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +38,8 @@ interface FileWithDataUrl extends StoredFileWithContext {
 }
 
 type ViewMode = "grid" | "list";
+type SortOption = "date" | "name" | "size";
+type SortDirection = "asc" | "desc";
 
 function getFileIcon(mimeType: string, filename: string) {
   if (mimeType.startsWith("image/")) {
@@ -56,10 +58,13 @@ function getFileIcon(mimeType: string, filename: string) {
   return { Icon: FileIcon, color: "text-gray-500" };
 }
 
-function formatFileSize(dataUrl: string): string {
-  // Estimate size from base64 data URL
+function getFileSizeBytes(dataUrl: string): number {
   const base64 = dataUrl.split(",")[1] || "";
-  const bytes = Math.round((base64.length * 3) / 4);
+  return Math.round((base64.length * 3) / 4);
+}
+
+function formatFileSize(dataUrl: string): string {
+  const bytes = getFileSizeBytes(dataUrl);
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -85,6 +90,8 @@ export function FilesView() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [sortBy, setSortBy] = useState<SortOption>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<FileWithDataUrl | null>(null);
 
@@ -142,17 +149,49 @@ export function FilesView() {
   }, [loadFiles]);
 
   const filteredFiles = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return files;
+    let result = files;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((file) => {
+        return (
+          file.name.toLowerCase().includes(query) ||
+          file.type.toLowerCase().includes(query)
+        );
+      });
     }
-    const query = searchQuery.toLowerCase();
-    return files.filter((file) => {
-      return (
-        file.name.toLowerCase().includes(query) ||
-        file.type.toLowerCase().includes(query)
-      );
+
+    // Sort files
+    const sorted = [...result].sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "name":
+          comparison = (a.name || "").localeCompare(b.name || "");
+          break;
+        case "size":
+          comparison = getFileSizeBytes(a.dataUrl) - getFileSizeBytes(b.dataUrl);
+          break;
+        case "date":
+        default:
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [files, searchQuery]);
+    return sorted;
+  }, [files, searchQuery, sortBy, sortDirection]);
+
+  const handleSortClick = (option: SortOption) => {
+    if (sortBy === option) {
+      // Toggle direction if clicking the same option
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      // Set new sort option with default direction
+      setSortBy(option);
+      setSortDirection("desc");
+    }
+  };
 
   const handleDeleteClick = (file: FileWithDataUrl) => {
     setFileToDelete(file);
@@ -193,25 +232,77 @@ export function FilesView() {
       <div className="mx-auto w-full max-w-4xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">Files</h1>
-          <div className="flex items-center gap-1 bg-white dark:bg-card rounded-lg p-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setViewMode("grid")}
-              className={`h-8 w-8 p-0 ${viewMode === "grid" ? "bg-muted" : ""}`}
-              aria-label="Grid view"
-            >
-              <LayoutGridIcon className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setViewMode("list")}
-              className={`h-8 w-8 p-0 ${viewMode === "list" ? "bg-muted" : ""}`}
-              aria-label="List view"
-            >
-              <ListIcon className="size-4" />
-            </Button>
+          <div className="flex items-center gap-2">
+            {/* Sort dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-3 bg-white dark:bg-card"
+                >
+                  <ArrowUpDownIcon className="size-4 mr-2" />
+                  {sortBy === "date" ? "Date" : sortBy === "name" ? "Name" : "Size"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleSortClick("date")}>
+                  <CheckIcon className={`size-4 mr-2 ${sortBy === "date" ? "" : "invisible"}`} />
+                  <div className="flex flex-col">
+                    <span>Date</span>
+                    {sortBy === "date" && (
+                      <span className="text-xs text-muted-foreground">
+                        {sortDirection === "asc" ? "Ascending" : "Descending"}
+                      </span>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSortClick("name")}>
+                  <CheckIcon className={`size-4 mr-2 ${sortBy === "name" ? "" : "invisible"}`} />
+                  <div className="flex flex-col">
+                    <span>Name</span>
+                    {sortBy === "name" && (
+                      <span className="text-xs text-muted-foreground">
+                        {sortDirection === "asc" ? "Ascending" : "Descending"}
+                      </span>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSortClick("size")}>
+                  <CheckIcon className={`size-4 mr-2 ${sortBy === "size" ? "" : "invisible"}`} />
+                  <div className="flex flex-col">
+                    <span>Size</span>
+                    {sortBy === "size" && (
+                      <span className="text-xs text-muted-foreground">
+                        {sortDirection === "asc" ? "Ascending" : "Descending"}
+                      </span>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* View mode toggle */}
+            <div className="flex items-center gap-1 bg-white dark:bg-card rounded-lg p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className={`h-8 w-8 p-0 ${viewMode === "grid" ? "bg-muted" : ""}`}
+                aria-label="Grid view"
+              >
+                <LayoutGridIcon className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className={`h-8 w-8 p-0 ${viewMode === "list" ? "bg-muted" : ""}`}
+                aria-label="List view"
+              >
+                <ListIcon className="size-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
