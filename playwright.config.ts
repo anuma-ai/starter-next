@@ -49,12 +49,12 @@ export default defineConfig({
     },
   ],
 
-  // Start the dev server before running tests
+  // Build and start the production server before running tests
   webServer: {
-    command: `pnpm dev --port ${port}`,
+    command: `pnpm build && pnpm start --port ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: 180000,
     env: {
       NEXT_PUBLIC_PRIVY_TEST_MODE: "true",
     },
