@@ -3,6 +3,8 @@ import { CHAT_INPUT_PLACEHOLDER } from "@/lib/constants";
 
 // Pause at end of each test so video captures the final state
 const VIDEO_PAUSE_MS = 3000;
+// Pause before submitting so video shows the prompt
+const PRE_SUBMIT_PAUSE_MS = 1000;
 
 test.describe("Chat", () => {
   test("authenticated user sees chat interface", async ({ page }) => {
@@ -32,6 +34,7 @@ test.describe("Chat", () => {
     // Type a simple prompt
     const testPrompt = "Hello, say hi back in one word";
     await promptInput.fill(testPrompt);
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
 
     // Submit the prompt
     await page.getByRole("button", { name: "Submit" }).click();
@@ -58,6 +61,7 @@ test.describe("Chat", () => {
 
     // Verify the input has content
     await expect(promptInput).toHaveValue("Test message");
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
 
     // Submit
     await page.getByRole("button", { name: "Submit" }).click();
@@ -87,6 +91,7 @@ test.describe("Chat", () => {
 
     // Type a question about the image
     await promptInput.fill("What's on this image?");
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
 
     // Submit the prompt
     await page.getByRole("button", { name: "Submit" }).click();
@@ -115,6 +120,7 @@ test.describe("Chat", () => {
     // Ask to generate an image of a cat (explicit request for actual image generation)
     const prompt = "Generate an actual image of a cat. Use image generation, not ASCII art.";
     await promptInput.fill(prompt);
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
 
     // Submit the prompt
     await page.getByRole("button", { name: "Submit" }).click();
@@ -153,6 +159,7 @@ test.describe("Chat", () => {
     // Type a question about the spreadsheet
     const prompt = "What data is in this spreadsheet? List the names.";
     await promptInput.fill(prompt);
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
 
     // Submit the prompt
     await page.getByRole("button", { name: "Submit" }).click();
@@ -191,6 +198,7 @@ test.describe("Chat", () => {
     // Type a question about the document
     const prompt = "What is the content of this document? Summarize it briefly.";
     await promptInput.fill(prompt);
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
 
     // Submit the prompt
     await page.getByRole("button", { name: "Submit" }).click();
@@ -229,6 +237,7 @@ test.describe("Chat", () => {
     // Type a question about the zip contents
     const prompt = "Describe the contents of the files in this zip archive.";
     await promptInput.fill(prompt);
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
 
     // Submit the prompt
     await page.getByRole("button", { name: "Submit" }).click();
