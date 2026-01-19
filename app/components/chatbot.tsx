@@ -257,9 +257,9 @@ const ChatBotDemo = () => {
                       message.role === "assistant" &&
                       message.id === messages.at(-1)?.id;
 
-                    // Always use StreamingMessage for the last assistant message to avoid
-                    // flash when switching components after streaming completes
-                    const useStreaming = isLastAssistantMessage;
+                    // Use StreamingMessage only while actively streaming
+                    // Once streaming is done, use MessageResponse for consistent rendering
+                    const useStreaming = isLastAssistantMessage && isLoading;
 
                     // Show reasoning after streaming starts (or completes) if there was thinking
                     // Only for assistant messages

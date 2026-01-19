@@ -270,11 +270,14 @@ export const StreamingMessage = ({
     }
   }, [initialText]);
 
-  // Convert image URLs for display - must be before early return to follow Rules of Hooks
-  const processedText = useMemo(
-    () => convertImageUrlsToMarkdown(text),
-    [text]
-  );
+  // Process text for display - must be before early return to follow Rules of Hooks
+  const processedText = useMemo(() => {
+    let result = convertImageUrlsToMarkdown(text);
+    // Fix malformed code blocks: add newline after language if missing
+    // Matches ```lang immediately followed by non-whitespace (no newline)
+    result = result.replace(/```(\w+)([^\n])/g, "```$1\n$2");
+    return result;
+  }, [text]);
 
   // Show loading indicator when loading and no text yet
   if (!text && isLoading) {
