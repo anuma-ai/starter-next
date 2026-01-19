@@ -164,12 +164,127 @@
   will-change: transform, opacity;
 }
 
-/* Fix shiki syntax highlighting in dark mode - override inline styles */
-.dark [data-streamdown="code-block-body"] {
-  background-color: #1a1a1a !important;
+/* Shiki dual theme support - light mode uses --shiki-light, dark mode uses --shiki-dark */
+.shiki {
+  color: var(--shiki-light);
+  background-color: transparent !important;
 }
 
-.dark [data-streamdown="code-block-body"] code span span {
+.shiki span {
+  color: var(--shiki-light);
+  background-color: transparent !important;
+}
+
+.dark .shiki {
+  color: var(--shiki-dark);
+  background-color: transparent !important;
+}
+
+.dark .shiki span {
+  color: var(--shiki-dark);
+  background-color: transparent !important;
+}
+
+/* Code block styling - shared between Streamdown and CodeBlock component */
+[data-streamdown="code-block"] {
+  width: 100% !important;
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+  overflow: hidden !important;
+  border: none !important;
+  border-radius: 0.75rem !important;
+  background-color: var(--sidebar) !important;
+  content-visibility: visible !important;
+}
+
+[data-streamdown="code-block-header"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+  color: var(--muted-foreground) !important;
+  background-color: var(--sidebar) !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+[data-streamdown="code-block-header"]::before,
+[data-streamdown="code-block-header"]::after {
+  display: none !important;
+}
+
+/* Override Streamdown's language label styles */
+[data-streamdown="code-block-header"] > span:first-child {
+  margin-left: 0 !important;
+  font-family: inherit !important;
+  text-transform: none !important;
+}
+
+/* Streamdown puts pre directly as body, CodeBlock uses div wrapper */
+pre[data-streamdown="code-block-body"],
+div[data-streamdown="code-block-body"] {
+  overflow-x: auto !important;
+  padding: 0 1rem 1rem 1rem !important;
+  margin: 0 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  color: inherit !important;
+  background-color: var(--sidebar) !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+pre[data-streamdown="code-block-body"]::before,
+pre[data-streamdown="code-block-body"]::after,
+div[data-streamdown="code-block-body"]::before,
+div[data-streamdown="code-block-body"]::after {
+  display: none !important;
+}
+
+/* Override Streamdown's dark mode background class */
+.dark pre[data-streamdown="code-block-body"] {
+  background-color: var(--sidebar) !important;
+}
+
+[data-streamdown="code-block-body"] pre,
+[data-streamdown="code-block-body"] pre.shiki {
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: transparent !important;
+  line-height: inherit !important;
+  white-space: pre !important;
+}
+
+[data-streamdown="code-block-body"] code {
+  display: flex !important;
+  flex-direction: column !important;
+  line-height: 1.5 !important;
+  background-color: transparent !important;
+}
+
+/* Make all line spans block-level for consistent rendering between Streamdown and shiki */
+[data-streamdown="code-block-body"] code > span,
+[data-streamdown="code-block-body"] code > span.line {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.5 !important;
+}
+
+/* Hide Streamdown line numbers */
+[data-streamdown="code-block-body"] code > span::before {
+  display: none !important;
+}
+
+/* Fix shiki syntax highlighting - override inline styles */
+[data-streamdown="code-block-body"] code span {
+  background-color: transparent !important;
+}
+
+.dark [data-streamdown="code-block-body"] code span {
   color: var(--shiki-dark) !important;
   background-color: transparent !important;
 }
