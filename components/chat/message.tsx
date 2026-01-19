@@ -58,6 +58,7 @@ function convertImageUrlsToMarkdown(text: string): string {
   return text.replace(IMAGE_URL_REGEX, (url) => `\n\n![Generated image](${url})\n\n`);
 }
 
+
 // Code block with syntax highlighting and copy button
 const CodeBlock = ({
   code,
@@ -153,10 +154,7 @@ export const MessageResponse = memo(
         return [];
       }
 
-      let processedText = convertImageUrlsToMarkdown(children);
-      // Fix malformed code blocks: add newline after language if missing
-      // Matches ```lang immediately followed by non-whitespace (no newline)
-      processedText = processedText.replace(/```(\w+)([^\n])/g, "```$1\n$2");
+      const processedText = convertImageUrlsToMarkdown(children);
       const tokens = marked.lexer(processedText);
       const result: Array<{ type: "html" | "code"; html?: string; code?: string; lang?: string }> = [];
 
@@ -271,13 +269,10 @@ export const StreamingMessage = ({
   }, [initialText]);
 
   // Process text for display - must be before early return to follow Rules of Hooks
-  const processedText = useMemo(() => {
-    let result = convertImageUrlsToMarkdown(text);
-    // Fix malformed code blocks: add newline after language if missing
-    // Matches ```lang immediately followed by non-whitespace (no newline)
-    result = result.replace(/```(\w+)([^\n])/g, "```$1\n$2");
-    return result;
-  }, [text]);
+  const processedText = useMemo(
+    () => convertImageUrlsToMarkdown(text),
+    [text]
+  );
 
   // Show loading indicator when loading and no text yet
   if (!text && isLoading) {
