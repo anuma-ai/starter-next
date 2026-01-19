@@ -310,7 +310,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     // This promise won't resolve since we're redirecting
     // The token will be available after the callback
-    return new Promise(() => {});
+    return new Promise(() => { });
   }, [calendarToken]);
 
   // Request Drive access - tries to get token or starts OAuth flow
@@ -348,11 +348,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     // This promise won't resolve since we're redirecting
     // The token will be available after the callback
-    return new Promise(() => {});
+    return new Promise(() => { });
   }, [driveToken]);
 
-  // Create Google tools with auth
-  const tools = useMemo(() => {
+  // Create Google tools with auth (these are client-side tools with local executors)
+  const clientTools = useMemo(() => {
     // Google Calendar tools
     const calendarTools = createChatTools(
       () => calendarToken,
@@ -377,7 +377,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     walletAddress,
     signMessage,
     embeddedWalletSigner: embeddedWallet ? embeddedWalletSigner : undefined,
-    tools,
+    serverTools: ["generate_cloud_image", "perplexity_search"],
+    // clientTools,
   });
 
   // Wrap handleSubmit to track the current message for OAuth retry
