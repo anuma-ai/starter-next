@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Zip02Icon } from "@hugeicons/core-free-icons";
 import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 
@@ -332,9 +334,10 @@ const ChatBotDemo = () => {
                     const ext = part.filename?.split(".").pop()?.toLowerCase();
                     const isSpreadsheet = ext === "xlsx" || ext === "xls" || ext === "csv";
                     const isDocument = ext === "docx" || ext === "doc" || ext === "pdf" || ext === "txt";
+                    const isArchive = ext === "zip";
                     const FileTypeIcon = isSpreadsheet ? FileSpreadsheetIcon : isDocument ? FileTextIcon : FileIcon;
-                    const fileTypeLabel = isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
-                    const iconBgColor = isSpreadsheet ? "bg-green-500" : "bg-blue-500";
+                    const fileTypeLabel = isArchive ? "Archive" : isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
+                    const iconBgColor = isArchive ? "bg-amber-500" : isSpreadsheet ? "bg-green-500" : "bg-blue-500";
 
                     // User files: no bubble
                     if (message.role === "user") {
@@ -344,7 +347,11 @@ const ChatBotDemo = () => {
                           className="flex items-center gap-3 rounded-xl bg-muted/50 border border-border p-2 pr-4 text-sm ml-auto w-fit mt-2"
                         >
                           <div className={`flex size-10 items-center justify-center rounded-lg ${iconBgColor}`}>
-                            <FileTypeIcon className="size-5 text-white" />
+                            {isArchive ? (
+                              <HugeiconsIcon icon={Zip02Icon} className="size-5 text-white" />
+                            ) : (
+                              <FileTypeIcon className="size-5 text-white" />
+                            )}
                           </div>
                           <div className="flex flex-col overflow-hidden">
                             <span className="truncate font-medium">
@@ -363,7 +370,11 @@ const ChatBotDemo = () => {
                         <MessageContent>
                           <div className="flex items-center gap-3 rounded-xl bg-muted/50 border border-border p-2 pr-4 text-sm">
                             <div className={`flex size-10 items-center justify-center rounded-lg ${iconBgColor}`}>
-                              <FileTypeIcon className="size-5 text-white" />
+                              {isArchive ? (
+                                <HugeiconsIcon icon={Zip02Icon} className="size-5 text-white" />
+                              ) : (
+                                <FileTypeIcon className="size-5 text-white" />
+                              )}
                             </div>
                             <div className="flex flex-col overflow-hidden">
                               <span className="truncate font-medium">
@@ -443,7 +454,7 @@ const ChatBotDemo = () => {
       >
         <div className="mx-auto w-full min-w-0 max-w-3xl overflow-hidden">
           <PromptInput
-            accept="image/*,application/pdf,.xlsx,.xls,.docx"
+            accept="image/*,application/pdf,.xlsx,.xls,.docx,.zip,application/zip"
             globalDrop
             multiple
             onSubmit={onSubmit}
