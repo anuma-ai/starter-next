@@ -107,8 +107,8 @@ const CodeBlock = ({
   }, [code]);
 
   return (
-    <div className="group/code relative my-4 w-full overflow-hidden rounded-xl bg-sidebar">
-      <div className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground">
+    <div className="group/code relative" data-streamdown="code-block">
+      <div data-streamdown="code-block-header">
         <span>{language || "text"}</span>
         <button
           onClick={handleCopy}
@@ -133,12 +133,12 @@ const CodeBlock = ({
       </div>
       {html ? (
         <div
-          className="overflow-x-auto px-4 pb-4 text-sm [&_pre]:!m-0 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_code]:leading-relaxed"
+          data-streamdown="code-block-body"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        <pre className="overflow-x-auto px-4 pb-4 text-sm">
-          <code className="leading-relaxed">{code}</code>
+        <pre data-streamdown="code-block-body">
+          <code>{code}</code>
         </pre>
       )}
     </div>

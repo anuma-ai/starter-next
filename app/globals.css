@@ -185,20 +185,47 @@
   background-color: transparent !important;
 }
 
-/* Code block styling */
+/* Code block styling - shared between Streamdown and CodeBlock component */
+[data-streamdown="code-block"] {
+  width: 100%;
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+  overflow: hidden !important;
+  border: none !important;
+  border-radius: 0.75rem !important;
+  background-color: var(--sidebar) !important;
+}
+
+[data-streamdown="code-block-header"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+  color: var(--muted-foreground) !important;
+  background-color: var(--sidebar) !important;
+}
+
 [data-streamdown="code-block-body"] {
+  overflow-x: auto !important;
+  padding: 0 1rem 1rem 1rem !important;
+  font-size: 0.875rem !important;
   line-height: 1.6 !important;
+  background-color: var(--sidebar) !important;
+}
+
+[data-streamdown="code-block-body"] pre {
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: transparent !important;
 }
 
 [data-streamdown="code-block-body"] code {
   line-height: 1.6 !important;
+  background-color: transparent !important;
 }
 
 /* Fix shiki syntax highlighting in dark mode - override inline styles */
-.dark [data-streamdown="code-block-body"] {
-  background-color: #1a1a1a !important;
-}
-
 .dark [data-streamdown="code-block-body"] code span {
   color: var(--shiki-dark) !important;
   background-color: transparent !important;
