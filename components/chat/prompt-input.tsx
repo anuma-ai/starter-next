@@ -31,6 +31,7 @@ import {
   FileTextIcon,
   FileSpreadsheetIcon,
   FileIcon,
+  FileArchiveIcon,
 } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -850,9 +851,10 @@ export function PromptInputAttachment({
   const ext = filename.split(".").pop()?.toLowerCase();
   const isSpreadsheet = ext === "xlsx" || ext === "xls" || ext === "csv";
   const isDocument = ext === "docx" || ext === "doc" || ext === "pdf" || ext === "txt";
-  const FileTypeIcon = isSpreadsheet ? FileSpreadsheetIcon : isDocument ? FileTextIcon : FileIcon;
-  const fileTypeLabel = isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
-  const iconBgColor = isSpreadsheet ? "bg-green-500" : "bg-blue-500";
+  const isArchive = ext === "zip";
+  const FileTypeIcon = isArchive ? FileArchiveIcon : isSpreadsheet ? FileSpreadsheetIcon : isDocument ? FileTextIcon : FileIcon;
+  const fileTypeLabel = isArchive ? "Archive" : isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
+  const iconBgColor = isArchive ? "bg-amber-500" : isSpreadsheet ? "bg-green-500" : "bg-blue-500";
 
   if (isImage) {
     return (

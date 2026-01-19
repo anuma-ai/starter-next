@@ -443,7 +443,7 @@ const ChatBotDemo = () => {
       >
         <div className="mx-auto w-full min-w-0 max-w-3xl overflow-hidden">
           <PromptInput
-            accept="image/*,application/pdf,.xlsx,.xls,.docx"
+            accept="image/*,application/pdf,.xlsx,.xls,.docx,.zip,application/zip"
             globalDrop
             multiple
             onSubmit={onSubmit}
