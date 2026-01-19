@@ -134,12 +134,9 @@ const CodeBlock = ({
 // Use marked's lexer to parse markdown into tokens, then render code blocks specially
 export const MessageResponse = memo(
   ({ className, children }: MessageResponseProps) => {
-    const [content, setContent] = useState<Array<{ type: "html" | "code"; html?: string; code?: string; lang?: string }>>([]);
-
-    useEffect(() => {
+    const content = useMemo(() => {
       if (!children) {
-        setContent([]);
-        return;
+        return [];
       }
 
       let processedText = convertImageUrlsToMarkdown(children);
@@ -175,7 +172,7 @@ export const MessageResponse = memo(
       }
 
       flushHtml();
-      setContent(result);
+      return result;
     }, [children]);
 
     return (
