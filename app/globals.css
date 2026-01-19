@@ -187,13 +187,14 @@
 
 /* Code block styling - shared between Streamdown and CodeBlock component */
 [data-streamdown="code-block"] {
-  width: 100%;
+  width: 100% !important;
   margin-top: 1rem !important;
   margin-bottom: 1rem !important;
   overflow: hidden !important;
   border: none !important;
   border-radius: 0.75rem !important;
   background-color: var(--sidebar) !important;
+  content-visibility: visible !important;
 }
 
 [data-streamdown="code-block-header"] {
@@ -204,13 +205,30 @@
   font-size: 0.875rem !important;
   color: var(--muted-foreground) !important;
   background-color: var(--sidebar) !important;
+  border: none !important;
 }
 
-[data-streamdown="code-block-body"] {
+/* Override Streamdown's language label styles */
+[data-streamdown="code-block-header"] > span:first-child {
+  margin-left: 0 !important;
+  font-family: inherit !important;
+  text-transform: none !important;
+}
+
+/* Streamdown puts pre directly as body, CodeBlock uses div wrapper */
+pre[data-streamdown="code-block-body"],
+div[data-streamdown="code-block-body"] {
   overflow-x: auto !important;
   padding: 0 1rem 1rem 1rem !important;
+  margin: 0 !important;
   font-size: 0.875rem !important;
   line-height: 1.6 !important;
+  color: inherit !important;
+  background-color: var(--sidebar) !important;
+}
+
+/* Override Streamdown's dark mode background class */
+.dark pre[data-streamdown="code-block-body"] {
   background-color: var(--sidebar) !important;
 }
 
@@ -225,7 +243,20 @@
   background-color: transparent !important;
 }
 
-/* Fix shiki syntax highlighting in dark mode - override inline styles */
+/* Hide Streamdown line numbers to match CodeBlock */
+[data-streamdown="code-block-body"] code > span {
+  display: block !important;
+}
+
+[data-streamdown="code-block-body"] code > span::before {
+  display: none !important;
+}
+
+/* Fix shiki syntax highlighting - override inline styles */
+[data-streamdown="code-block-body"] code span {
+  background-color: transparent !important;
+}
+
 .dark [data-streamdown="code-block-body"] code span {
   color: var(--shiki-dark) !important;
   background-color: transparent !important;
