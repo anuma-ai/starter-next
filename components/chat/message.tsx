@@ -70,20 +70,30 @@ const CodeBlock = ({
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     codeToHtml(code, {
       lang: language || "text",
       themes: { light: "github-light", dark: "github-dark" },
       defaultColor: false,
     })
-      .then(setHtml)
+      .then((result) => {
+        if (!cancelled) setHtml(result);
+      })
       .catch(() => {
         // Fallback for unsupported languages
         codeToHtml(code, {
           lang: "text",
           themes: { light: "github-light", dark: "github-dark" },
           defaultColor: false,
-        }).then(setHtml);
+        }).then((result) => {
+          if (!cancelled) setHtml(result);
+        });
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [code, language]);
 
   const handleCopy = useCallback(() => {
