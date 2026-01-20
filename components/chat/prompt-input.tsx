@@ -37,6 +37,7 @@ import {
   File01Icon,
   Image02Icon,
   SourceCodeSquareIcon,
+  Zip02Icon,
 } from "@hugeicons/core-free-icons";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
@@ -850,9 +851,10 @@ export function PromptInputAttachment({
   const ext = filename.split(".").pop()?.toLowerCase();
   const isSpreadsheet = ext === "xlsx" || ext === "xls" || ext === "csv";
   const isDocument = ext === "docx" || ext === "doc" || ext === "pdf" || ext === "txt";
+  const isArchive = ext === "zip";
   const FileTypeIcon = isSpreadsheet ? FileSpreadsheetIcon : isDocument ? FileTextIcon : FileIcon;
-  const fileTypeLabel = isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
-  const iconBgColor = isSpreadsheet ? "bg-green-500" : "bg-blue-500";
+  const fileTypeLabel = isArchive ? "Archive" : isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
+  const iconBgColor = isArchive ? "bg-amber-500" : isSpreadsheet ? "bg-green-500" : "bg-blue-500";
 
   if (isImage) {
     return (
@@ -899,7 +901,11 @@ export function PromptInputAttachment({
       transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
     >
       <div className={`flex size-10 items-center justify-center rounded-lg ${iconBgColor}`}>
-        <FileTypeIcon className="size-5 text-white" />
+        {isArchive ? (
+          <HugeiconsIcon icon={Zip02Icon} className="size-5 text-white" />
+        ) : (
+          <FileTypeIcon className="size-5 text-white" />
+        )}
       </div>
       <div className="flex flex-col overflow-hidden">
         <span className="truncate text-sm font-medium max-w-[150px]">

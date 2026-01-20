@@ -3,8 +3,9 @@
 import { cn } from "@/lib/utils";
 import type { MessageRole } from "@/types/chat";
 import type { HTMLAttributes, ImgHTMLAttributes } from "react";
-import { memo, useEffect, useRef, useState, useMemo } from "react";
+import { memo, useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { marked } from "marked";
+import { codeToHtml } from "shiki";
 import { Streamdown } from "streamdown";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
@@ -14,8 +15,8 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
 export const Message = ({ className, from, ...props }: MessageProps) => (
   <div
     className={cn(
-      "group flex w-full max-w-[80%] flex-col gap-2",
-      from === "user" ? "is-user ml-auto justify-end" : "is-assistant",
+      "group flex w-full flex-col gap-2",
+      from === "user" ? "is-user ml-auto max-w-[80%] justify-end" : "is-assistant",
       className
     )}
     {...props}
@@ -31,9 +32,9 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "is-user:dark flex w-fit flex-col gap-2 overflow-hidden text-base",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-[50px] group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground group-[.is-user]:[corner-shape:squircle]",
-      "group-[.is-assistant]:text-foreground",
+      "is-user:dark flex flex-col gap-2 overflow-hidden text-base",
+      "group-[.is-user]:ml-auto group-[.is-user]:w-fit group-[.is-user]:rounded-[50px] group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground group-[.is-user]:[corner-shape:squircle]",
+      "group-[.is-assistant]:w-full group-[.is-assistant]:text-foreground",
       className
     )}
     {...props}
@@ -57,14 +58,133 @@ function convertImageUrlsToMarkdown(text: string): string {
   return text.replace(IMAGE_URL_REGEX, (url) => `\n\n![Generated image](${url})\n\n`);
 }
 
-// Use marked for synchronous markdown rendering (no flicker on re-render)
+
+// Code block with syntax highlighting and copy button
+const CodeBlock = ({
+  code,
+  language,
+}: {
+  code: string;
+  language: string;
+}) => {
+  const [html, setHtml] = useState<string>("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    codeToHtml(code, {
+      lang: language || "text",
+      themes: { light: "github-light", dark: "github-dark" },
+      defaultColor: false,
+    })
+      .then((result) => {
+        if (!cancelled) setHtml(result);
+      })
+      .catch(() => {
+        // Fallback for unsupported languages
+        codeToHtml(code, {
+          lang: "text",
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        }).then((result) => {
+          if (!cancelled) setHtml(result);
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [code, language]);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard write failed - don't show success feedback
+    }
+  }, [code]);
+
+  return (
+    <div className="group/code relative" data-streamdown="code-block">
+      <div data-streamdown="code-block-header">
+        <span>{language || "text"}</span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 rounded px-2 py-1 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
+        >
+          {copied ? (
+            <>
+              <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Copied
+            </>
+          ) : (
+            <>
+              <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy
+            </>
+          )}
+        </button>
+      </div>
+      {html ? (
+        <div
+          data-streamdown="code-block-body"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      ) : (
+        <pre data-streamdown="code-block-body">
+          <code>{code}</code>
+        </pre>
+      )}
+    </div>
+  );
+};
+
+// Use marked's lexer to parse markdown into tokens, then render code blocks specially
 export const MessageResponse = memo(
   ({ className, children }: MessageResponseProps) => {
-    const html = useMemo(() => {
-      if (!children) return "";
-      // Convert standalone image URLs to markdown images before parsing
+    const content = useMemo(() => {
+      if (!children) {
+        return [];
+      }
+
       const processedText = convertImageUrlsToMarkdown(children);
-      return marked.parse(processedText, { async: false }) as string;
+      const tokens = marked.lexer(processedText);
+      const result: Array<{ type: "html" | "code"; html?: string; code?: string; lang?: string }> = [];
+
+      // Collect non-code tokens and their indices
+      type TokenType = (typeof tokens)[number];
+      let htmlBuffer: TokenType[] = [];
+
+      const flushHtml = () => {
+        if (htmlBuffer.length > 0) {
+          // Create a TokensList with the required links property
+          const tokensList = Object.assign([...htmlBuffer], { links: tokens.links });
+          const html = marked.parser(tokensList);
+          if (html.trim()) {
+            result.push({ type: "html", html });
+          }
+          htmlBuffer = [];
+        }
+      };
+
+      for (const token of tokens) {
+        if (token.type === "code") {
+          flushHtml();
+          result.push({ type: "code", code: token.text, lang: token.lang || "text" });
+        } else {
+          htmlBuffer.push(token);
+        }
+      }
+
+      flushHtml();
+      return result;
     }, [children]);
 
     return (
@@ -74,8 +194,15 @@ export const MessageResponse = memo(
           "[&_img]:max-w-full [&_img]:max-h-80 [&_img]:rounded-lg [&_img]:my-4",
           className
         )}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      >
+        {content.map((item, i) =>
+          item.type === "code" ? (
+            <CodeBlock key={i} code={item.code || ""} language={item.lang || "text"} />
+          ) : (
+            <div key={i} dangerouslySetInnerHTML={{ __html: item.html || "" }} />
+          )
+        )}
+      </div>
     );
   },
   (prevProps, nextProps) => prevProps.children === nextProps.children
@@ -141,7 +268,7 @@ export const StreamingMessage = ({
     }
   }, [initialText]);
 
-  // Convert image URLs for display - must be before early return to follow Rules of Hooks
+  // Process text for display - must be before early return to follow Rules of Hooks
   const processedText = useMemo(
     () => convertImageUrlsToMarkdown(text),
     [text]
