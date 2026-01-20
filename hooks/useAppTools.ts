@@ -3,6 +3,23 @@
 import { useCallback, useState, useEffect } from "react";
 
 /**
+ * Parameter property definition from the API
+ */
+export type ToolParameter = {
+  type?: string;
+  description?: string;
+  enum?: string[];
+  default?: unknown;
+  anyOf?: Array<{ type: string }>;
+  items?: { type: string; properties?: Record<string, unknown> };
+  minimum?: number;
+  maximum?: number;
+  minLength?: number;
+  maxLength?: number;
+  format?: string;
+};
+
+/**
  * Tool definition from the API
  */
 export type Tool = {
@@ -10,8 +27,8 @@ export type Tool = {
   description: string;
   parameters: {
     type: string;
-    properties: Record<string, { type: string; description: string }>;
-    required: string[];
+    properties: Record<string, ToolParameter>;
+    required?: string[];
   };
 };
 
