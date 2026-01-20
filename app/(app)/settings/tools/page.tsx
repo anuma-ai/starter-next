@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { SearchInput } from "@/components/ui/search-input";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import { useAppTools, type ToolParameter } from "@/hooks/useAppTools";
 import {
@@ -140,11 +141,37 @@ export default function ToolsPage() {
       baseUrl: process.env.NEXT_PUBLIC_API_URL,
     });
 
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const toggleExpanded = (toolName: string) => {
+    setExpandedTools((prev) => {
+      const next = new Set(prev);
+      if (next.has(toolName)) {
+        next.delete(toolName);
+      } else {
+        next.add(toolName);
+      }
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (authenticated && identityToken) {
-      refetch();
+      refetch().then(() => {
+        setLastFetched(new Date());
+      });
     }
   }, [authenticated, identityToken, refetch]);
+
+  const filteredTools = tools.filter((tool) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const name = formatToolName(tool.name).toLowerCase();
+    const description = (tool.description || "").toLowerCase();
+    return name.includes(query) || description.includes(query);
+  });
 
   return (
     <div className="flex flex-1 flex-col p-8 pt-16 md:pt-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
@@ -168,6 +195,13 @@ export default function ToolsPage() {
           tools will be available when sending messages.
         </p>
 
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search tools..."
+          className="mb-4"
+        />
+
         <div className="space-y-4">
           {isLoading ? (
             <div className="rounded-xl bg-white dark:bg-card p-4">
@@ -185,9 +219,15 @@ export default function ToolsPage() {
                 No tools available.
               </p>
             </div>
+          ) : filteredTools.length === 0 ? (
+            <div className="rounded-xl bg-white dark:bg-card p-4">
+              <p className="text-sm text-muted-foreground">
+                No tools match your search.
+              </p>
+            </div>
           ) : (
             <div className="rounded-xl bg-white dark:bg-card p-1">
-              {tools.map((tool, index) => {
+              {filteredTools.map((tool, index) => {
                 const isEnabled = enabledTools.includes(tool.name);
                 const properties = tool.parameters?.properties || {};
                 const required = tool.parameters?.required || [];
@@ -202,45 +242,72 @@ export default function ToolsPage() {
                   return 0;
                 });
 
+                const isExpanded = expandedTools.has(tool.name);
+                const hasDetails = tool.description || sortedParams.length > 0;
+
                 return (
                   <div
                     key={tool.name}
-                    className={`flex items-start justify-between px-4 py-3 ${
-                      index < tools.length - 1
+                    className={`${
+                      index < filteredTools.length - 1
                         ? "border-b border-border/50"
                         : ""
                     }`}
                   >
-                    <div className="flex-1 pr-4">
-                      <p className="text-sm font-medium">
-                        {formatToolName(tool.name)}
-                      </p>
-                      {tool.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-line">
-                          {tool.description}
+                    <div
+                      className={`flex items-center justify-between px-4 py-3 ${hasDetails ? "cursor-pointer" : ""}`}
+                      onClick={() => hasDetails && toggleExpanded(tool.name)}
+                    >
+                      <div className="flex items-center flex-1 pr-4">
+                        <p className="text-sm">
+                          {formatToolName(tool.name)}
                         </p>
-                      )}
-                      {sortedParams.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {sortedParams.map((paramName) => (
-                            <ParameterBadge
-                              key={paramName}
-                              name={paramName}
-                              param={properties[paramName]}
-                              isRequired={required.includes(paramName)}
-                            />
-                          ))}
-                        </div>
-                      )}
+                      </div>
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(e) => {
+                          e.stopPropagation?.();
+                          toggleTool(tool.name);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
                     </div>
-                    <Switch
-                      checked={isEnabled}
-                      onCheckedChange={() => toggleTool(tool.name)}
-                    />
+                    <div
+                      className={`grid transition-all duration-200 ease-out ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                    >
+                      <div className="overflow-hidden">
+                        {hasDetails && (
+                          <div className="px-4 pb-3">
+                            {tool.description && (
+                              <p className="text-xs text-muted-foreground whitespace-pre-line">
+                                {tool.description}
+                              </p>
+                            )}
+                            {sortedParams.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {sortedParams.map((paramName) => (
+                                  <ParameterBadge
+                                    key={paramName}
+                                    name={paramName}
+                                    param={properties[paramName]}
+                                    isRequired={required.includes(paramName)}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
             </div>
+          )}
+          {lastFetched && !isLoading && (
+            <p className="text-xs text-muted-foreground mt-3 text-center">
+              Last updated: {lastFetched.toLocaleTimeString()}
+            </p>
           )}
         </div>
       </div>
