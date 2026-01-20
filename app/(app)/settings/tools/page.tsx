@@ -8,10 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import { useAppTools, type ToolParameter } from "@/hooks/useAppTools";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 /**
  * Convert tool name to human readable format
@@ -140,21 +140,22 @@ function ParameterBadge({
   tooltipLines.push(isRequired ? "Required" : "Optional");
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
+    <HoverCard openDelay={0} closeDelay={0}>
+      <HoverCardTrigger asChild>
         <span
           className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium cursor-default transition-colors border ${colors.bg} ${colors.text} ${isRequired ? colors.border : "border-transparent opacity-70"}`}
         >
           {name}
         </span>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="max-w-xs text-left whitespace-pre-line"
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="bottom"
+        sideOffset={8}
+        className="max-w-xs text-left text-xs whitespace-pre-line bg-white text-muted-foreground rounded-lg px-3 py-2 border-0 [box-shadow:0_4px_16px_rgba(0,0,0,0.08),0_1px_4px_rgba(0,0,0,0.04)] dark:[box-shadow:0_4px_16px_rgba(0,0,0,0.25),0_1px_4px_rgba(0,0,0,0.15)] dark:bg-card dark:border dark:border-border"
       >
         {tooltipLines.join("\n")}
-      </TooltipContent>
-    </Tooltip>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 
