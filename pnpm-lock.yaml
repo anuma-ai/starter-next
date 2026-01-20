@@ -66,8 +66,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.7)(react@19.2.3)
       '@reverbia/sdk':
-        specifier: 1.0.0-next.20260119120858
-        version: 1.0.0-next.20260119120858(@nozbe/watermelondb@0.28.0)(@privy-io/react-auth@3.10.1(@solana-program/system@0.8.1(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana-program/token@0.9.0(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)))(@solana/sysvars@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.16)(@tanstack/react-query@5.90.16(react@19.2.3))(@types/react@19.2.7)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(utf-8-validate@5.0.10)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.3.5))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod@4.3.5)
+        specifier: 1.0.0-next.20260120170807
+        version: 1.0.0-next.20260120170807(@nozbe/watermelondb@0.28.0)(@privy-io/react-auth@3.10.1(@solana-program/system@0.8.1(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana-program/token@0.9.0(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)))(@solana/sysvars@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.16)(@tanstack/react-query@5.90.16(react@19.2.3))(@types/react@19.2.7)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(utf-8-validate@5.0.10)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.3.5))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod@4.3.5)
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -1622,8 +1622,8 @@ packages:
   '@reverbia/portal@1.0.0-next.20260111184618':
     resolution: {integrity: sha512-Ue/rr331+u4I0rN8gA6J/EhSyUInM9fWl+AP6EirhJHYd9wqW0PMmaFOUS48p+OFFTtU6fm090uDRIucGLBbnQ==}
 
-  '@reverbia/sdk@1.0.0-next.20260119120858':
-    resolution: {integrity: sha512-vXm6yNhUGK4xdotjwUOqxZ+3UGw+KIYATnEzcfFYd2TvY/yIQ2HVrP1fsu8lHHBokmYrIIWIzmw+0LMYYPyEfA==}
+  '@reverbia/sdk@1.0.0-next.20260120170807':
+    resolution: {integrity: sha512-MOdgvlC7lZ/ugnrA6zgm0Y0zB1hwAP0wy5DcQ3ehWCYeXUUuXySXYQWW43XrjCbWrSIRAMTx+mFiJjmNBS8BOg==}
     peerDependencies:
       '@nozbe/watermelondb': ^0.28.0
       '@privy-io/react-auth': ^3.7.0
@@ -6090,8 +6090,8 @@ packages:
     resolution: {integrity: sha512-g9ljZiwki/LfxmQADO3dEY1CbpmXT5Hm2fJ+QaGKwSXUylMybePR7/67YW7jOrrvjEgL1Fmz5kzyAjWVWLlucg==}
     engines: {node: '>=6'}
 
-  tar@7.5.3:
-    resolution: {integrity: sha512-ENg5JUHUm2rDD7IvKNFGzyElLXNjachNLp6RaGf4+JOgxXHkqA+gq81ZAMCUmtMtqBsoU62lcp6S27g1LCYGGQ==}
+  tar@7.5.2:
+    resolution: {integrity: sha512-7NyxrTE4Anh8km8iEy7o0QYPs+0JKBTj5ZaqHg6B39erLg0qYXN3BijtShwbsNSvQ+LN75+KV+C4QR/f6Gwnpg==}
     engines: {node: '>=18'}
 
   terser-webpack-plugin@5.3.16:
@@ -8921,7 +8921,7 @@ snapshots:
 
   '@reverbia/portal@1.0.0-next.20260111184618': {}
 
-  ? '@reverbia/sdk@1.0.0-next.20260119120858(@nozbe/watermelondb@0.28.0)(@privy-io/react-auth@3.10.1(@solana-program/system@0.8.1(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana-program/token@0.9.0(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)))(@solana/sysvars@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.16)(@tanstack/react-query@5.90.16(react@19.2.3))(@types/react@19.2.7)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(utf-8-validate@5.0.10)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.3.5))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod@4.3.5)'
+  ? '@reverbia/sdk@1.0.0-next.20260120170807(@nozbe/watermelondb@0.28.0)(@privy-io/react-auth@3.10.1(@solana-program/system@0.8.1(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana-program/token@0.9.0(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)))(@solana/sysvars@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.16)(@tanstack/react-query@5.90.16(react@19.2.3))(@types/react@19.2.7)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(utf-8-validate@5.0.10)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.3.5))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod@4.3.5)'
   : dependencies:
       '@reverbia/portal': 1.0.0-next.20260111184618
       ai: 5.0.93(zod@4.3.5)
@@ -12693,7 +12693,7 @@ snapshots:
 
   extension-port-stream@3.0.0:
     dependencies:
-      readable-stream: 3.6.2
+      readable-stream: 4.7.0
       webextension-polyfill: 0.10.0
 
   eyes@0.1.8: {}
@@ -14211,7 +14211,7 @@ snapshots:
     dependencies:
       global-agent: 3.0.0
       onnxruntime-common: 1.21.0
-      tar: 7.5.3
+      tar: 7.5.2
 
   onnxruntime-web@1.22.0-dev.20250409-89f8206ba4:
     dependencies:
@@ -15350,7 +15350,7 @@ snapshots:
 
   tapable@2.3.0: {}
 
-  tar@7.5.3:
+  tar@7.5.2:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
