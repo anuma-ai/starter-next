@@ -39,52 +39,18 @@ function getEffectiveType(param: ToolParameter): string {
 }
 
 /**
- * Get pastel color classes based on parameter type (macOS-inspired)
+ * Get color classes for parameter badges
  */
-function getTypeColorClasses(type: string): {
+function getParamColorClasses(): {
   bg: string;
   text: string;
   border: string;
 } {
-  switch (type) {
-    case "string":
-      return {
-        bg: "bg-emerald-100 dark:bg-emerald-900/50",
-        text: "text-emerald-700 dark:text-emerald-300",
-        border: "border-emerald-200 dark:border-emerald-700",
-      };
-    case "boolean":
-      return {
-        bg: "bg-rose-100 dark:bg-rose-900/50",
-        text: "text-rose-700 dark:text-rose-300",
-        border: "border-rose-200 dark:border-rose-700",
-      };
-    case "number":
-    case "integer":
-      return {
-        bg: "bg-blue-100 dark:bg-blue-900/50",
-        text: "text-blue-700 dark:text-blue-300",
-        border: "border-blue-200 dark:border-blue-700",
-      };
-    case "array":
-      return {
-        bg: "bg-purple-100 dark:bg-purple-900/50",
-        text: "text-purple-700 dark:text-purple-300",
-        border: "border-purple-200 dark:border-purple-700",
-      };
-    case "object":
-      return {
-        bg: "bg-amber-100 dark:bg-amber-900/50",
-        text: "text-amber-700 dark:text-amber-300",
-        border: "border-amber-200 dark:border-amber-700",
-      };
-    default:
-      return {
-        bg: "bg-gray-100 dark:bg-gray-800/50",
-        text: "text-gray-700 dark:text-gray-300",
-        border: "border-gray-200 dark:border-gray-600",
-      };
-  }
+  return {
+    bg: "bg-gray-100 dark:bg-gray-800/50",
+    text: "text-gray-600 dark:text-gray-400",
+    border: "border-gray-200 dark:border-gray-600",
+  };
 }
 
 /**
@@ -100,7 +66,7 @@ function ParameterBadge({
   isRequired: boolean;
 }) {
   const effectiveType = getEffectiveType(param);
-  const colors = getTypeColorClasses(effectiveType);
+  const colors = getParamColorClasses();
 
   // Build tooltip content
   const tooltipLines: string[] = [];
