@@ -378,7 +378,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     signMessage,
     embeddedWalletSigner: embeddedWallet ? embeddedWalletSigner : undefined,
     serverTools: ["generate_cloud_image", "perplexity_search"],
-    // clientTools,
+    clientTools,
   });
 
   // Wrap handleSubmit to track the current message for OAuth retry
