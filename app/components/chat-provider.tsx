@@ -31,6 +31,7 @@ import {
   getAndClearDrivePendingMessage,
 } from "@reverbia/sdk/react";
 import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
+import { getEnabledTools } from "@/hooks/useAppTools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -89,6 +90,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [temperature, setTemperature] = useState<number | undefined>(undefined);
   const [maxOutputTokens, setMaxOutputTokens] = useState<number | undefined>(
     undefined
+  );
+  const [enabledServerTools, setEnabledServerTools] = useState<string[]>(() =>
+    getEnabledTools()
   );
 
   // Get wallet address from user's linked wallet
@@ -236,6 +240,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (e.key === "chat_maxOutputTokens" && e.newValue) {
         setMaxOutputTokens(parseInt(e.newValue, 10));
       }
+      if (e.key === "chat_enabledServerTools") {
+        setEnabledServerTools(getEnabledTools());
+      }
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -377,7 +384,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     walletAddress,
     signMessage,
     embeddedWalletSigner: embeddedWallet ? embeddedWalletSigner : undefined,
-    serverTools: ["generate_cloud_image", "perplexity_search"],
+    serverTools: enabledServerTools,
     clientTools,
   });
 
