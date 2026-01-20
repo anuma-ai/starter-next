@@ -121,7 +121,20 @@ const ChatBotDemo = () => {
   const thinkingPanel = useThinkingPanel();
   const hasRedirectedRef = useRef(false);
 
-  const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("chat_selectedModel");
+      if (saved && MODELS.some((m) => m.id === saved)) {
+        return saved;
+      }
+    }
+    return MODELS[0].id;
+  });
+
+  const handleSelectModel = useCallback((modelId: string) => {
+    setSelectedModel(modelId);
+    localStorage.setItem("chat_selectedModel", modelId);
+  }, []);
 
   // Note: File preprocessing (PDF, Excel, Word) is now handled automatically
   // by the SDK via useChatStorage's fileProcessors option. No need for manual
@@ -229,8 +242,10 @@ const ChatBotDemo = () => {
         {
           model: selectedModel,
           apiType: currentModel?.apiType,
-          reasoning: { effort: "high", summary: "detailed" },
-          thinking: { type: "enabled", budget_tokens: 10000 },
+          maxOutputTokens: 32000,
+          toolChoice: "auto",
+          // reasoning: { effort: "high", summary: "detailed" },
+          // thinking: { type: "enabled", budget_tokens: 10000 },
           skipOptimisticUpdate: true,
         }
       );
@@ -475,7 +490,7 @@ const ChatBotDemo = () => {
             <div className="flex w-full min-w-0 items-center gap-1 px-3 py-2">
               <PromptMenu
                 selectedModel={selectedModel}
-                onSelectModel={setSelectedModel}
+                onSelectModel={handleSelectModel}
               />
               <PromptInputTextarea
                 disabled={!authenticated}
