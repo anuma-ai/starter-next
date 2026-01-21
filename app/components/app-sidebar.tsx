@@ -293,7 +293,7 @@ function SortableConversationItem({
     },
   });
 
-  // Show gray placeholder when being dragged
+  // Show lighter gray placeholder for drop target
   if (isDragging) {
     return (
       <motion.div
@@ -302,7 +302,7 @@ function SortableConversationItem({
         layoutId={`conv-${conversation.conversationId}`}
         transition={{ duration: 0.2, ease: "easeInOut" }}
       >
-        <div className="h-8 mx-2 rounded-md bg-sidebar-accent" />
+        <div className="h-8" />
       </motion.div>
     );
   }
@@ -339,14 +339,13 @@ function ConversationItemOverlay({
 }) {
   return (
     <div
-      className="rounded-lg border border-border/30"
+      className="rounded-lg border border-border/30 bg-sidebar-accent"
       style={{
-        backgroundColor: "#ffffff",
         cursor: "grabbing",
       }}
     >
       <SidebarMenuItem>
-        <SidebarMenuButton className="text-sm cursor-grabbing !bg-white hover:!bg-white">
+        <SidebarMenuButton className="text-sm cursor-grabbing !bg-transparent hover:!bg-transparent">
           <span className="truncate">
             {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
           </span>
