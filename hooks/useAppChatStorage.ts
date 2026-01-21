@@ -1,9 +1,24 @@
 "use client";
 
 import { useCallback, useState, useEffect, useRef } from "react";
-import { useChatStorage } from "@reverbia/sdk/react";
+import {
+  useChatStorage,
+  hasEncryptionKey,
+  getEncryptionKey,
+  readEncryptedFile,
+} from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
+
+// Helper to convert blob to data URL
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 type MessagePart =
   | {
@@ -245,15 +260,28 @@ export function useAppChatStorage({
             }
 
             // SDK stores file metadata for user-uploaded files
-            // Only add file parts for files with `url` property (user uploads with data URIs)
-            // Generated images (from MCP tools) don't have `url` - they're embedded in content as markdown
+            // Files may have `url` (direct data URI) or need to be read from OPFS
+            // Generated images (from MCP tools) have `sourceUrl` - they're embedded in content as markdown
             const storedFiles = msg.files || [];
             if (storedFiles.length > 0) {
               for (const file of storedFiles) {
                 const mimeType = file.type || "";
-                // Only render files that have a `url` (user uploads)
-                // Files with only `sourceUrl` (MCP cached) are rendered via content markdown
-                const fileUrl = file.url || "";
+                let fileUrl = file.url || "";
+
+                // If no URL but file has an ID, try to read from OPFS (user uploads)
+                // Skip files with sourceUrl - those are MCP-generated and embedded in content
+                if (!fileUrl && file.id && !file.sourceUrl && walletAddress && hasEncryptionKey(walletAddress)) {
+                  try {
+                    const encryptionKey = await getEncryptionKey(walletAddress);
+                    const result = await readEncryptedFile(file.id, encryptionKey);
+                    if (result) {
+                      fileUrl = await blobToDataUrl(result.blob);
+                    }
+                  } catch (err) {
+                    console.error(`Failed to read file ${file.id} from OPFS:`, err);
+                  }
+                }
+
                 if (!fileUrl) continue;
 
                 if (mimeType.startsWith("image/")) {
@@ -523,13 +551,27 @@ export function useAppChatStorage({
             parts.push({ type: "text" as const, text: textContent });
           }
 
-          // Only add file parts for files with `url` property (user uploads with data URIs)
-          // Generated images (from MCP tools) are embedded in content as markdown
+          // Files may have `url` (direct data URI) or need to be read from OPFS
+          // Generated images (from MCP tools) have `sourceUrl` - they're embedded in content as markdown
           const storedFiles = msg.files || [];
           if (storedFiles.length > 0) {
             for (const file of storedFiles) {
               const mimeType = file.type || "";
-              const fileUrl = file.url || "";
+              let fileUrl = file.url || "";
+
+              // If no URL but file has an ID, try to read from OPFS (user uploads)
+              if (!fileUrl && file.id && !file.sourceUrl && walletAddress && hasEncryptionKey(walletAddress)) {
+                try {
+                  const encryptionKey = await getEncryptionKey(walletAddress);
+                  const result = await readEncryptedFile(file.id, encryptionKey);
+                  if (result) {
+                    fileUrl = await blobToDataUrl(result.blob);
+                  }
+                } catch (err) {
+                  console.error(`Failed to read file ${file.id} from OPFS:`, err);
+                }
+              }
+
               if (!fileUrl) continue;
 
               if (mimeType.startsWith("image/")) {
