@@ -44,6 +44,7 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -291,23 +292,24 @@ function SortableConversationItem({
     },
   });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition || "transform 200ms ease, opacity 200ms ease",
     zIndex: isDragging ? 50 : "auto",
+    willChange: "transform",
   };
 
   // Show gray placeholder when being dragged
   if (isDragging) {
     return (
       <div ref={setNodeRef} style={style}>
-        <div className="h-8 mx-2 rounded-md bg-sidebar-accent" />
+        <div className="h-8 mx-2 rounded-md bg-sidebar-accent transition-all duration-200" />
       </div>
     );
   }
 
   return (
-    <SidebarMenuItem ref={setNodeRef} style={style}>
+    <SidebarMenuItem ref={setNodeRef} style={style} className="transition-all duration-200">
       <SidebarMenuButton
         isActive={isActive}
         onClick={onSelect}
@@ -757,7 +759,7 @@ export function AppSidebar({
                     {/* Single SortableContext for ALL conversations across all projects */}
                     <SortableContext
                       items={allConversationIds}
-                      strategy={verticalListSortingStrategy}
+                      strategy={rectSortingStrategy}
                     >
                       {/* Projects have their own SortableContext */}
                       <SortableContext
@@ -786,7 +788,7 @@ export function AppSidebar({
                               justDropped={justDroppedId === project.projectId}
                             >
                               {isExpanded && conversations.length > 0 && (
-                                <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
+                                <div className="ml-6 mt-0.5 flex flex-col gap-0.5 transition-all duration-200">
                                   {conversations.map((conv) => (
                                     <SortableConversationItem
                                       key={conv.conversationId}
