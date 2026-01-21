@@ -72,9 +72,11 @@ export function AppLayout({ children }: AppLayoutProps) {
     projects,
     projectsReady,
     projectConversationsVersion,
+    inboxProjectId,
     createProject,
     updateProjectName,
     getProjectConversations,
+    getMessages,
   } = chatState;
 
   const handleNewConversation = useCallback(async () => {
@@ -151,21 +153,21 @@ export function AppLayout({ children }: AppLayoutProps) {
     <ThinkingPanelProvider>
       <SidebarProvider>
         <AppSidebar
-          conversations={conversations}
           conversationId={activeConversationId}
           onNewConversation={handleNewConversation}
           onSelectConversation={handleSelectConversation}
-          onDeleteConversation={deleteConversation}
           currentView={currentView}
           onViewChange={handleViewChange}
           projects={projects}
           projectsReady={projectsReady}
           projectConversationsVersion={projectConversationsVersion}
           selectedProjectId={selectedProjectId}
+          inboxProjectId={inboxProjectId}
           onSelectProject={handleSelectProject}
           onCreateProject={createProject}
           onUpdateProjectName={updateProjectName}
           getProjectConversations={getProjectConversations}
+          getMessages={getMessages}
         />
         <SidebarHandle />
         <SidebarInset className={`min-h-dvh min-w-0 ${insetBackground}`}>

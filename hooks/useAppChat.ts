@@ -84,6 +84,7 @@ export function useAppChat({
     setConversationId,
     deleteConversation,
     refreshConversations,
+    getMessages,
   } = useAppChatStorage({
     database,
     getToken,
@@ -299,6 +300,7 @@ export function useAppChat({
     refreshConversations,
     subscribeToStreaming,
     subscribeToThinking,
+    getMessages,
 
     // Memory actions
     findRelevantMemories,

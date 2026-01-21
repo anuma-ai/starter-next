@@ -59,6 +59,7 @@ type ChatState = {
   setConversationId: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
+  getMessages: (conversationId: string) => Promise<any[]>;
   // Projects
   projects: StoredProject[];
   projectsLoading: boolean;

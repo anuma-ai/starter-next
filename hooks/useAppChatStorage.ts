@@ -633,5 +633,6 @@ export function useAppChatStorage({
     deleteConversation: handleDeleteConversation,
     refreshConversations,
     getAllFiles,
+    getMessages,
   };
 }

@@ -3,13 +3,10 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   QuillWrite02Icon,
-  MoreHorizontalIcon,
-  Delete01Icon,
   Setting07Icon,
   Search01Icon,
   Folder01Icon,
   FolderLibraryIcon,
-  Edit02Icon,
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { useState, useEffect } from "react";
@@ -28,20 +25,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import type { StoredProject, StoredConversation, CreateProjectOptions } from "@reverbia/sdk/react";
+import type { StoredProject, StoredConversation, CreateProjectOptions, StoredMessage } from "@reverbia/sdk/react";
+
+// Conversation with enriched title from first message
+type ConversationWithTitle = StoredConversation & { displayTitle?: string };
 
 type AppSidebarProps = {
-  conversations: any[];
   conversationId: string | null;
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
-  onDeleteConversation: (id: string) => void;
   currentView: "chat" | "settings" | "conversations" | "files" | "projects";
   onViewChange: (view: "chat" | "settings" | "conversations" | "files" | "projects") => void;
   // Projects
@@ -49,34 +41,56 @@ type AppSidebarProps = {
   projectsReady: boolean;
   projectConversationsVersion: number;
   selectedProjectId: string | null;
+  inboxProjectId: string | null;
   onSelectProject: (projectId: string) => void;
   onCreateProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
   onUpdateProjectName: (projectId: string, name: string) => Promise<boolean>;
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
+  getMessages: (conversationId: string) => Promise<StoredMessage[]>;
 };
 
 export function AppSidebar({
-  conversations,
   conversationId,
   onNewConversation,
   onSelectConversation,
-  onDeleteConversation,
   currentView,
   onViewChange,
   projects,
   projectsReady,
   projectConversationsVersion,
   selectedProjectId,
+  inboxProjectId,
   onSelectProject,
   onCreateProject,
   onUpdateProjectName,
   getProjectConversations,
+  getMessages,
 }: AppSidebarProps) {
   const { authenticated, login, ready } = usePrivy();
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [projectConversations, setProjectConversations] = useState<Record<string, StoredConversation[]>>({});
+  const [projectConversations, setProjectConversations] = useState<Record<string, ConversationWithTitle[]>>({});
+
+  // Helper to enrich conversations with titles from first message
+  const enrichConversationsWithTitles = async (convs: StoredConversation[]): Promise<ConversationWithTitle[]> => {
+    return Promise.all(
+      convs.map(async (conv) => {
+        try {
+          const msgs = await getMessages(conv.conversationId);
+          const firstUserMessage = msgs.find((m) => m.role === "user");
+          if (firstUserMessage?.content) {
+            const text = firstUserMessage.content.slice(0, 30);
+            const displayTitle = text.length >= 30 ? `${text}...` : text;
+            return { ...conv, displayTitle };
+          }
+        } catch {
+          // Ignore errors, use default title
+        }
+        return conv;
+      })
+    );
+  };
 
   const toggleProjectExpanded = async (projectId: string) => {
     const newExpanded = new Set(expandedProjects);
@@ -86,28 +100,42 @@ export function AppSidebar({
       newExpanded.add(projectId);
       // Load conversations for the expanded project
       const convs = await getProjectConversations(projectId);
-      setProjectConversations(prev => ({ ...prev, [projectId]: convs }));
+      const enrichedConvs = await enrichConversationsWithTitles(convs);
+      setProjectConversations(prev => ({ ...prev, [projectId]: enrichedConvs }));
     }
     setExpandedProjects(newExpanded);
   };
 
   // Refresh expanded project conversations when project conversations version changes
   // (triggered when a conversation is assigned to a project)
+  // Also auto-expand the inbox project when a new conversation is added to it
   useEffect(() => {
     const refreshExpandedProjects = async () => {
-      if (expandedProjects.size === 0) return;
+      // Auto-expand inbox project when a conversation is added (version > 0 means assignment happened)
+      if (inboxProjectId && projectConversationsVersion > 0 && !expandedProjects.has(inboxProjectId)) {
+        setExpandedProjects(prev => new Set([...prev, inboxProjectId]));
+      }
 
-      const updates: Record<string, StoredConversation[]> = {};
-      for (const projectId of expandedProjects) {
+      // Determine which projects to refresh (including newly expanded inbox)
+      const projectsToRefresh = new Set(expandedProjects);
+      if (inboxProjectId && projectConversationsVersion > 0) {
+        projectsToRefresh.add(inboxProjectId);
+      }
+
+      if (projectsToRefresh.size === 0) return;
+
+      const updates: Record<string, ConversationWithTitle[]> = {};
+      for (const projectId of projectsToRefresh) {
         const convs = await getProjectConversations(projectId);
-        updates[projectId] = convs;
+        const enrichedConvs = await enrichConversationsWithTitles(convs);
+        updates[projectId] = enrichedConvs;
       }
       setProjectConversations(prev => ({ ...prev, ...updates }));
     };
 
     refreshExpandedProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectConversationsVersion, getProjectConversations]);
+  }, [projectConversationsVersion, getProjectConversations, inboxProjectId]);
 
   return (
     <Sidebar>
@@ -144,59 +172,6 @@ export function AppSidebar({
 
       {authenticated && (
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-muted-foreground">
-              Conversations
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {conversations.slice(0, 10).map((conv: any, index: number) => (
-                  <SidebarMenuItem key={conv.id ?? index}>
-                    <SidebarMenuButton
-                      isActive={
-                        currentView === "chat" && conversationId === conv.id
-                      }
-                      onClick={() => onSelectConversation(conv.id)}
-                    >
-                      <span className="truncate">
-                        {conv.title ||
-                          `Chat ${conv.id?.slice(0, 8) ?? index + 1}`}
-                      </span>
-                    </SidebarMenuButton>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction
-                          showOnHover
-                          className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
-                        >
-                          <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
-                        </SidebarMenuAction>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start">
-                        <DropdownMenuItem
-                          onClick={() => onDeleteConversation(conv.id)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <HugeiconsIcon
-                            icon={Delete01Icon}
-                            size={16}
-                            className="mr-2 text-destructive"
-                          />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarMenuItem>
-                ))}
-                {conversations.length === 0 && (
-                  <p className="px-2 py-2 text-sm text-muted-foreground">
-                    No conversations yet
-                  </p>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
           {projectsReady && (
             <SidebarGroup>
               <SidebarGroupLabel className="text-muted-foreground">
@@ -208,7 +183,7 @@ export function AppSidebar({
                     const isExpanded = expandedProjects.has(project.projectId);
                     const conversations = projectConversations[project.projectId] || [];
                     return (
-                      <div key={project.projectId}>
+                      <div key={project.projectId} className="mb-0.5">
                         <SidebarMenuItem>
                           {editingProjectId === project.projectId ? (
                             <form
@@ -267,7 +242,7 @@ export function AppSidebar({
                           )}
                         </SidebarMenuItem>
                         {isExpanded && conversations.length > 0 && (
-                          <div className="ml-4 border-l border-border/50 pl-2">
+                          <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
                             {conversations.map((conv) => (
                               <SidebarMenuItem key={conv.conversationId}>
                                 <SidebarMenuButton
@@ -276,7 +251,7 @@ export function AppSidebar({
                                   className="text-sm"
                                 >
                                   <span className="truncate">
-                                    {conv.title || `Chat ${conv.conversationId.slice(0, 8)}`}
+                                    {conv.displayTitle || conv.title || `Chat ${conv.conversationId.slice(0, 8)}`}
                                   </span>
                                 </SidebarMenuButton>
                               </SidebarMenuItem>
@@ -284,7 +259,7 @@ export function AppSidebar({
                           </div>
                         )}
                         {isExpanded && conversations.length === 0 && (
-                          <div className="ml-4 border-l border-border/50 pl-2 py-1">
+                          <div className="ml-6 mt-0.5 py-1">
                             <span className="text-xs text-muted-foreground px-2">No conversations</span>
                           </div>
                         )}
