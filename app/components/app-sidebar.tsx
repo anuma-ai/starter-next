@@ -243,12 +243,14 @@ function SortableConversationItem({
   isActive,
   onSelect,
   isDropAnimating,
+  isDragActive,
 }: {
   conversation: ConversationWithTitle;
   projectId: string;
   isActive: boolean;
   onSelect: () => void;
   isDropAnimating?: boolean;
+  isDragActive?: boolean;
 }) {
   const {
     attributes,
@@ -279,11 +281,16 @@ function SortableConversationItem({
     );
   }
 
+  // During active drag, skip enter/exit animations (use layout only for smooth reordering)
+  // When not dragging (e.g., new conversation created), animate in from height 0
   return (
     <motion.div
       ref={setNodeRef}
       layout
       layoutId={`conv-${conversation.conversationId}`}
+      initial={isDragActive ? false : { height: 0, opacity: 0 }}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={isDragActive ? undefined : { height: 0, opacity: 0 }}
       transition={{ duration: 0.2, ease: "easeInOut" }}
     >
       <SidebarMenuItem>
@@ -811,15 +818,12 @@ export function AppSidebar({
                                 justDropped={justDroppedId === project.projectId}
                                 isDropTarget={dropTargetProjectId === project.projectId}
                               >
-                                <AnimatePresence initial={false}>
-                                  {isExpanded && conversations.length > 0 && (
-                                    <motion.div
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: "auto", opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      transition={{ duration: 0.2, ease: "easeInOut" }}
-                                      className="ml-6 mt-0.5 flex flex-col gap-0.5 overflow-hidden"
-                                    >
+                                {/* During drag: no container animation to prevent layout shifts */}
+                                {/* When not dragging: animate container expand/collapse */}
+                                {draggedConversation ? (
+                                  // During drag - static container, no animations
+                                  isExpanded && conversations.length > 0 && (
+                                    <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
                                       {conversations.map((conv) => (
                                         <SortableConversationItem
                                           key={conv.conversationId}
@@ -828,11 +832,39 @@ export function AppSidebar({
                                           isActive={currentView === "chat" && conversationId === conv.conversationId}
                                           onSelect={() => onSelectConversation(conv.conversationId)}
                                           isDropAnimating={dropAnimatingConvId === conv.conversationId}
+                                          isDragActive={true}
                                         />
                                       ))}
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
+                                    </div>
+                                  )
+                                ) : (
+                                  // Not dragging - full animations
+                                  <AnimatePresence initial={false}>
+                                    {isExpanded && conversations.length > 0 && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                                        className="ml-6 mt-0.5 flex flex-col gap-0.5 overflow-hidden"
+                                      >
+                                        <AnimatePresence initial={false}>
+                                          {conversations.map((conv) => (
+                                            <SortableConversationItem
+                                              key={conv.conversationId}
+                                              conversation={conv}
+                                              projectId={project.projectId}
+                                              isActive={currentView === "chat" && conversationId === conv.conversationId}
+                                              onSelect={() => onSelectConversation(conv.conversationId)}
+                                              isDropAnimating={dropAnimatingConvId === conv.conversationId}
+                                              isDragActive={false}
+                                            />
+                                          ))}
+                                        </AnimatePresence>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                )}
                             </SortableProjectItem>
                           );
                         })}
