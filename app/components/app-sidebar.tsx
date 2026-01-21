@@ -528,7 +528,14 @@ export function AppSidebar({
         setDragSourceProjectId(convData.projectId);
       }
     } else {
-      // Dragging a project
+      // Dragging a project - collapse it first if expanded
+      if (expandedProjects.has(id)) {
+        setExpandedProjects(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
       setActiveProjectId(id);
     }
   };
