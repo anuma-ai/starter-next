@@ -154,10 +154,7 @@ function SortableProjectItem({
       style={style}
       className="mb-0.5"
     >
-      <SidebarMenuItem
-        className={isTransitioning ? "transition-colors duration-300" : ""}
-        style={isTransitioning ? { backgroundColor: "#ffffff" } : undefined}
-      >
+      <SidebarMenuItem>
         {isEditing ? (
           <form
             className="flex-1 px-2"
@@ -186,9 +183,10 @@ function SortableProjectItem({
         ) : (
           <>
             <SidebarMenuButton
-              isActive={isActive}
+              isActive={isActive || isTransitioning}
               onClick={onSelect}
-              className="cursor-pointer"
+              className={`cursor-pointer ${isTransitioning ? "transition-colors duration-300 pointer-events-none" : ""}`}
+              style={isTransitioning ? { backgroundColor: "#ffffff" } : undefined}
               {...attributes}
               {...listeners}
             >
