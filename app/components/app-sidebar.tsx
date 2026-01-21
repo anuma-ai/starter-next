@@ -247,6 +247,7 @@ function SortableConversationItem({
   onSelect,
   isDropAnimating,
   isDragActive,
+  skipAnimations,
 }: {
   conversation: ConversationWithTitle;
   projectId: string;
@@ -254,6 +255,7 @@ function SortableConversationItem({
   onSelect: () => void;
   isDropAnimating?: boolean;
   isDragActive?: boolean;
+  skipAnimations?: boolean;
 }) {
   const {
     attributes,
@@ -284,16 +286,17 @@ function SortableConversationItem({
     );
   }
 
-  // During active drag, skip enter/exit animations (use layout only for smooth reordering)
+  // During active drag or initial mount, skip enter/exit animations
   // When not dragging (e.g., new conversation created), animate in from height 0
+  const shouldSkipAnimation = isDragActive || skipAnimations;
   return (
     <motion.div
       ref={setNodeRef}
       layout
       layoutId={`conv-${conversation.conversationId}`}
-      initial={isDragActive ? false : { height: 0, opacity: 0 }}
+      initial={shouldSkipAnimation ? false : { height: 0, opacity: 0 }}
       animate={{ height: "auto", opacity: 1 }}
-      exit={isDragActive ? undefined : { height: 0, opacity: 0 }}
+      exit={shouldSkipAnimation ? undefined : { height: 0, opacity: 0 }}
       transition={{ duration: 0.2, ease: "easeInOut" }}
     >
       <SidebarMenuItem>
@@ -385,6 +388,10 @@ export function AppSidebar({
   const [dropAnimatingConvId, setDropAnimatingConvId] = useState<string | null>(null);
   const [dropTargetProjectId, setDropTargetProjectId] = useState<string | null>(null);
   const hasLoadedFromStorage = useRef(false);
+  // Track initial mount to skip animations when restoring state from localStorage
+  // Use a ref for the actual tracking, and state to trigger re-renders
+  const hasInitialConversationsLoaded = useRef(false);
+  const [skipInitialAnimations, setSkipInitialAnimations] = useState(true);
 
   // Load saved project order from localStorage on mount
   useEffect(() => {
@@ -495,6 +502,9 @@ export function AppSidebar({
   // Also auto-expand the inbox project when a new conversation is added to it
   useEffect(() => {
     const refreshExpandedProjects = async () => {
+      // Check if this is initial load before any async work
+      const isInitialLoad = !hasInitialConversationsLoaded.current;
+
       // Auto-expand inbox project when a conversation is added (version > 0 means assignment happened)
       if (inboxProjectId && projectConversationsVersion > 0 && !expandedProjects.has(inboxProjectId)) {
         setExpandedProjects(prev => new Set([...prev, inboxProjectId]));
@@ -506,7 +516,19 @@ export function AppSidebar({
         projectsToRefresh.add(inboxProjectId);
       }
 
-      if (projectsToRefresh.size === 0) return;
+      if (projectsToRefresh.size === 0) {
+        // No projects to refresh, but still enable animations after initial load
+        if (isInitialLoad) {
+          hasInitialConversationsLoaded.current = true;
+          // Use double rAF to ensure React has committed the DOM update
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              setSkipInitialAnimations(false);
+            });
+          });
+        }
+        return;
+      }
 
       const updates: Record<string, ConversationWithTitle[]> = {};
       for (const projectId of projectsToRefresh) {
@@ -515,6 +537,17 @@ export function AppSidebar({
         updates[projectId] = enrichedConvs;
       }
       setProjectConversations(prev => ({ ...prev, ...updates }));
+
+      // Enable animations after initial conversations have loaded and rendered
+      if (isInitialLoad) {
+        hasInitialConversationsLoaded.current = true;
+        // Use double rAF to ensure React has committed the DOM update
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setSkipInitialAnimations(false);
+          });
+        });
+      }
     };
 
     refreshExpandedProjects();
@@ -871,18 +904,19 @@ export function AppSidebar({
                                           onSelect={() => onSelectConversation(conv.conversationId)}
                                           isDropAnimating={dropAnimatingConvId === conv.conversationId}
                                           isDragActive={true}
+                                          skipAnimations={skipInitialAnimations}
                                         />
                                       ))}
                                     </div>
                                   )
                                 ) : (
-                                  // Not dragging - full animations
+                                  // Not dragging - full animations (unless initial mount)
                                   <AnimatePresence initial={false}>
                                     {isExpanded && conversations.length > 0 && (
                                       <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
+                                        initial={skipInitialAnimations ? false : { height: 0, opacity: 0 }}
                                         animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
+                                        exit={skipInitialAnimations ? undefined : { height: 0, opacity: 0 }}
                                         transition={{ duration: 0.2, ease: "easeInOut" }}
                                         className="ml-6 mt-0.5 flex flex-col gap-0.5 overflow-hidden"
                                       >
@@ -896,6 +930,7 @@ export function AppSidebar({
                                               onSelect={() => onSelectConversation(conv.conversationId)}
                                               isDropAnimating={dropAnimatingConvId === conv.conversationId}
                                               isDragActive={false}
+                                              skipAnimations={skipInitialAnimations}
                                             />
                                           ))}
                                         </AnimatePresence>
