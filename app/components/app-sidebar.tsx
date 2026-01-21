@@ -561,6 +561,8 @@ export function AppSidebar({
     const { active, over } = event;
     const activeIdStr = active.id as string;
     const originalSourceProjectId = dragSourceProjectId;
+    // Capture conversation before resetting state
+    const conversation = draggedConversation;
 
     // Reset drag state
     setActiveProjectId(null);
@@ -574,49 +576,72 @@ export function AppSidebar({
 
     // Handle conversation drop
     if (activeIdStr.startsWith("conv:")) {
-      if (!overIdStr.startsWith("conv:") || !originalSourceProjectId) return;
+      if (!originalSourceProjectId || !conversation) return;
 
-      const overParts = overIdStr.split(":");
-      const targetProjectId = overParts[1];
       const conversationId = activeIdStr.split(":")[2];
+      let targetProjectId: string;
+      let insertIndex: number;
 
-      // Only persist if project changed (cross-project move)
-      if (originalSourceProjectId !== targetProjectId) {
-        // Move conversation to target project in UI first
-        const conversation = draggedConversation ||
-          (projectConversations[originalSourceProjectId] || []).find(c => c.conversationId === conversationId);
+      if (overIdStr.startsWith("conv:")) {
+        // Dropped on another conversation
+        const overParts = overIdStr.split(":");
+        targetProjectId = overParts[1];
+        const overConvId = overParts[2];
 
-        if (conversation) {
-          const targetConvs = projectConversations[targetProjectId] || [];
-          const overConvId = overParts[2];
-          const overIndex = targetConvs.findIndex(c => c.conversationId === overConvId);
-          const insertIndex = overIndex === -1 ? targetConvs.length : overIndex;
-
-          setProjectConversations(prev => {
-            const sourceConvs = prev[originalSourceProjectId] || [];
-            const newSourceConvs = sourceConvs.filter(c => c.conversationId !== conversationId);
-            const newTargetConvs = [...(prev[targetProjectId] || [])];
-            newTargetConvs.splice(insertIndex, 0, conversation);
-            return {
-              ...prev,
-              [originalSourceProjectId]: newSourceConvs,
-              [targetProjectId]: newTargetConvs,
-            };
-          });
+        if (originalSourceProjectId === targetProjectId) {
+          // Same project - just reordering, already handled in dragOver
+          return;
         }
 
-        // Persist to database
-        const success = await updateConversationProject(conversationId, targetProjectId);
-        if (!success) {
-          // Revert by refreshing from database
-          const refreshUpdates: Record<string, ConversationWithTitle[]> = {};
-          for (const projectId of expandedProjects) {
-            const convs = await getProjectConversations(projectId);
-            const enrichedConvs = await enrichConversationsWithTitles(convs);
-            refreshUpdates[projectId] = enrichedConvs;
-          }
-          setProjectConversations(prev => ({ ...prev, ...refreshUpdates }));
+        // Different project - find insert position
+        const targetConvs = projectConversations[targetProjectId] || [];
+        const overIndex = targetConvs.findIndex(c => c.conversationId === overConvId);
+        insertIndex = overIndex === -1 ? targetConvs.length : overIndex;
+      } else {
+        // Dropped on a project directly (collapsed or empty project)
+        targetProjectId = overIdStr;
+
+        // Check if this is a valid project
+        if (!orderedProjectIds.includes(targetProjectId)) return;
+
+        if (originalSourceProjectId === targetProjectId) {
+          // Same project - no change needed
+          return;
         }
+
+        // Add to end of target project
+        insertIndex = (projectConversations[targetProjectId] || []).length;
+      }
+
+      // Move conversation to target project in UI
+      setProjectConversations(prev => {
+        const sourceConvs = prev[originalSourceProjectId] || [];
+        const targetConvs = prev[targetProjectId] || [];
+
+        // Remove from source
+        const newSourceConvs = sourceConvs.filter(c => c.conversationId !== conversationId);
+        // Insert into target at the correct position
+        const newTargetConvs = [...targetConvs];
+        newTargetConvs.splice(insertIndex, 0, conversation);
+
+        return {
+          ...prev,
+          [originalSourceProjectId]: newSourceConvs,
+          [targetProjectId]: newTargetConvs,
+        };
+      });
+
+      // Persist to database
+      const success = await updateConversationProject(conversationId, targetProjectId);
+      if (!success) {
+        // Revert by refreshing from database
+        const refreshUpdates: Record<string, ConversationWithTitle[]> = {};
+        for (const projectId of expandedProjects) {
+          const convs = await getProjectConversations(projectId);
+          const enrichedConvs = await enrichConversationsWithTitles(convs);
+          refreshUpdates[projectId] = enrichedConvs;
+        }
+        setProjectConversations(prev => ({ ...prev, ...refreshUpdates }));
       }
       return;
     }
