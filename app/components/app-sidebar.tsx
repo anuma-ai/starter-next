@@ -85,6 +85,7 @@ type SortableProjectItemProps = {
   onStopEditing: () => void;
   onEditingNameChange: (name: string) => void;
   justDropped?: boolean;
+  isDropTarget?: boolean;
   children?: React.ReactNode;
 };
 
@@ -100,6 +101,7 @@ function SortableProjectItem({
   onStopEditing,
   onEditingNameChange,
   justDropped = false,
+  isDropTarget = false,
   children,
 }: SortableProjectItemProps) {
   const [isTransitioning, setIsTransitioning] = useState(justDropped);
@@ -178,7 +180,7 @@ function SortableProjectItem({
         ) : (
           <>
             <SidebarMenuButton
-              isActive={isActive || isTransitioning}
+              isActive={isActive || isTransitioning || isDropTarget}
               onClick={onSelect}
               className={`cursor-pointer ${isTransitioning ? "transition-colors duration-300 pointer-events-none" : ""}`}
               style={isTransitioning ? { backgroundColor: "#ffffff" } : undefined}
@@ -388,6 +390,7 @@ export function AppSidebar({
   const [draggedConversation, setDraggedConversation] = useState<ConversationWithTitle | null>(null);
   const [dragSourceProjectId, setDragSourceProjectId] = useState<string | null>(null);
   const [dropAnimatingConvId, setDropAnimatingConvId] = useState<string | null>(null);
+  const [dropTargetProjectId, setDropTargetProjectId] = useState<string | null>(null);
 
   // Load saved order from localStorage on mount
   useEffect(() => {
@@ -579,10 +582,19 @@ export function AppSidebar({
         }
       }
       if (!targetProjectId!) return;
+      // Clear drop target highlight when hovering over conversations
+      setDropTargetProjectId(null);
     } else if (orderedProjectIds.includes(overIdStr)) {
-      // Hovering over a project directly
+      // Hovering over a project directly (collapsed project)
       targetProjectId = overIdStr;
+      // Highlight the project as drop target if it's collapsed
+      if (!expandedProjects.has(overIdStr)) {
+        setDropTargetProjectId(overIdStr);
+      } else {
+        setDropTargetProjectId(null);
+      }
     } else {
+      setDropTargetProjectId(null);
       return;
     }
 
@@ -639,6 +651,7 @@ export function AppSidebar({
     setActiveConversationId(null);
     setDraggedConversation(null);
     setDragSourceProjectId(null);
+    setDropTargetProjectId(null);
 
     // Handle conversation drop - persist to database if project changed
     if (activeIdStr.startsWith("conv:")) {
@@ -714,6 +727,7 @@ export function AppSidebar({
     setActiveConversationId(null);
     setDraggedConversation(null);
     setDragSourceProjectId(null);
+    setDropTargetProjectId(null);
   };
 
   // Project IDs for project-level sorting
@@ -824,6 +838,7 @@ export function AppSidebar({
                                 }}
                                 onEditingNameChange={setEditingName}
                                 justDropped={justDroppedId === project.projectId}
+                                isDropTarget={dropTargetProjectId === project.projectId}
                               >
                                 <AnimatePresence initial={false}>
                                   {isExpanded && conversations.length > 0 && (
