@@ -117,22 +117,26 @@ function SortableProjectItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isSortableDragging ? 0.4 : 1,
     zIndex: isSortableDragging ? 50 : "auto",
   };
 
-  // When used as overlay, use different styling
-  const overlayStyle = isDragging ? {
-    boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
-    background: "var(--sidebar)",
-    borderRadius: "8px",
-    cursor: "grabbing",
-  } : {};
+  // Show gray placeholder when being dragged (same color as selected/active project)
+  if (isSortableDragging) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="mb-0.5"
+      >
+        <div className="h-8 mx-2 rounded-md bg-sidebar-accent" />
+      </div>
+    );
+  }
 
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, ...overlayStyle }}
+      style={style}
       className="mb-0.5"
     >
       <SidebarMenuItem>
@@ -228,14 +232,14 @@ function ProjectItemOverlay({
 }) {
   return (
     <div
-      className="mb-0.5 bg-sidebar rounded-lg shadow-xl border border-border/50"
+      className="mb-0.5 rounded-lg border border-border/30"
       style={{
-        boxShadow: "0 12px 40px rgba(0,0,0,0.2)",
+        backgroundColor: "#ffffff",
         cursor: "grabbing",
       }}
     >
       <SidebarMenuItem>
-        <SidebarMenuButton className="cursor-grabbing">
+        <SidebarMenuButton className="cursor-grabbing !bg-white hover:!bg-white">
           <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
           <span className="truncate">{project.name}</span>
         </SidebarMenuButton>
@@ -250,10 +254,10 @@ function ProjectItemOverlay({
         </SidebarMenuAction>
       </SidebarMenuItem>
       {isExpanded && conversations.length > 0 && (
-        <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
+        <div className="ml-6 mt-0.5 flex flex-col gap-0.5" style={{ backgroundColor: "#ffffff" }}>
           {conversations.map((conv) => (
             <SidebarMenuItem key={conv.conversationId}>
-              <SidebarMenuButton className="text-sm">
+              <SidebarMenuButton className="text-sm !bg-white hover:!bg-white">
                 <span className="truncate">
                   {conv.displayTitle || conv.title || `Chat ${conv.conversationId.slice(0, 8)}`}
                 </span>
@@ -263,7 +267,7 @@ function ProjectItemOverlay({
         </div>
       )}
       {isExpanded && conversations.length === 0 && (
-        <div className="ml-6 mt-0.5 py-1">
+        <div className="ml-6 mt-0.5 py-1" style={{ backgroundColor: "#ffffff" }}>
           <span className="text-xs text-muted-foreground px-2">No conversations</span>
         </div>
       )}
@@ -296,6 +300,21 @@ export function AppSidebar({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [orderedProjectIds, setOrderedProjectIds] = useState<string[]>([]);
 
+  // Load saved order from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sidebar-project-order");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setOrderedProjectIds(parsed);
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
   // Sync ordered project IDs with actual projects
   useEffect(() => {
     const currentIds = projects.map(p => p.projectId);
@@ -303,9 +322,21 @@ export function AppSidebar({
       // Keep existing order for projects that still exist, append new ones
       const existingOrdered = prev.filter(id => currentIds.includes(id));
       const newIds = currentIds.filter(id => !prev.includes(id));
-      return [...existingOrdered, ...newIds];
+      const newOrder = [...existingOrdered, ...newIds];
+      return newOrder;
     });
   }, [projects]);
+
+  // Save order to localStorage when it changes
+  useEffect(() => {
+    if (orderedProjectIds.length > 0) {
+      try {
+        localStorage.setItem("sidebar-project-order", JSON.stringify(orderedProjectIds));
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+  }, [orderedProjectIds]);
 
   // Compute ordered projects based on orderedProjectIds
   const orderedProjects = useMemo(() => {
