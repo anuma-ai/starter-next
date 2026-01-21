@@ -36,6 +36,7 @@ import {
   DragOverlay,
   type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -66,6 +67,7 @@ type AppSidebarProps = {
   onUpdateProjectName: (projectId: string, name: string) => Promise<boolean>;
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
   getMessages: (conversationId: string) => Promise<StoredMessage[]>;
+  updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
 };
 
 type SortableProjectItemProps = {
@@ -84,8 +86,8 @@ type SortableProjectItemProps = {
   onStartEditing: () => void;
   onStopEditing: () => void;
   onEditingNameChange: (name: string) => void;
-  isDragging?: boolean;
   justDropped?: boolean;
+  isDropTarget?: boolean;
 };
 
 function SortableProjectItem({
@@ -104,8 +106,8 @@ function SortableProjectItem({
   onStartEditing,
   onStopEditing,
   onEditingNameChange,
-  isDragging = false,
   justDropped = false,
+  isDropTarget = false,
 }: SortableProjectItemProps) {
   const [isTransitioning, setIsTransitioning] = useState(justDropped);
 
@@ -152,7 +154,7 @@ function SortableProjectItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="mb-0.5"
+      className={`mb-0.5 ${isDropTarget ? "bg-sidebar-accent/30 rounded-md" : ""}`}
     >
       <SidebarMenuItem>
         {isEditing ? (
@@ -213,17 +215,13 @@ function SortableProjectItem({
       {isExpanded && conversations.length > 0 && (
         <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
           {conversations.map((conv) => (
-            <SidebarMenuItem key={conv.conversationId}>
-              <SidebarMenuButton
-                isActive={currentView === "chat" && conversationId === conv.conversationId}
-                onClick={() => onSelectConversation(conv.conversationId)}
-                className="text-sm"
-              >
-                <span className="truncate">
-                  {conv.displayTitle || conv.title || `Chat ${conv.conversationId.slice(0, 8)}`}
-                </span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <SortableConversationItem
+              key={conv.conversationId}
+              conversation={conv}
+              projectId={project.projectId}
+              isActive={currentView === "chat" && conversationId === conv.conversationId}
+              onSelect={() => onSelectConversation(conv.conversationId)}
+            />
           ))}
         </div>
       )}
@@ -291,6 +289,93 @@ function ProjectItemOverlay({
   );
 }
 
+// Sortable conversation item - uses useSortable so items move to make space
+function SortableConversationItem({
+  conversation,
+  projectId,
+  isActive,
+  onSelect,
+}: {
+  conversation: ConversationWithTitle;
+  projectId: string;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: `conv:${projectId}:${conversation.conversationId}`,
+    data: {
+      type: "conversation",
+      conversationId: conversation.conversationId,
+      conversation,
+      projectId,
+    },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : "auto",
+  };
+
+  // Show gray placeholder when being dragged
+  if (isDragging) {
+    return (
+      <div ref={setNodeRef} style={style}>
+        <div className="h-8 mx-2 rounded-md bg-sidebar-accent" />
+      </div>
+    );
+  }
+
+  return (
+    <SidebarMenuItem ref={setNodeRef} style={style}>
+      <SidebarMenuButton
+        isActive={isActive}
+        onClick={onSelect}
+        className="text-sm cursor-grab"
+        {...attributes}
+        {...listeners}
+      >
+        <span className="truncate">
+          {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
+        </span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+// Conversation overlay for drag
+function ConversationItemOverlay({
+  conversation,
+}: {
+  conversation: ConversationWithTitle;
+}) {
+  return (
+    <div
+      className="rounded-lg border border-border/30"
+      style={{
+        backgroundColor: "#ffffff",
+        cursor: "grabbing",
+      }}
+    >
+      <SidebarMenuItem>
+        <SidebarMenuButton className="text-sm cursor-grabbing !bg-white hover:!bg-white">
+          <span className="truncate">
+            {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
+          </span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </div>
+  );
+}
+
+
 export function AppSidebar({
   conversationId,
   onNewConversation,
@@ -307,6 +392,7 @@ export function AppSidebar({
   onUpdateProjectName,
   getProjectConversations,
   getMessages,
+  updateConversationProject,
 }: AppSidebarProps) {
   const { authenticated, login, ready } = usePrivy();
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
@@ -316,6 +402,8 @@ export function AppSidebar({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const [orderedProjectIds, setOrderedProjectIds] = useState<string[]>([]);
+  const [draggedConversation, setDraggedConversation] = useState<ConversationWithTitle | null>(null);
+  const [overProjectId, setOverProjectId] = useState<string | null>(null);
 
   // Load saved order from localStorage on mount
   useEffect(() => {
@@ -441,32 +529,159 @@ export function AppSidebar({
   }, [projectConversationsVersion, getProjectConversations, inboxProjectId]);
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
+    const id = event.active.id as string;
+    setActiveId(id);
+
+    // Check if dragging a conversation (format: conv:projectId:conversationId)
+    if (id.startsWith("conv:")) {
+      const convData = event.active.data.current;
+      if (convData?.conversation) {
+        setDraggedConversation(convData.conversation);
+      }
+    } else {
+      setDraggedConversation(null);
+    }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  // Handle drag over - only track which project is being hovered for visual feedback
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) {
+      setOverProjectId(null);
+      return;
+    }
+
+    const activeIdStr = active.id as string;
+    const overIdStr = over.id as string;
+
+    // Only handle conversation drags
+    if (!activeIdStr.startsWith("conv:")) {
+      setOverProjectId(null);
+      return;
+    }
+
+    let targetProjectId: string | null = null;
+
+    // Determine target project for visual feedback
+    if (overIdStr.startsWith("conv:")) {
+      const overParts = overIdStr.split(":");
+      targetProjectId = overParts[1];
+    } else if (!overIdStr.startsWith("conv:") && orderedProjectIds.includes(overIdStr)) {
+      // Hovering over a project header
+      targetProjectId = overIdStr;
+    }
+
+    setOverProjectId(targetProjectId);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     const droppedId = active.id as string;
+
+    // Reset drag state
     setActiveId(null);
+    setDraggedConversation(null);
+    setOverProjectId(null);
 
-    // Set the just-dropped item for transition animation
-    setJustDroppedId(droppedId);
-    setTimeout(() => setJustDroppedId(null), 350);
+    if (!over) return;
 
-    if (over && active.id !== over.id) {
-      setOrderedProjectIds((items) => {
-        const oldIndex = items.indexOf(active.id as string);
-        const newIndex = items.indexOf(over.id as string);
-        return arrayMove(items, oldIndex, newIndex);
-      });
+    const overId = over.id as string;
+
+    // Handle conversation drop (format: conv:projectId:conversationId)
+    if (droppedId.startsWith("conv:")) {
+      const droppedParts = droppedId.split(":");
+      const sourceProjectId = droppedParts[1];
+      const conversationId = droppedParts[2];
+
+      // Determine the final target project
+      let targetProjectId: string | null = null;
+
+      if (overId.startsWith("conv:")) {
+        const overParts = overId.split(":");
+        targetProjectId = overParts[1];
+      } else if (orderedProjectIds.includes(overId)) {
+        targetProjectId = overId;
+      }
+
+      if (!targetProjectId) return;
+
+      // Don't do anything if dropped on same project
+      if (sourceProjectId === targetProjectId) return;
+
+      // Find the conversation being moved
+      const conversation = projectConversations[sourceProjectId]?.find(
+        c => c.conversationId === conversationId
+      );
+
+      if (conversation) {
+        // Optimistically update UI
+        setProjectConversations(prev => {
+          const updated = { ...prev };
+          // Remove from source
+          updated[sourceProjectId] = (prev[sourceProjectId] || []).filter(
+            c => c.conversationId !== conversationId
+          );
+          // Add to target
+          updated[targetProjectId!] = [...(prev[targetProjectId!] || []), conversation];
+          return updated;
+        });
+      }
+
+      // Persist the change
+      const success = await updateConversationProject(conversationId, targetProjectId);
+      if (!success) {
+        // Revert by refreshing from database
+        const refreshUpdates: Record<string, ConversationWithTitle[]> = {};
+        for (const projectId of expandedProjects) {
+          const convs = await getProjectConversations(projectId);
+          const enrichedConvs = await enrichConversationsWithTitles(convs);
+          refreshUpdates[projectId] = enrichedConvs;
+        }
+        setProjectConversations(prev => ({ ...prev, ...refreshUpdates }));
+      }
+      return;
+    }
+
+    // Handle project reorder
+    if (!droppedId.startsWith("conv:")) {
+      // Set the just-dropped item for transition animation
+      setJustDroppedId(droppedId);
+      setTimeout(() => setJustDroppedId(null), 350);
+
+      if (over && active.id !== over.id && !overId.startsWith("conv:")) {
+        setOrderedProjectIds((items) => {
+          const oldIndex = items.indexOf(active.id as string);
+          const newIndex = items.indexOf(overId);
+          if (oldIndex !== -1 && newIndex !== -1) {
+            return arrayMove(items, oldIndex, newIndex);
+          }
+          return items;
+        });
+      }
     }
   };
 
   const handleDragCancel = () => {
     setActiveId(null);
+    setDraggedConversation(null);
+    setOverProjectId(null);
   };
 
-  const activeProject = activeId ? orderedProjects.find(p => p.projectId === activeId) : null;
+  const activeProject = activeId && !activeId.startsWith("conv:")
+    ? orderedProjects.find(p => p.projectId === activeId)
+    : null;
+
+  // Build a flat list of all conversation IDs for SortableContext
+  const allConversationIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const project of orderedProjects) {
+      const convs = projectConversations[project.projectId] || [];
+      for (const conv of convs) {
+        ids.push(`conv:${project.projectId}:${conv.conversationId}`);
+      }
+    }
+    return ids;
+  }, [orderedProjects, projectConversations]);
 
   return (
     <Sidebar>
@@ -514,11 +729,13 @@ export function AppSidebar({
                     sensors={sensors}
                     collisionDetection={closestCenter}
                     onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
                     onDragEnd={handleDragEnd}
                     onDragCancel={handleDragCancel}
                   >
+                    {/* Single SortableContext for all conversations enables cross-project drag */}
                     <SortableContext
-                      items={orderedProjects.map(p => p.projectId)}
+                      items={[...orderedProjects.map(p => p.projectId), ...allConversationIds]}
                       strategy={verticalListSortingStrategy}
                     >
                       {orderedProjects.map((project) => {
@@ -549,6 +766,7 @@ export function AppSidebar({
                             }}
                             onEditingNameChange={setEditingName}
                             justDropped={justDroppedId === project.projectId}
+                            isDropTarget={overProjectId === project.projectId && draggedConversation !== null}
                           />
                         );
                       })}
@@ -565,6 +783,8 @@ export function AppSidebar({
                           isExpanded={expandedProjects.has(activeProject.projectId)}
                           conversations={projectConversations[activeProject.projectId] || []}
                         />
+                      ) : draggedConversation ? (
+                        <ConversationItemOverlay conversation={draggedConversation} />
                       ) : null}
                     </DragOverlay>
                   </DndContext>

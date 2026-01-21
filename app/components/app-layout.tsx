@@ -77,6 +77,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     updateProjectName,
     getProjectConversations,
     getMessages,
+    updateConversationProject,
   } = chatState;
 
   const handleNewConversation = useCallback(async () => {
@@ -168,6 +169,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           onUpdateProjectName={updateProjectName}
           getProjectConversations={getProjectConversations}
           getMessages={getMessages}
+          updateConversationProject={updateConversationProject}
         />
         <SidebarHandle />
         <SidebarInset className={`min-h-dvh min-w-0 ${insetBackground}`}>
