@@ -43,6 +43,7 @@ type ChatState = {
   addMessageOptimistically: (text: string, files?: any[], displayText?: string) => string;
   isLoading: boolean;
   status: any;
+  error: string | null;
   setMessages: React.Dispatch<React.SetStateAction<any[]>>;
   subscribeToStreaming: (callback: (text: string) => void) => () => void;
   subscribeToThinking: (callback: (text: string) => void) => () => void;
