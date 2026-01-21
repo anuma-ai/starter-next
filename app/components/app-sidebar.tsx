@@ -45,6 +45,7 @@ type AppSidebarProps = {
   onViewChange: (view: "chat" | "settings" | "conversations" | "files" | "projects") => void;
   // Projects
   projects: StoredProject[];
+  projectsReady: boolean;
   onSelectProject: (projectId: string) => void;
   onCreateProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
   onUpdateProjectName: (projectId: string, name: string) => Promise<boolean>;
@@ -59,6 +60,7 @@ export function AppSidebar({
   currentView,
   onViewChange,
   projects,
+  projectsReady,
   onSelectProject,
   onCreateProject,
   onUpdateProjectName,
@@ -155,98 +157,100 @@ export function AppSidebar({
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-muted-foreground">
-              Projects
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {projects.slice(0, 10).map((project) => (
-                  <SidebarMenuItem key={project.projectId}>
-                    {editingProjectId === project.projectId ? (
-                      <form
-                        className="flex-1 px-2"
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          if (editingName.trim()) {
-                            await onUpdateProjectName(project.projectId, editingName.trim());
-                          }
-                          setEditingProjectId(null);
-                          setEditingName("");
-                        }}
-                      >
-                        <input
-                          type="text"
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          onBlur={() => {
+          {projectsReady && (
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-muted-foreground">
+                Projects
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {projects.slice(0, 10).map((project) => (
+                    <SidebarMenuItem key={project.projectId}>
+                      {editingProjectId === project.projectId ? (
+                        <form
+                          className="flex-1 px-2"
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (editingName.trim()) {
+                              await onUpdateProjectName(project.projectId, editingName.trim());
+                            }
                             setEditingProjectId(null);
                             setEditingName("");
                           }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Escape") {
+                        >
+                          <input
+                            type="text"
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onBlur={() => {
                               setEditingProjectId(null);
                               setEditingName("");
-                            }
-                          }}
-                          className="w-full bg-transparent border-b border-foreground/20 focus:border-foreground/50 outline-none text-sm py-1"
-                          autoFocus
-                        />
-                      </form>
-                    ) : (
-                      <>
-                        <SidebarMenuButton
-                          isActive={currentView === "projects"}
-                          onClick={() => onSelectProject(project.projectId)}
-                        >
-                          <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
-                          <span className="truncate">{project.name}</span>
-                        </SidebarMenuButton>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <SidebarMenuAction
-                              showOnHover
-                              className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
-                            >
-                              <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
-                            </SidebarMenuAction>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent side="right" align="start">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditingProjectId(project.projectId);
-                                setEditingName(project.name);
-                              }}
-                            >
-                              <HugeiconsIcon
-                                icon={Edit02Icon}
-                                size={16}
-                                className="mr-2"
-                              />
-                              Rename
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </>
-                    )}
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") {
+                                setEditingProjectId(null);
+                                setEditingName("");
+                              }
+                            }}
+                            className="w-full bg-transparent border-b border-foreground/20 focus:border-foreground/50 outline-none text-sm py-1"
+                            autoFocus
+                          />
+                        </form>
+                      ) : (
+                        <>
+                          <SidebarMenuButton
+                            isActive={currentView === "projects"}
+                            onClick={() => onSelectProject(project.projectId)}
+                          >
+                            <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
+                            <span className="truncate">{project.name}</span>
+                          </SidebarMenuButton>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <SidebarMenuAction
+                                showOnHover
+                                className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
+                              >
+                                <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
+                              </SidebarMenuAction>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent side="right" align="start">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingProjectId(project.projectId);
+                                  setEditingName(project.name);
+                                }}
+                              >
+                                <HugeiconsIcon
+                                  icon={Edit02Icon}
+                                  size={16}
+                                  className="mr-2"
+                                />
+                                Rename
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
+                    </SidebarMenuItem>
+                  ))}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={async () => {
+                        const name = prompt("Enter project name:");
+                        if (name?.trim()) {
+                          await onCreateProject({ name: name.trim() });
+                        }
+                      }}
+                      className="text-muted-foreground"
+                    >
+                      <span>+ New project</span>
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
-                ))}
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={async () => {
-                      const name = prompt("Enter project name:");
-                      if (name?.trim()) {
-                        await onCreateProject({ name: name.trim() });
-                      }
-                    }}
-                    className="text-muted-foreground"
-                  >
-                    <span>+ New project</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
       )}
 

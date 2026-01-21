@@ -26,6 +26,7 @@ export function useAppProjects() {
     currentProjectId,
     setCurrentProjectId,
     isLoading,
+    isReady,
     createProject,
     getProject,
     getProjects,
@@ -45,6 +46,7 @@ export function useAppProjects() {
     currentProjectId,
     setCurrentProjectId,
     isLoading,
+    isReady,
 
     // Project CRUD
     createProject,

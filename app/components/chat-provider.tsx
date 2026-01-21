@@ -62,6 +62,7 @@ type ChatState = {
   // Projects
   projects: StoredProject[];
   projectsLoading: boolean;
+  projectsReady: boolean;
   createProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
   updateProjectName: (projectId: string, name: string) => Promise<boolean>;
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
@@ -407,6 +408,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const {
     projects,
     isLoading: projectsLoading,
+    isReady: projectsReady,
     createProject,
     updateProjectName,
     getProjectConversations,
@@ -512,6 +514,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       // Projects
       projects,
       projectsLoading,
+      projectsReady,
       createProject,
       updateProjectName,
       getProjectConversations,
@@ -523,6 +526,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       handleSubmit,
       projects,
       projectsLoading,
+      projectsReady,
       createProject,
       updateProjectName,
       getProjectConversations,

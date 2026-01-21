@@ -70,6 +70,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     setConversationId,
     deleteConversation,
     projects,
+    projectsReady,
     createProject,
     updateProjectName,
   } = chatState;
@@ -151,6 +152,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           currentView={currentView}
           onViewChange={handleViewChange}
           projects={projects}
+          projectsReady={projectsReady}
           onSelectProject={handleSelectProject}
           onCreateProject={createProject}
           onUpdateProjectName={updateProjectName}

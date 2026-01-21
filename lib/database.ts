@@ -1,36 +1,44 @@
 import { Database } from "@nozbe/watermelondb";
 import LokiJSAdapter from "@nozbe/watermelondb/adapters/lokijs";
-import {
-  ChatMessage,
-  ChatConversation,
-  chatStorageSchema,
-  memoryStorageSchema,
-  StoredMemoryModel,
-} from "@reverbia/sdk/react";
+import { sdkSchema, sdkMigrations, sdkModelClasses } from "@reverbia/sdk/react";
 
 let database: Database | null = null;
 
-// Merge chat storage and memory storage schemas
-const mergedSchema = {
-  version: chatStorageSchema.version + memoryStorageSchema.version,
-  tables: { ...chatStorageSchema.tables, ...memoryStorageSchema.tables },
-};
-
+/**
+ * Database Setup
+ *
+ * This module sets up the WatermelonDB database with the SDK's unified schema.
+ * The schema includes all data models for persisting conversations, memories,
+ * projects, and settings.
+ */
 export function getDatabase(): Database {
   if (database) {
     return database;
   }
 
   const adapter = new LokiJSAdapter({
-    schema: mergedSchema,
+    dbName: "reverbia-ai-examples",
+    schema: sdkSchema,
+    migrations: sdkMigrations,
     useWebWorker: false,
     useIncrementalIndexedDB: true,
   });
 
   database = new Database({
     adapter,
-    modelClasses: [ChatMessage, ChatConversation, StoredMemoryModel],
+    modelClasses: sdkModelClasses,
   });
 
   return database;
+}
+
+/**
+ * Reset the database (for testing or clearing data)
+ */
+export async function resetDatabase(): Promise<void> {
+  if (database) {
+    await database.write(async () => {
+      await database!.unsafeResetDatabase();
+    });
+  }
 }
