@@ -88,6 +88,8 @@ export function useAppChat({
     database,
     getToken,
     onStreamingData: handleStreamingData,
+    // Enable encrypted file storage in OPFS when wallet is connected
+    walletAddress,
   });
 
   // Use memory storage for context-aware responses (with optional encryption)

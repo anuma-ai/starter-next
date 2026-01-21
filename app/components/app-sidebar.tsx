@@ -7,6 +7,7 @@ import {
   Delete01Icon,
   Setting07Icon,
   Search01Icon,
+  Folder01Icon,
 } from "@hugeicons/core-free-icons";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
@@ -36,8 +37,8 @@ type AppSidebarProps = {
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
-  currentView: "chat" | "settings" | "conversations";
-  onViewChange: (view: "chat" | "settings" | "conversations") => void;
+  currentView: "chat" | "settings" | "conversations" | "files";
+  onViewChange: (view: "chat" | "settings" | "conversations" | "files") => void;
 };
 
 export function AppSidebar({
@@ -69,6 +70,15 @@ export function AppSidebar({
               >
                 <HugeiconsIcon icon={Search01Icon} size={16} />
                 <span>Search</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={currentView === "files"}
+                onClick={() => onViewChange("files")}
+              >
+                <HugeiconsIcon icon={Folder01Icon} size={16} />
+                <span>Files</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
