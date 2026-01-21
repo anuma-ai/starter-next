@@ -282,7 +282,7 @@ function SortableConversationItem({
     transition,
     isDragging,
   } = useSortable({
-    id: `conv:${projectId}:${conversation.conversationId}`,
+    id: `conv:${conversation.conversationId}`,
     data: {
       type: "conversation",
       conversationId: conversation.conversationId,
@@ -513,9 +513,10 @@ export function AppSidebar({
       if (convData?.conversation) {
         setDraggedConversation(convData.conversation);
       }
-      // Track the original project for this conversation
-      const parts = id.split(":");
-      setDragSourceProjectId(parts[1]);
+      // Track the original project for this conversation (from data, not ID)
+      if (convData?.projectId) {
+        setDragSourceProjectId(convData.projectId);
+      }
     } else {
       // Dragging a project
       setActiveProjectId(id);
@@ -529,40 +530,92 @@ export function AppSidebar({
     const activeIdStr = active.id as string;
     const overIdStr = over.id as string;
 
-    // Only handle conversation drag over for within-project reordering
-    if (!activeIdStr.startsWith("conv:") || !overIdStr.startsWith("conv:")) return;
-
-    // Use the original source project (from drag start), not the current position
+    // Only handle conversation drag over
+    if (!activeIdStr.startsWith("conv:")) return;
     if (!dragSourceProjectId) return;
 
-    const overParts = overIdStr.split(":");
-    const targetProjectId = overParts[1];
-    const activeConvId = activeIdStr.split(":")[2];
-    const overConvId = overParts[2];
+    // ID format is now conv:conversationId (no project in ID)
+    const activeConvId = activeIdStr.split(":")[1];
 
-    // Only allow visual reordering within the SAME project during drag
-    // Cross-project moves only happen on drop
-    if (dragSourceProjectId !== targetProjectId) return;
+    // Find which project currently contains the dragged conversation
+    let currentProjectId: string | null = null;
+    for (const [projId, convs] of Object.entries(projectConversations)) {
+      if (convs.some(c => c.conversationId === activeConvId)) {
+        currentProjectId = projId;
+        break;
+      }
+    }
+    if (!currentProjectId) return;
 
-    // Reordering within same project
+    // Determine target project and position
+    let targetProjectId: string;
+    let overConvId: string | null = null;
+
+    if (overIdStr.startsWith("conv:")) {
+      // Hovering over another conversation - find which project it's in
+      overConvId = overIdStr.split(":")[1];
+      // Find target project by looking up which project contains the over conversation
+      for (const [projId, convs] of Object.entries(projectConversations)) {
+        if (convs.some(c => c.conversationId === overConvId)) {
+          targetProjectId = projId;
+          break;
+        }
+      }
+      if (!targetProjectId!) return;
+    } else if (orderedProjectIds.includes(overIdStr)) {
+      // Hovering over a project directly
+      targetProjectId = overIdStr;
+    } else {
+      return;
+    }
+
     setProjectConversations(prev => {
-      const convs = prev[dragSourceProjectId] || [];
-      const activeIndex = convs.findIndex(c => c.conversationId === activeConvId);
-      const overIndex = convs.findIndex(c => c.conversationId === overConvId);
+      const sourceConvs = prev[currentProjectId] || [];
+      const activeConv = sourceConvs.find(c => c.conversationId === activeConvId);
+      if (!activeConv) return prev;
 
-      if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) return prev;
+      const activeIndex = sourceConvs.findIndex(c => c.conversationId === activeConvId);
 
-      const newConvs = arrayMove(convs, activeIndex, overIndex);
-      return { ...prev, [dragSourceProjectId]: newConvs };
+      if (currentProjectId === targetProjectId) {
+        // Reordering within same project
+        if (!overConvId) return prev;
+        const overIndex = sourceConvs.findIndex(c => c.conversationId === overConvId);
+        if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) return prev;
+
+        const newConvs = arrayMove(sourceConvs, activeIndex, overIndex);
+        return { ...prev, [currentProjectId]: newConvs };
+      } else {
+        // Moving to different project
+        const targetConvs = prev[targetProjectId] || [];
+        let insertIndex: number;
+
+        if (overConvId) {
+          const overIndex = targetConvs.findIndex(c => c.conversationId === overConvId);
+          insertIndex = overIndex === -1 ? targetConvs.length : overIndex;
+        } else {
+          // Dropped on project header - add to end
+          insertIndex = targetConvs.length;
+        }
+
+        // Remove from source
+        const newSourceConvs = sourceConvs.filter(c => c.conversationId !== activeConvId);
+        // Insert into target
+        const newTargetConvs = [...targetConvs];
+        newTargetConvs.splice(insertIndex, 0, activeConv);
+
+        return {
+          ...prev,
+          [currentProjectId]: newSourceConvs,
+          [targetProjectId]: newTargetConvs,
+        };
+      }
     });
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
+    const { active } = event;
     const activeIdStr = active.id as string;
     const originalSourceProjectId = dragSourceProjectId;
-    // Capture conversation before resetting state
-    const conversation = draggedConversation;
 
     // Reset drag state
     setActiveProjectId(null);
@@ -570,83 +623,44 @@ export function AppSidebar({
     setDraggedConversation(null);
     setDragSourceProjectId(null);
 
-    if (!over) return;
-
-    const overIdStr = over.id as string;
-
-    // Handle conversation drop
+    // Handle conversation drop - persist to database if project changed
     if (activeIdStr.startsWith("conv:")) {
-      if (!originalSourceProjectId || !conversation) return;
+      if (!originalSourceProjectId) return;
 
-      const conversationId = activeIdStr.split(":")[2];
-      let targetProjectId: string;
-      let insertIndex: number;
+      // ID format is now conv:conversationId (no project in ID)
+      const conversationId = activeIdStr.split(":")[1];
 
-      if (overIdStr.startsWith("conv:")) {
-        // Dropped on another conversation
-        const overParts = overIdStr.split(":");
-        targetProjectId = overParts[1];
-        const overConvId = overParts[2];
-
-        if (originalSourceProjectId === targetProjectId) {
-          // Same project - just reordering, already handled in dragOver
-          return;
+      // Find where the conversation ended up (after dragOver updates)
+      let currentProjectId: string | null = null;
+      for (const [projId, convs] of Object.entries(projectConversations)) {
+        if (convs.some(c => c.conversationId === conversationId)) {
+          currentProjectId = projId;
+          break;
         }
-
-        // Different project - find insert position
-        const targetConvs = projectConversations[targetProjectId] || [];
-        const overIndex = targetConvs.findIndex(c => c.conversationId === overConvId);
-        insertIndex = overIndex === -1 ? targetConvs.length : overIndex;
-      } else {
-        // Dropped on a project directly (collapsed or empty project)
-        targetProjectId = overIdStr;
-
-        // Check if this is a valid project
-        if (!orderedProjectIds.includes(targetProjectId)) return;
-
-        if (originalSourceProjectId === targetProjectId) {
-          // Same project - no change needed
-          return;
-        }
-
-        // Add to end of target project
-        insertIndex = (projectConversations[targetProjectId] || []).length;
       }
 
-      // Move conversation to target project in UI
-      setProjectConversations(prev => {
-        const sourceConvs = prev[originalSourceProjectId] || [];
-        const targetConvs = prev[targetProjectId] || [];
-
-        // Remove from source
-        const newSourceConvs = sourceConvs.filter(c => c.conversationId !== conversationId);
-        // Insert into target at the correct position
-        const newTargetConvs = [...targetConvs];
-        newTargetConvs.splice(insertIndex, 0, conversation);
-
-        return {
-          ...prev,
-          [originalSourceProjectId]: newSourceConvs,
-          [targetProjectId]: newTargetConvs,
-        };
-      });
-
-      // Persist to database
-      const success = await updateConversationProject(conversationId, targetProjectId);
-      if (!success) {
-        // Revert by refreshing from database
-        const refreshUpdates: Record<string, ConversationWithTitle[]> = {};
-        for (const projectId of expandedProjects) {
-          const convs = await getProjectConversations(projectId);
-          const enrichedConvs = await enrichConversationsWithTitles(convs);
-          refreshUpdates[projectId] = enrichedConvs;
+      // Only persist if project actually changed
+      if (currentProjectId && currentProjectId !== originalSourceProjectId) {
+        const success = await updateConversationProject(conversationId, currentProjectId);
+        if (!success) {
+          // Revert by refreshing from database
+          const refreshUpdates: Record<string, ConversationWithTitle[]> = {};
+          for (const projectId of expandedProjects) {
+            const convs = await getProjectConversations(projectId);
+            const enrichedConvs = await enrichConversationsWithTitles(convs);
+            refreshUpdates[projectId] = enrichedConvs;
+          }
+          setProjectConversations(prev => ({ ...prev, ...refreshUpdates }));
         }
-        setProjectConversations(prev => ({ ...prev, ...refreshUpdates }));
       }
       return;
     }
 
     // Handle project drop
+    const { over } = event;
+    if (!over) return;
+
+    const overIdStr = over.id as string;
     if (activeIdStr !== overIdStr && orderedProjectIds.includes(overIdStr)) {
       setJustDroppedId(activeIdStr);
       setTimeout(() => setJustDroppedId(null), 350);
@@ -669,15 +683,20 @@ export function AppSidebar({
     setDragSourceProjectId(null);
   };
 
-  // Build flat list of all sortable IDs (projects + conversations)
-  const allSortableIds = useMemo(() => {
+  // Project IDs for project-level sorting
+  const projectIds = useMemo(() => {
+    return orderedProjects.map(p => p.projectId);
+  }, [orderedProjects]);
+
+  // All conversation IDs across all expanded projects (for cross-project sorting)
+  // Uses stable IDs (conv:conversationId) without project to enable smooth animations
+  const allConversationIds = useMemo(() => {
     const ids: string[] = [];
     for (const project of orderedProjects) {
-      ids.push(project.projectId);
       if (expandedProjects.has(project.projectId)) {
         const convs = projectConversations[project.projectId] || [];
         for (const conv of convs) {
-          ids.push(`conv:${project.projectId}:${conv.conversationId}`);
+          ids.push(`conv:${conv.conversationId}`);
         }
       }
     }
@@ -735,52 +754,59 @@ export function AppSidebar({
                     onDragEnd={handleDragEnd}
                     onDragCancel={handleDragCancel}
                   >
+                    {/* Single SortableContext for ALL conversations across all projects */}
                     <SortableContext
-                      items={allSortableIds}
+                      items={allConversationIds}
                       strategy={verticalListSortingStrategy}
                     >
-                      {orderedProjects.map((project) => {
-                        const isExpanded = expandedProjects.has(project.projectId);
-                        const conversations = projectConversations[project.projectId] || [];
-                        return (
-                          <SortableProjectItem
-                            key={project.projectId}
-                            project={project}
-                            isExpanded={isExpanded}
-                            isActive={currentView === "projects" && selectedProjectId === project.projectId}
-                            isEditing={editingProjectId === project.projectId}
-                            editingName={editingName}
-                            onSelect={() => onSelectProject(project.projectId)}
-                            onToggleExpand={() => toggleProjectExpanded(project.projectId)}
-                            onUpdateName={(name) => onUpdateProjectName(project.projectId, name)}
-                            onStopEditing={() => {
-                              setEditingProjectId(null);
-                              setEditingName("");
-                            }}
-                            onEditingNameChange={setEditingName}
-                            justDropped={justDroppedId === project.projectId}
-                          >
-                            {isExpanded && conversations.length > 0 && (
-                              <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
-                                {conversations.map((conv) => (
-                                  <SortableConversationItem
-                                    key={conv.conversationId}
-                                    conversation={conv}
-                                    projectId={project.projectId}
-                                    isActive={currentView === "chat" && conversationId === conv.conversationId}
-                                    onSelect={() => onSelectConversation(conv.conversationId)}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                            {isExpanded && conversations.length === 0 && (
-                              <div className="ml-6 mt-0.5 py-1">
-                                <span className="text-xs text-muted-foreground px-2">No conversations</span>
-                              </div>
-                            )}
-                          </SortableProjectItem>
-                        );
-                      })}
+                      {/* Projects have their own SortableContext */}
+                      <SortableContext
+                        items={projectIds}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {orderedProjects.map((project) => {
+                          const isExpanded = expandedProjects.has(project.projectId);
+                          const conversations = projectConversations[project.projectId] || [];
+                          return (
+                            <SortableProjectItem
+                              key={project.projectId}
+                              project={project}
+                              isExpanded={isExpanded}
+                              isActive={currentView === "projects" && selectedProjectId === project.projectId}
+                              isEditing={editingProjectId === project.projectId}
+                              editingName={editingName}
+                              onSelect={() => onSelectProject(project.projectId)}
+                              onToggleExpand={() => toggleProjectExpanded(project.projectId)}
+                              onUpdateName={(name) => onUpdateProjectName(project.projectId, name)}
+                              onStopEditing={() => {
+                                setEditingProjectId(null);
+                                setEditingName("");
+                              }}
+                              onEditingNameChange={setEditingName}
+                              justDropped={justDroppedId === project.projectId}
+                            >
+                              {isExpanded && conversations.length > 0 && (
+                                <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
+                                  {conversations.map((conv) => (
+                                    <SortableConversationItem
+                                      key={conv.conversationId}
+                                      conversation={conv}
+                                      projectId={project.projectId}
+                                      isActive={currentView === "chat" && conversationId === conv.conversationId}
+                                      onSelect={() => onSelectConversation(conv.conversationId)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                              {isExpanded && conversations.length === 0 && (
+                                <div className="ml-6 mt-0.5 py-1">
+                                  <span className="text-xs text-muted-foreground px-2">No conversations</span>
+                                </div>
+                              )}
+                            </SortableProjectItem>
+                          );
+                        })}
+                      </SortableContext>
                     </SortableContext>
                     <DragOverlay
                       dropAnimation={{
