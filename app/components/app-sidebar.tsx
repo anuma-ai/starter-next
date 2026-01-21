@@ -829,7 +829,14 @@ export function AppSidebar({
                                 isActive={currentView === "projects" && selectedProjectId === project.projectId}
                                 isEditing={editingProjectId === project.projectId}
                                 editingName={editingName}
-                                onSelect={() => onSelectProject(project.projectId)}
+                                onSelect={() => {
+                                  // Expand the project if not already expanded
+                                  if (!expandedProjects.has(project.projectId)) {
+                                    toggleProjectExpanded(project.projectId);
+                                  }
+                                  // Navigate to the project page
+                                  onSelectProject(project.projectId);
+                                }}
                                 onToggleExpand={() => toggleProjectExpanded(project.projectId)}
                                 onUpdateName={(name) => onUpdateProjectName(project.projectId, name)}
                                 onStopEditing={() => {
