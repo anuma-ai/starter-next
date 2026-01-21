@@ -610,8 +610,8 @@ export function AppSidebar({
           const overIndex = targetConvs.findIndex(c => c.conversationId === overConvId);
           insertIndex = overIndex === -1 ? targetConvs.length : overIndex;
         } else {
-          // Dropped on project header - add to end
-          insertIndex = targetConvs.length;
+          // Dropped on project header - add to beginning (first position)
+          insertIndex = 0;
         }
 
         // Remove from source
@@ -630,7 +630,7 @@ export function AppSidebar({
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
-    const { active } = event;
+    const { active, over } = event;
     const activeIdStr = active.id as string;
     const originalSourceProjectId = dragSourceProjectId;
 
@@ -651,18 +651,31 @@ export function AppSidebar({
       setDropAnimatingConvId(conversationId);
       setTimeout(() => setDropAnimatingConvId(null), 250);
 
-      // Find where the conversation ended up (after dragOver updates)
-      let currentProjectId: string | null = null;
-      for (const [projId, convs] of Object.entries(projectConversations)) {
-        if (convs.some(c => c.conversationId === conversationId)) {
-          currentProjectId = projId;
-          break;
+      // Determine target project - check both projectConversations state and direct drop target
+      let targetProjectId: string | null = null;
+
+      // First, check if dropped directly on a project (collapsed project case)
+      if (over) {
+        const overIdStr = over.id as string;
+        if (!overIdStr.startsWith("conv:") && orderedProjectIds.includes(overIdStr)) {
+          // Dropped directly on a project header
+          targetProjectId = overIdStr;
+        }
+      }
+
+      // If not dropped on project header, find where the conversation ended up in state
+      if (!targetProjectId) {
+        for (const [projId, convs] of Object.entries(projectConversations)) {
+          if (convs.some(c => c.conversationId === conversationId)) {
+            targetProjectId = projId;
+            break;
+          }
         }
       }
 
       // Only persist if project actually changed
-      if (currentProjectId && currentProjectId !== originalSourceProjectId) {
-        const success = await updateConversationProject(conversationId, currentProjectId);
+      if (targetProjectId && targetProjectId !== originalSourceProjectId) {
+        const success = await updateConversationProject(conversationId, targetProjectId);
         if (!success) {
           // Revert by refreshing from database
           const refreshUpdates: Record<string, ConversationWithTitle[]> = {};
@@ -678,17 +691,16 @@ export function AppSidebar({
     }
 
     // Handle project drop
-    const { over } = event;
     if (!over) return;
 
-    const overIdStr = over.id as string;
-    if (activeIdStr !== overIdStr && orderedProjectIds.includes(overIdStr)) {
+    const projectOverIdStr = over.id as string;
+    if (activeIdStr !== projectOverIdStr && orderedProjectIds.includes(projectOverIdStr)) {
       setJustDroppedId(activeIdStr);
       setTimeout(() => setJustDroppedId(null), 350);
 
       setOrderedProjectIds((items) => {
         const oldIndex = items.indexOf(activeIdStr);
-        const newIndex = items.indexOf(overIdStr);
+        const newIndex = items.indexOf(projectOverIdStr);
         if (oldIndex !== -1 && newIndex !== -1) {
           return arrayMove(items, oldIndex, newIndex);
         }
