@@ -65,6 +65,7 @@ export function useAppBackup() {
   const { getMessages, getConversation, createConversation } = useChatStorage({
     database,
     getToken: async () => null,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
 
   // Sign message helper

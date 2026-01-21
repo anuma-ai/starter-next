@@ -31,6 +31,7 @@ import {
   getAndClearDrivePendingMessage,
 } from "@reverbia/sdk/react";
 import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
+import { getEnabledTools } from "@/hooks/useAppTools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -89,6 +90,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [temperature, setTemperature] = useState<number | undefined>(undefined);
   const [maxOutputTokens, setMaxOutputTokens] = useState<number | undefined>(
     undefined
+  );
+  const [enabledServerTools, setEnabledServerTools] = useState<string[]>(() =>
+    getEnabledTools()
   );
 
   // Get wallet address from user's linked wallet
@@ -236,6 +240,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (e.key === "chat_maxOutputTokens" && e.newValue) {
         setMaxOutputTokens(parseInt(e.newValue, 10));
       }
+      if (e.key === "chat_enabledServerTools") {
+        setEnabledServerTools(getEnabledTools());
+      }
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -310,7 +317,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     // This promise won't resolve since we're redirecting
     // The token will be available after the callback
-    return new Promise(() => {});
+    return new Promise(() => { });
   }, [calendarToken]);
 
   // Request Drive access - tries to get token or starts OAuth flow
@@ -348,11 +355,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     // This promise won't resolve since we're redirecting
     // The token will be available after the callback
-    return new Promise(() => {});
+    return new Promise(() => { });
   }, [driveToken]);
 
-  // Create Google tools with auth
-  const tools = useMemo(() => {
+  // Create Google tools with auth (these are client-side tools with local executors)
+  const clientTools = useMemo(() => {
     // Google Calendar tools
     const calendarTools = createChatTools(
       () => calendarToken,
@@ -377,7 +384,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     walletAddress,
     signMessage,
     embeddedWalletSigner: embeddedWallet ? embeddedWalletSigner : undefined,
-    tools,
+    serverTools: enabledServerTools,
+    clientTools,
   });
 
   // Wrap handleSubmit to track the current message for OAuth retry

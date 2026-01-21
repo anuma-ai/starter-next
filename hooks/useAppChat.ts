@@ -29,8 +29,10 @@ type UseAppChatProps = {
   walletAddress?: string;
   signMessage?: SignMessageFn;
   embeddedWalletSigner?: EmbeddedWalletSignerFn;
-  // Tools for responses API
-  tools?: any[];
+  // Server-side tools (tool names from /api/v1/tools)
+  serverTools?: string[];
+  // Client-side tools (with local executors)
+  clientTools?: any[];
   toolChoice?: string;
 };
 
@@ -44,7 +46,8 @@ export function useAppChat({
   walletAddress,
   signMessage,
   embeddedWalletSigner,
-  tools,
+  serverTools,
+  clientTools,
   toolChoice,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
@@ -113,7 +116,8 @@ export function useAppChat({
         files?: FileUIPart[];
         displayText?: string;
         skipOptimisticUpdate?: boolean;
-        tools?: any[];
+        serverTools?: string[];
+        clientTools?: any[];
         toolChoice?: string;
         apiType?: "responses" | "completions";
       }
@@ -159,7 +163,8 @@ export function useAppChat({
         // Send the message with memory context (if any)
         // displayText shows the original user message in UI
         // Merge tools from hook props and per-request options
-        const effectiveTools = options?.tools || tools;
+        const effectiveServerTools = options?.serverTools || serverTools;
+        const effectiveClientTools = options?.clientTools || clientTools;
         const effectiveToolChoice = options?.toolChoice || toolChoice;
         const response = await baseSendMessage(apiText, {
           model: effectiveModel,
@@ -172,7 +177,8 @@ export function useAppChat({
           ...(options?.skipOptimisticUpdate !== undefined && {
             skipOptimisticUpdate: options.skipOptimisticUpdate,
           }),
-          ...(effectiveTools && { tools: effectiveTools }),
+          ...(effectiveServerTools && { serverTools: effectiveServerTools }),
+          ...(effectiveClientTools && { clientTools: effectiveClientTools }),
           ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
           ...(options?.apiType && { apiType: options.apiType }),
           onThinking,
@@ -201,7 +207,8 @@ export function useAppChat({
       handleThinkingData,
       findRelevantMemories,
       extractMemories,
-      tools,
+      serverTools,
+      clientTools,
       toolChoice,
     ]
   );

@@ -7,25 +7,25 @@ import type { FileUIPart } from "@/types/chat";
 
 type MessagePart =
   | {
-      type: "text";
-      text: string;
-    }
+    type: "text";
+    text: string;
+  }
   | {
-      type: "reasoning";
-      text: string;
-    }
+    type: "reasoning";
+    text: string;
+  }
   | {
-      type: "image_url";
-      image_url: {
-        url: string;
-      };
-    }
-  | {
-      type: "file";
+    type: "image_url";
+    image_url: {
       url: string;
-      mediaType: string;
-      filename: string;
     };
+  }
+  | {
+    type: "file";
+    url: string;
+    mediaType: string;
+    filename: string;
+  };
 
 type Message = {
   id: string;
@@ -52,7 +52,8 @@ type SendMessageOptions = {
   files?: FileUIPart[];
   displayText?: string;
   skipOptimisticUpdate?: boolean;
-  tools?: any[];
+  serverTools?: string[];
+  clientTools?: any[];
   toolChoice?: string;
   apiType?: "responses" | "completions";
 };
@@ -108,6 +109,7 @@ export function useAppChatStorage({
     database,
     getToken,
     autoCreateConversation: true,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
     // Enable encrypted file storage in OPFS when wallet is connected
     walletAddress,
   });
@@ -358,7 +360,8 @@ export function useAppChatStorage({
         files,
         displayText,
         skipOptimisticUpdate,
-        tools,
+        serverTools,
+        clientTools,
         toolChoice,
         apiType,
       } = options;
@@ -448,7 +451,8 @@ export function useAppChatStorage({
         ...(onThinking && { onThinking }),
         ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
         ...(memoryContext && { memoryContext }),
-        ...(tools && tools.length > 0 && { tools }),
+        ...(serverTools && serverTools.length > 0 && { serverTools }),
+        ...(clientTools && clientTools.length > 0 && { clientTools }),
         ...(toolChoice && { toolChoice }),
         ...(apiType && { apiType }),
         onData: (chunk: string) => {
