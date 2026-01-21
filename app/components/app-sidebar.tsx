@@ -132,7 +132,7 @@ function SortableProjectItem({
     zIndex: isSortableDragging ? 50 : "auto",
   };
 
-  // Show gray placeholder when being dragged (same color as selected/active project)
+  // Show transparent placeholder when being dragged (just reserves space)
   if (isSortableDragging) {
     return (
       <div
@@ -140,7 +140,7 @@ function SortableProjectItem({
         style={style}
         className="mb-0.5"
       >
-        <div className="h-8 mx-2 rounded-md bg-sidebar-accent" />
+        <div className="h-8" />
       </div>
     );
   }
@@ -215,54 +215,22 @@ function SortableProjectItem({
 // Static project item for drag overlay (no sortable hooks)
 function ProjectItemOverlay({
   project,
-  isExpanded,
-  conversations,
 }: {
   project: StoredProject;
-  isExpanded: boolean;
-  conversations: ConversationWithTitle[];
 }) {
   return (
     <div
-      className="mb-0.5 rounded-lg border border-border/30"
+      className="rounded-lg border border-border/30 bg-sidebar-accent"
       style={{
-        backgroundColor: "#ffffff",
         cursor: "grabbing",
       }}
     >
       <SidebarMenuItem>
-        <SidebarMenuButton className="cursor-grabbing !bg-white hover:!bg-white">
+        <SidebarMenuButton className="cursor-grabbing !bg-transparent hover:!bg-transparent">
           <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
           <span className="truncate">{project.name}</span>
         </SidebarMenuButton>
-        <SidebarMenuAction
-          className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full flex items-center justify-center"
-        >
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            size={14}
-            className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-          />
-        </SidebarMenuAction>
       </SidebarMenuItem>
-      {isExpanded && conversations.length > 0 && (
-        <div className="ml-6 mt-0.5 flex flex-col gap-0.5" style={{ backgroundColor: "#ffffff" }}>
-          {conversations.map((conv) => (
-            <SidebarMenuItem key={conv.conversationId}>
-              <SidebarMenuButton className="text-sm !bg-white hover:!bg-white">
-                <span className="truncate">
-                  {conv.displayTitle || conv.title || `Chat ${conv.conversationId.slice(0, 8)}`}
-                </span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </div>
-      )}
-      {isExpanded && conversations.length === 0 && (
-        <div className="ml-6 mt-0.5 py-1" style={{ backgroundColor: "#ffffff" }}>
-          <span className="text-xs text-muted-foreground px-2">No conversations</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -895,8 +863,6 @@ export function AppSidebar({
                       {activeProjectId && orderedProjects.find(p => p.projectId === activeProjectId) ? (
                         <ProjectItemOverlay
                           project={orderedProjects.find(p => p.projectId === activeProjectId)!}
-                          isExpanded={expandedProjects.has(activeProjectId)}
-                          conversations={projectConversations[activeProjectId] || []}
                         />
                       ) : draggedConversation ? (
                         <ConversationItemOverlay conversation={draggedConversation} />
