@@ -354,7 +354,6 @@ export function AppSidebar({
   const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const [orderedProjectIds, setOrderedProjectIds] = useState<string[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [draggedConversation, setDraggedConversation] = useState<ConversationWithTitle | null>(null);
   const [dragSourceProjectId, setDragSourceProjectId] = useState<string | null>(null);
   const [dropAnimatingConvId, setDropAnimatingConvId] = useState<string | null>(null);
@@ -489,7 +488,6 @@ export function AppSidebar({
 
     if (id.startsWith("conv:")) {
       // Dragging a conversation
-      setActiveConversationId(id);
       const convData = event.active.data.current;
       if (convData?.conversation) {
         setDraggedConversation(convData.conversation);
@@ -616,7 +614,6 @@ export function AppSidebar({
 
     // Reset drag state
     setActiveProjectId(null);
-    setActiveConversationId(null);
     setDraggedConversation(null);
     setDragSourceProjectId(null);
     setDropTargetProjectId(null);
@@ -692,7 +689,6 @@ export function AppSidebar({
 
   const handleDragCancel = () => {
     setActiveProjectId(null);
-    setActiveConversationId(null);
     setDraggedConversation(null);
     setDragSourceProjectId(null);
     setDropTargetProjectId(null);
@@ -834,17 +830,6 @@ export function AppSidebar({
                                           isDropAnimating={dropAnimatingConvId === conv.conversationId}
                                         />
                                       ))}
-                                    </motion.div>
-                                  )}
-                                  {isExpanded && conversations.length === 0 && (
-                                    <motion.div
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: "auto", opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      transition={{ duration: 0.2, ease: "easeInOut" }}
-                                      className="ml-6 mt-0.5 py-1 overflow-hidden"
-                                    >
-                                      <span className="text-xs text-muted-foreground px-2">No conversations</span>
                                     </motion.div>
                                   )}
                                 </AnimatePresence>
