@@ -9,7 +9,7 @@ import {
   FolderLibraryIcon,
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -359,7 +359,23 @@ export function AppSidebar({
   const { authenticated, login, ready } = usePrivy();
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
+    // Initialize from localStorage
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("sidebar-expanded-projects");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return new Set(parsed);
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+    return new Set();
+  });
   const [projectConversations, setProjectConversations] = useState<Record<string, ConversationWithTitle[]>>({});
   const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const [orderedProjectIds, setOrderedProjectIds] = useState<string[]>([]);
@@ -368,13 +384,14 @@ export function AppSidebar({
   const [dragSourceProjectId, setDragSourceProjectId] = useState<string | null>(null);
   const [dropAnimatingConvId, setDropAnimatingConvId] = useState<string | null>(null);
   const [dropTargetProjectId, setDropTargetProjectId] = useState<string | null>(null);
+  const hasLoadedFromStorage = useRef(false);
 
-  // Load saved order from localStorage on mount
+  // Load saved project order from localStorage on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("sidebar-project-order");
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      const savedOrder = localStorage.getItem("sidebar-project-order");
+      if (savedOrder) {
+        const parsed = JSON.parse(savedOrder);
         if (Array.isArray(parsed)) {
           setOrderedProjectIds(parsed);
         }
@@ -382,6 +399,8 @@ export function AppSidebar({
     } catch {
       // Ignore localStorage errors
     }
+    // Mark that we've loaded from storage (for save effect guard)
+    hasLoadedFromStorage.current = true;
   }, []);
 
   // Sync ordered project IDs with actual projects
@@ -406,6 +425,16 @@ export function AppSidebar({
       }
     }
   }, [orderedProjectIds]);
+
+  // Save expanded projects to localStorage when it changes (only after initial load)
+  useEffect(() => {
+    if (!hasLoadedFromStorage.current) return;
+    try {
+      localStorage.setItem("sidebar-expanded-projects", JSON.stringify([...expandedProjects]));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [expandedProjects]);
 
   // Compute ordered projects based on orderedProjectIds
   const orderedProjects = useMemo(() => {
