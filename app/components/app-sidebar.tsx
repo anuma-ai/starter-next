@@ -85,6 +85,7 @@ type SortableProjectItemProps = {
   onStopEditing: () => void;
   onEditingNameChange: (name: string) => void;
   isDragging?: boolean;
+  justDropped?: boolean;
 };
 
 function SortableProjectItem({
@@ -104,7 +105,21 @@ function SortableProjectItem({
   onStopEditing,
   onEditingNameChange,
   isDragging = false,
+  justDropped = false,
 }: SortableProjectItemProps) {
+  const [isTransitioning, setIsTransitioning] = useState(justDropped);
+
+  // When justDropped becomes true, start transitioning, then clear after animation
+  useEffect(() => {
+    if (justDropped) {
+      setIsTransitioning(true);
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 300); // Match the CSS transition duration
+      return () => clearTimeout(timer);
+    }
+  }, [justDropped]);
+
   const {
     attributes,
     listeners,
@@ -139,7 +154,10 @@ function SortableProjectItem({
       style={style}
       className="mb-0.5"
     >
-      <SidebarMenuItem>
+      <SidebarMenuItem
+        className={isTransitioning ? "transition-colors duration-300" : ""}
+        style={isTransitioning ? { backgroundColor: "#ffffff" } : undefined}
+      >
         {isEditing ? (
           <form
             className="flex-1 px-2"
@@ -298,6 +316,7 @@ export function AppSidebar({
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [projectConversations, setProjectConversations] = useState<Record<string, ConversationWithTitle[]>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const [orderedProjectIds, setOrderedProjectIds] = useState<string[]>([]);
 
   // Load saved order from localStorage on mount
@@ -429,7 +448,12 @@ export function AppSidebar({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    const droppedId = active.id as string;
     setActiveId(null);
+
+    // Set the just-dropped item for transition animation
+    setJustDroppedId(droppedId);
+    setTimeout(() => setJustDroppedId(null), 350);
 
     if (over && active.id !== over.id) {
       setOrderedProjectIds((items) => {
@@ -526,6 +550,7 @@ export function AppSidebar({
                               setEditingName("");
                             }}
                             onEditingNameChange={setEditingName}
+                            justDropped={justDroppedId === project.projectId}
                           />
                         );
                       })}
