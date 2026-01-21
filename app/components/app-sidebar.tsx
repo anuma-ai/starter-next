@@ -48,7 +48,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { motion, LayoutGroup } from "motion/react";
+import { motion, LayoutGroup, AnimatePresence } from "motion/react";
 
 // Conversation with enriched title from first message
 type ConversationWithTitle = StoredConversation & { displayTitle?: string };
@@ -806,25 +806,39 @@ export function AppSidebar({
                                 onEditingNameChange={setEditingName}
                                 justDropped={justDroppedId === project.projectId}
                               >
-                                {isExpanded && conversations.length > 0 && (
-                                  <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
-                                    {conversations.map((conv) => (
-                                      <SortableConversationItem
-                                        key={conv.conversationId}
-                                        conversation={conv}
-                                        projectId={project.projectId}
-                                        isActive={currentView === "chat" && conversationId === conv.conversationId}
-                                        onSelect={() => onSelectConversation(conv.conversationId)}
-                                        isDropAnimating={dropAnimatingConvId === conv.conversationId}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                              {isExpanded && conversations.length === 0 && (
-                                <div className="ml-6 mt-0.5 py-1">
-                                  <span className="text-xs text-muted-foreground px-2">No conversations</span>
-                                </div>
-                              )}
+                                <AnimatePresence initial={false}>
+                                  {isExpanded && conversations.length > 0 && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: "auto", opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                                      className="ml-6 mt-0.5 flex flex-col gap-0.5 overflow-hidden"
+                                    >
+                                      {conversations.map((conv) => (
+                                        <SortableConversationItem
+                                          key={conv.conversationId}
+                                          conversation={conv}
+                                          projectId={project.projectId}
+                                          isActive={currentView === "chat" && conversationId === conv.conversationId}
+                                          onSelect={() => onSelectConversation(conv.conversationId)}
+                                          isDropAnimating={dropAnimatingConvId === conv.conversationId}
+                                        />
+                                      ))}
+                                    </motion.div>
+                                  )}
+                                  {isExpanded && conversations.length === 0 && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: "auto", opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                                      className="ml-6 mt-0.5 py-1 overflow-hidden"
+                                    >
+                                      <span className="text-xs text-muted-foreground px-2">No conversations</span>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                             </SortableProjectItem>
                           );
                         })}
