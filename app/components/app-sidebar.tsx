@@ -80,6 +80,7 @@ type SortableProjectItemProps = {
   isEditing: boolean;
   editingName: string;
   onSelect: () => void;
+  onCollapse: () => void;
   onToggleExpand: () => void;
   onUpdateName: (name: string) => void;
   onStopEditing: () => void;
@@ -96,6 +97,7 @@ function SortableProjectItem({
   isEditing,
   editingName,
   onSelect,
+  onCollapse,
   onToggleExpand,
   onUpdateName,
   onStopEditing,
@@ -182,6 +184,7 @@ function SortableProjectItem({
             <SidebarMenuButton
               isActive={isActive || isTransitioning || isDropTarget}
               onClick={onSelect}
+              onDoubleClick={onCollapse}
               className={`cursor-pointer ${isTransitioning ? "transition-colors duration-300 pointer-events-none" : ""}`}
               style={isTransitioning ? { backgroundColor: "#ffffff" } : undefined}
               {...attributes}
@@ -801,12 +804,18 @@ export function AppSidebar({
                                 isEditing={editingProjectId === project.projectId}
                                 editingName={editingName}
                                 onSelect={() => {
-                                  // Expand the project if not already expanded
+                                  // Expand on single click (if not already expanded)
                                   if (!expandedProjects.has(project.projectId)) {
                                     toggleProjectExpanded(project.projectId);
                                   }
                                   // Navigate to the project page
                                   onSelectProject(project.projectId);
+                                }}
+                                onCollapse={() => {
+                                  // Collapse on double click (if expanded)
+                                  if (expandedProjects.has(project.projectId)) {
+                                    toggleProjectExpanded(project.projectId);
+                                  }
                                 }}
                                 onToggleExpand={() => toggleProjectExpanded(project.projectId)}
                                 onUpdateName={(name) => onUpdateProjectName(project.projectId, name)}
