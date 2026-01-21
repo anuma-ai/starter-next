@@ -265,10 +265,7 @@ export default function ToolsPage() {
                       </div>
                       <Switch
                         checked={isEnabled}
-                        onCheckedChange={(e) => {
-                          e.stopPropagation?.();
-                          toggleTool(tool.name);
-                        }}
+                        onCheckedChange={() => toggleTool(tool.name)}
                         onClick={(e) => e.stopPropagation()}
                       />
                     </div>
