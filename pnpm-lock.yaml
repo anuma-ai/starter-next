@@ -116,6 +116,9 @@ importers:
       react-markdown:
         specifier: ^10.1.0
         version: 10.1.0(@types/react@19.2.7)(react@19.2.3)
+      rehype-sanitize:
+        specifier: ^6.0.0
+        version: 6.0.0
       shiki:
         specifier: ^3.15.0
         version: 3.21.0

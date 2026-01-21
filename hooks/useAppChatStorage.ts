@@ -236,22 +236,25 @@ export function useAppChatStorage({
               parts.push({ type: "reasoning" as const, text: msg.thinking });
             }
 
-            // SDK now stores files directly on the message, not in metadata
-            // FileMetadata format: { id, name, type, size, url? }
-            const storedFiles = msg.files || [];
-
             // Add text content - strip memory context prefix if present
+            // For assistant messages, SDK resolves image placeholders to markdown in content
+            // (e.g., __SDKFILE__{fileId}__ becomes ![image-{fileId}](blob:...))
             const textContent = stripMemoryContext(msg.content);
             if (textContent) {
               parts.push({ type: "text" as const, text: textContent });
             }
 
-            // Reconstruct file parts from SDK's files array
-            // SDK with encryption resolves file URLs automatically
+            // SDK stores file metadata for user-uploaded files
+            // Only add file parts for files with `url` property (user uploads with data URIs)
+            // Generated images (from MCP tools) don't have `url` - they're embedded in content as markdown
+            const storedFiles = msg.files || [];
             if (storedFiles.length > 0) {
               for (const file of storedFiles) {
                 const mimeType = file.type || "";
+                // Only render files that have a `url` (user uploads)
+                // Files with only `sourceUrl` (MCP cached) are rendered via content markdown
                 const fileUrl = file.url || "";
+                if (!fileUrl) continue;
 
                 if (mimeType.startsWith("image/")) {
                   parts.push({
@@ -513,22 +516,21 @@ export function useAppChatStorage({
             parts.push({ type: "reasoning" as const, text: msg.thinking });
           }
 
-          // SDK now stores files directly on the message, not in metadata
-          // FileMetadata format: { id, name, type, size, url? }
-          const storedFiles = msg.files || [];
-
           // Add text content - strip memory context prefix if present
+          // For assistant messages, SDK resolves image placeholders to markdown in content
           const textContent = stripMemoryContext(msg.content);
           if (textContent) {
             parts.push({ type: "text" as const, text: textContent });
           }
 
-          // Reconstruct file parts from SDK's files array
-          // Retrieve data URLs from IndexedDB using file IDs
+          // Only add file parts for files with `url` property (user uploads with data URIs)
+          // Generated images (from MCP tools) are embedded in content as markdown
+          const storedFiles = msg.files || [];
           if (storedFiles.length > 0) {
             for (const file of storedFiles) {
               const mimeType = file.type || "";
               const fileUrl = file.url || "";
+              if (!fileUrl) continue;
 
               if (mimeType.startsWith("image/")) {
                 parts.push({

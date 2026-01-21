@@ -389,6 +389,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     clientTools,
   });
 
+  // Reload current conversation once when encryption becomes ready on page load
+  // This ensures SDK can resolve file placeholders to blob URLs
+  const hasReloadedForEncryptionRef = useRef(false);
+  useEffect(() => {
+    if (
+      encryptionReady &&
+      baseChatState.conversationId &&
+      !hasReloadedForEncryptionRef.current
+    ) {
+      hasReloadedForEncryptionRef.current = true;
+      // Reload the current conversation to resolve file placeholders
+      baseChatState.switchConversation(baseChatState.conversationId);
+    }
+  }, [encryptionReady, baseChatState.conversationId, baseChatState.switchConversation]);
+
   // Wrap handleSubmit to track the current message for OAuth retry
   const handleSubmit = useCallback(
     async (message: any, options?: any) => {
