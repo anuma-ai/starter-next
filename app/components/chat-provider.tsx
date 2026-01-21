@@ -63,6 +63,8 @@ type ChatState = {
   projects: StoredProject[];
   projectsLoading: boolean;
   projectsReady: boolean;
+  inboxProjectId: string | null;
+  projectConversationsVersion: number;
   createProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
   updateProjectName: (projectId: string, name: string) => Promise<boolean>;
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
@@ -409,12 +411,54 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     projects,
     isLoading: projectsLoading,
     isReady: projectsReady,
+    inboxProjectId,
     createProject,
     updateProjectName,
     getProjectConversations,
     updateConversationProject,
     refreshProjects,
   } = useAppProjects();
+
+  // Track which conversations have been assigned to inbox to avoid duplicate assignments
+  const assignedToInboxRef = useRef<Set<string>>(new Set());
+  // Version counter to trigger sidebar refresh when project conversations change
+  const [projectConversationsVersion, setProjectConversationsVersion] = useState(0);
+
+  // Automatically assign new conversations to the Inbox project
+  useEffect(() => {
+    const conversationId = baseChatState.conversationId;
+
+    // Skip if no conversation, no inbox project, or already assigned
+    if (!conversationId || !inboxProjectId || assignedToInboxRef.current.has(conversationId)) {
+      return;
+    }
+
+    // Check if this is a new conversation (not in the existing conversations list)
+    const existingConversation = baseChatState.conversations.find(
+      (c: any) => c.id === conversationId || c.conversationId === conversationId
+    );
+
+    // Only assign to inbox if this is a new conversation
+    // We detect this by checking if the conversation exists but has no project assigned yet
+    // For truly new conversations, they won't exist in the list yet
+    if (!existingConversation) {
+      // Mark as assigned immediately to prevent race conditions
+      assignedToInboxRef.current.add(conversationId);
+
+      // Assign to inbox project
+      updateConversationProject(conversationId, inboxProjectId).then((success) => {
+        if (success) {
+          console.log(`[ChatProvider] Assigned conversation ${conversationId} to Inbox project ${inboxProjectId}`);
+          // Increment version to trigger sidebar refresh
+          setProjectConversationsVersion(v => v + 1);
+        } else {
+          // Remove from set if assignment failed so it can be retried
+          assignedToInboxRef.current.delete(conversationId);
+          console.error(`[ChatProvider] Failed to assign conversation ${conversationId} to Inbox`);
+        }
+      });
+    }
+  }, [baseChatState.conversationId, baseChatState.conversations, inboxProjectId, updateConversationProject]);
 
   // Reload current conversation once when encryption becomes ready on page load
   // This ensures SDK can resolve file placeholders to blob URLs
@@ -515,6 +559,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       projects,
       projectsLoading,
       projectsReady,
+      inboxProjectId,
+      projectConversationsVersion,
       createProject,
       updateProjectName,
       getProjectConversations,
@@ -527,6 +573,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       projects,
       projectsLoading,
       projectsReady,
+      inboxProjectId,
+      projectConversationsVersion,
       createProject,
       updateProjectName,
       getProjectConversations,

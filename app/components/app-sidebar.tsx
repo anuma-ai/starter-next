@@ -10,8 +10,9 @@ import {
   Folder01Icon,
   FolderLibraryIcon,
   Edit02Icon,
+  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { StoredProject, CreateProjectOptions } from "@reverbia/sdk/react";
+import type { StoredProject, StoredConversation, CreateProjectOptions } from "@reverbia/sdk/react";
 
 type AppSidebarProps = {
   conversations: any[];
@@ -46,9 +47,12 @@ type AppSidebarProps = {
   // Projects
   projects: StoredProject[];
   projectsReady: boolean;
+  projectConversationsVersion: number;
+  selectedProjectId: string | null;
   onSelectProject: (projectId: string) => void;
   onCreateProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
   onUpdateProjectName: (projectId: string, name: string) => Promise<boolean>;
+  getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
 };
 
 export function AppSidebar({
@@ -61,13 +65,49 @@ export function AppSidebar({
   onViewChange,
   projects,
   projectsReady,
+  projectConversationsVersion,
+  selectedProjectId,
   onSelectProject,
   onCreateProject,
   onUpdateProjectName,
+  getProjectConversations,
 }: AppSidebarProps) {
   const { authenticated, login, ready } = usePrivy();
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [projectConversations, setProjectConversations] = useState<Record<string, StoredConversation[]>>({});
+
+  const toggleProjectExpanded = async (projectId: string) => {
+    const newExpanded = new Set(expandedProjects);
+    if (newExpanded.has(projectId)) {
+      newExpanded.delete(projectId);
+    } else {
+      newExpanded.add(projectId);
+      // Load conversations for the expanded project
+      const convs = await getProjectConversations(projectId);
+      setProjectConversations(prev => ({ ...prev, [projectId]: convs }));
+    }
+    setExpandedProjects(newExpanded);
+  };
+
+  // Refresh expanded project conversations when project conversations version changes
+  // (triggered when a conversation is assigned to a project)
+  useEffect(() => {
+    const refreshExpandedProjects = async () => {
+      if (expandedProjects.size === 0) return;
+
+      const updates: Record<string, StoredConversation[]> = {};
+      for (const projectId of expandedProjects) {
+        const convs = await getProjectConversations(projectId);
+        updates[projectId] = convs;
+      }
+      setProjectConversations(prev => ({ ...prev, ...updates }));
+    };
+
+    refreshExpandedProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectConversationsVersion, getProjectConversations]);
 
   return (
     <Sidebar>
@@ -164,76 +204,93 @@ export function AppSidebar({
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {projects.slice(0, 10).map((project) => (
-                    <SidebarMenuItem key={project.projectId}>
-                      {editingProjectId === project.projectId ? (
-                        <form
-                          className="flex-1 px-2"
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            if (editingName.trim()) {
-                              await onUpdateProjectName(project.projectId, editingName.trim());
-                            }
-                            setEditingProjectId(null);
-                            setEditingName("");
-                          }}
-                        >
-                          <input
-                            type="text"
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onBlur={() => {
-                              setEditingProjectId(null);
-                              setEditingName("");
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Escape") {
+                  {projects.slice(0, 10).map((project) => {
+                    const isExpanded = expandedProjects.has(project.projectId);
+                    const conversations = projectConversations[project.projectId] || [];
+                    return (
+                      <div key={project.projectId}>
+                        <SidebarMenuItem>
+                          {editingProjectId === project.projectId ? (
+                            <form
+                              className="flex-1 px-2"
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                if (editingName.trim()) {
+                                  await onUpdateProjectName(project.projectId, editingName.trim());
+                                }
                                 setEditingProjectId(null);
                                 setEditingName("");
-                              }
-                            }}
-                            className="w-full bg-transparent border-b border-foreground/20 focus:border-foreground/50 outline-none text-sm py-1"
-                            autoFocus
-                          />
-                        </form>
-                      ) : (
-                        <>
-                          <SidebarMenuButton
-                            isActive={currentView === "projects"}
-                            onClick={() => onSelectProject(project.projectId)}
-                          >
-                            <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
-                            <span className="truncate">{project.name}</span>
-                          </SidebarMenuButton>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                              }}
+                            >
+                              <input
+                                type="text"
+                                value={editingName}
+                                onChange={(e) => setEditingName(e.target.value)}
+                                onBlur={() => {
+                                  setEditingProjectId(null);
+                                  setEditingName("");
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Escape") {
+                                    setEditingProjectId(null);
+                                    setEditingName("");
+                                  }
+                                }}
+                                className="w-full bg-transparent border-b border-foreground/20 focus:border-foreground/50 outline-none text-sm py-1"
+                                autoFocus
+                              />
+                            </form>
+                          ) : (
+                            <>
+                              <SidebarMenuButton
+                                isActive={currentView === "projects" && selectedProjectId === project.projectId}
+                                onClick={() => onSelectProject(project.projectId)}
+                              >
+                                <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
+                                <span className="truncate">{project.name}</span>
+                              </SidebarMenuButton>
                               <SidebarMenuAction
                                 showOnHover
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleProjectExpanded(project.projectId);
+                                }}
                                 className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
                               >
-                                <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
-                              </SidebarMenuAction>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent side="right" align="start">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setEditingProjectId(project.projectId);
-                                  setEditingName(project.name);
-                                }}
-                              >
                                 <HugeiconsIcon
-                                  icon={Edit02Icon}
-                                  size={16}
-                                  className="mr-2"
+                                  icon={ArrowRight01Icon}
+                                  size={14}
+                                  className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
                                 />
-                                Rename
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </>
-                      )}
-                    </SidebarMenuItem>
-                  ))}
+                              </SidebarMenuAction>
+                            </>
+                          )}
+                        </SidebarMenuItem>
+                        {isExpanded && conversations.length > 0 && (
+                          <div className="ml-4 border-l border-border/50 pl-2">
+                            {conversations.map((conv) => (
+                              <SidebarMenuItem key={conv.conversationId}>
+                                <SidebarMenuButton
+                                  isActive={currentView === "chat" && conversationId === conv.conversationId}
+                                  onClick={() => onSelectConversation(conv.conversationId)}
+                                  className="text-sm"
+                                >
+                                  <span className="truncate">
+                                    {conv.title || `Chat ${conv.conversationId.slice(0, 8)}`}
+                                  </span>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            ))}
+                          </div>
+                        )}
+                        {isExpanded && conversations.length === 0 && (
+                          <div className="ml-4 border-l border-border/50 pl-2 py-1">
+                            <span className="text-xs text-muted-foreground px-2">No conversations</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       onClick={async () => {

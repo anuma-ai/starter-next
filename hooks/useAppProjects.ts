@@ -38,6 +38,7 @@ export function useAppProjects() {
     updateConversationProject,
     getConversationsByProject,
     refreshProjects,
+    inboxProjectId,
   } = useProjects({ database });
 
   return {
@@ -47,6 +48,7 @@ export function useAppProjects() {
     setCurrentProjectId,
     isLoading,
     isReady,
+    inboxProjectId,
 
     // Project CRUD
     createProject,

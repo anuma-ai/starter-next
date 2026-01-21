@@ -71,8 +71,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     deleteConversation,
     projects,
     projectsReady,
+    projectConversationsVersion,
     createProject,
     updateProjectName,
+    getProjectConversations,
   } = chatState;
 
   const handleNewConversation = useCallback(async () => {
@@ -131,6 +133,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   // This ensures immediate visual feedback when switching conversations
   const activeConversationId = conversationId;
 
+  // Extract selected project ID from pathname (e.g., /projects/abc123)
+  const selectedProjectId = pathname.startsWith("/projects/")
+    ? pathname.split("/")[2]
+    : null;
+
   // Show loading state while auth is initializing or user is not authenticated
   if (!ready || !authenticated) {
     return (
@@ -153,9 +160,12 @@ export function AppLayout({ children }: AppLayoutProps) {
           onViewChange={handleViewChange}
           projects={projects}
           projectsReady={projectsReady}
+          projectConversationsVersion={projectConversationsVersion}
+          selectedProjectId={selectedProjectId}
           onSelectProject={handleSelectProject}
           onCreateProject={createProject}
           onUpdateProjectName={updateProjectName}
+          getProjectConversations={getProjectConversations}
         />
         <SidebarHandle />
         <SidebarInset className={`min-h-dvh min-w-0 ${insetBackground}`}>
