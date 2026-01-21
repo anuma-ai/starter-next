@@ -8,7 +8,10 @@ import {
   Setting07Icon,
   Search01Icon,
   Folder01Icon,
+  FolderLibraryIcon,
+  Edit02Icon,
 } from "@hugeicons/core-free-icons";
+import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { StoredProject, CreateProjectOptions } from "@reverbia/sdk/react";
 
 type AppSidebarProps = {
   conversations: any[];
@@ -37,8 +41,13 @@ type AppSidebarProps = {
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
-  currentView: "chat" | "settings" | "conversations" | "files";
-  onViewChange: (view: "chat" | "settings" | "conversations" | "files") => void;
+  currentView: "chat" | "settings" | "conversations" | "files" | "projects";
+  onViewChange: (view: "chat" | "settings" | "conversations" | "files" | "projects") => void;
+  // Projects
+  projects: StoredProject[];
+  onSelectProject: (projectId: string) => void;
+  onCreateProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
+  onUpdateProjectName: (projectId: string, name: string) => Promise<boolean>;
 };
 
 export function AppSidebar({
@@ -49,8 +58,14 @@ export function AppSidebar({
   onDeleteConversation,
   currentView,
   onViewChange,
+  projects,
+  onSelectProject,
+  onCreateProject,
+  onUpdateProjectName,
 }: AppSidebarProps) {
   const { authenticated, login, ready } = usePrivy();
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   return (
     <Sidebar>
@@ -136,6 +151,99 @@ export function AppSidebar({
                     No conversations yet
                   </p>
                 )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-muted-foreground">
+              Projects
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {projects.slice(0, 10).map((project) => (
+                  <SidebarMenuItem key={project.projectId}>
+                    {editingProjectId === project.projectId ? (
+                      <form
+                        className="flex-1 px-2"
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          if (editingName.trim()) {
+                            await onUpdateProjectName(project.projectId, editingName.trim());
+                          }
+                          setEditingProjectId(null);
+                          setEditingName("");
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onBlur={() => {
+                            setEditingProjectId(null);
+                            setEditingName("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              setEditingProjectId(null);
+                              setEditingName("");
+                            }
+                          }}
+                          className="w-full bg-transparent border-b border-foreground/20 focus:border-foreground/50 outline-none text-sm py-1"
+                          autoFocus
+                        />
+                      </form>
+                    ) : (
+                      <>
+                        <SidebarMenuButton
+                          isActive={currentView === "projects"}
+                          onClick={() => onSelectProject(project.projectId)}
+                        >
+                          <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
+                          <span className="truncate">{project.name}</span>
+                        </SidebarMenuButton>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <SidebarMenuAction
+                              showOnHover
+                              className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
+                            >
+                              <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
+                            </SidebarMenuAction>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="right" align="start">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingProjectId(project.projectId);
+                                setEditingName(project.name);
+                              }}
+                            >
+                              <HugeiconsIcon
+                                icon={Edit02Icon}
+                                size={16}
+                                className="mr-2"
+                              />
+                              Rename
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </>
+                    )}
+                  </SidebarMenuItem>
+                ))}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={async () => {
+                      const name = prompt("Enter project name:");
+                      if (name?.trim()) {
+                        await onCreateProject({ name: name.trim() });
+                      }
+                    }}
+                    className="text-muted-foreground"
+                  >
+                    <span>+ New project</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

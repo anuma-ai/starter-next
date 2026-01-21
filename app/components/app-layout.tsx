@@ -69,6 +69,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     createConversation,
     setConversationId,
     deleteConversation,
+    projects,
+    createProject,
+    updateProjectName,
   } = chatState;
 
   const handleNewConversation = useCallback(async () => {
@@ -89,16 +92,25 @@ export function AppLayout({ children }: AppLayoutProps) {
   );
 
   const handleViewChange = useCallback(
-    (view: "chat" | "settings" | "conversations" | "files") => {
+    (view: "chat" | "settings" | "conversations" | "files" | "projects") => {
       if (view === "settings") {
         router.push("/settings");
       } else if (view === "conversations") {
         router.push("/conversations");
       } else if (view === "files") {
         router.push("/files");
+      } else if (view === "projects") {
+        router.push("/projects");
       } else {
         router.push("/");
       }
+    },
+    [router]
+  );
+
+  const handleSelectProject = useCallback(
+    (projectId: string) => {
+      router.push(`/projects/${projectId}`);
     },
     [router]
   );
@@ -109,6 +121,8 @@ export function AppLayout({ children }: AppLayoutProps) {
     ? "conversations"
     : pathname.startsWith("/files")
     ? "files"
+    : pathname.startsWith("/projects")
+    ? "projects"
     : "chat";
   const insetBackground = "bg-background";
 
@@ -136,6 +150,10 @@ export function AppLayout({ children }: AppLayoutProps) {
           onDeleteConversation={deleteConversation}
           currentView={currentView}
           onViewChange={handleViewChange}
+          projects={projects}
+          onSelectProject={handleSelectProject}
+          onCreateProject={createProject}
+          onUpdateProjectName={updateProjectName}
         />
         <SidebarHandle />
         <SidebarInset className={`min-h-dvh min-w-0 ${insetBackground}`}>

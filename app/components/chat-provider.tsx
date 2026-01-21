@@ -30,6 +30,12 @@ import {
   storeDrivePendingMessage,
   getAndClearDrivePendingMessage,
 } from "@reverbia/sdk/react";
+import { useAppProjects } from "@/hooks/useAppProjects";
+import type {
+  StoredProject,
+  StoredConversation,
+  CreateProjectOptions,
+} from "@reverbia/sdk/react";
 import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
 import { getEnabledTools } from "@/hooks/useAppTools";
 
@@ -53,6 +59,14 @@ type ChatState = {
   setConversationId: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
+  // Projects
+  projects: StoredProject[];
+  projectsLoading: boolean;
+  createProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
+  updateProjectName: (projectId: string, name: string) => Promise<boolean>;
+  getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
+  updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
+  refreshProjects: () => Promise<void>;
 };
 
 const ChatContext = createContext<ChatState | null>(null);
@@ -389,6 +403,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     clientTools,
   });
 
+  // Projects state
+  const {
+    projects,
+    isLoading: projectsLoading,
+    createProject,
+    updateProjectName,
+    getProjectConversations,
+    updateConversationProject,
+    refreshProjects,
+  } = useAppProjects();
+
   // Reload current conversation once when encryption becomes ready on page load
   // This ensures SDK can resolve file placeholders to blob URLs
   const hasReloadedForEncryptionRef = useRef(false);
@@ -484,8 +509,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ...baseChatState,
       handleSubmit,
+      // Projects
+      projects,
+      projectsLoading,
+      createProject,
+      updateProjectName,
+      getProjectConversations,
+      updateConversationProject,
+      refreshProjects,
     }),
-    [baseChatState, handleSubmit]
+    [
+      baseChatState,
+      handleSubmit,
+      projects,
+      projectsLoading,
+      createProject,
+      updateProjectName,
+      getProjectConversations,
+      updateConversationProject,
+      refreshProjects,
+    ]
   );
 
   return (
