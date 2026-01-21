@@ -34,6 +34,7 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
+  MeasuringStrategy,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -47,6 +48,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { motion, LayoutGroup } from "motion/react";
 
 // Conversation with enriched title from first message
 type ConversationWithTitle = StoredConversation & { displayTitle?: string };
@@ -263,6 +265,7 @@ function ProjectItemOverlay({
   );
 }
 
+
 // Sortable conversation item - can be reordered within and across projects
 function SortableConversationItem({
   conversation,
@@ -279,8 +282,6 @@ function SortableConversationItem({
     attributes,
     listeners,
     setNodeRef,
-    transform,
-    transition,
     isDragging,
   } = useSortable({
     id: `conv:${conversation.conversationId}`,
@@ -292,36 +293,41 @@ function SortableConversationItem({
     },
   });
 
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition || "transform 200ms ease, opacity 200ms ease",
-    zIndex: isDragging ? 50 : "auto",
-    willChange: "transform",
-  };
-
   // Show gray placeholder when being dragged
   if (isDragging) {
     return (
-      <div ref={setNodeRef} style={style}>
-        <div className="h-8 mx-2 rounded-md bg-sidebar-accent transition-all duration-200" />
-      </div>
+      <motion.div
+        ref={setNodeRef}
+        layout
+        layoutId={`conv-${conversation.conversationId}`}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+      >
+        <div className="h-8 mx-2 rounded-md bg-sidebar-accent" />
+      </motion.div>
     );
   }
 
   return (
-    <SidebarMenuItem ref={setNodeRef} style={style} className="transition-all duration-200">
-      <SidebarMenuButton
-        isActive={isActive}
-        onClick={onSelect}
-        className="text-sm cursor-grab"
-        {...attributes}
-        {...listeners}
-      >
-        <span className="truncate">
-          {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
-        </span>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
+    <motion.div
+      ref={setNodeRef}
+      layout
+      layoutId={`conv-${conversation.conversationId}`}
+      transition={{ duration: 0.2, ease: "easeInOut" }}
+    >
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          isActive={isActive}
+          onClick={onSelect}
+          className="text-sm cursor-grab"
+          {...attributes}
+          {...listeners}
+        >
+          <span className="truncate">
+            {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
+          </span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </motion.div>
   );
 }
 
@@ -755,51 +761,58 @@ export function AppSidebar({
                     onDragOver={handleDragOver}
                     onDragEnd={handleDragEnd}
                     onDragCancel={handleDragCancel}
+                    measuring={{
+                      droppable: {
+                        strategy: MeasuringStrategy.Always,
+                      },
+                    }}
                   >
-                    {/* Single SortableContext for ALL conversations across all projects */}
-                    <SortableContext
-                      items={allConversationIds}
-                      strategy={rectSortingStrategy}
-                    >
-                      {/* Projects have their own SortableContext */}
+                    {/* LayoutGroup enables cross-container animations with framer-motion */}
+                    <LayoutGroup>
+                      {/* Single SortableContext for ALL conversations across all projects */}
                       <SortableContext
-                        items={projectIds}
-                        strategy={verticalListSortingStrategy}
+                        items={allConversationIds}
+                        strategy={rectSortingStrategy}
                       >
-                        {orderedProjects.map((project) => {
-                          const isExpanded = expandedProjects.has(project.projectId);
-                          const conversations = projectConversations[project.projectId] || [];
-                          return (
-                            <SortableProjectItem
-                              key={project.projectId}
-                              project={project}
-                              isExpanded={isExpanded}
-                              isActive={currentView === "projects" && selectedProjectId === project.projectId}
-                              isEditing={editingProjectId === project.projectId}
-                              editingName={editingName}
-                              onSelect={() => onSelectProject(project.projectId)}
-                              onToggleExpand={() => toggleProjectExpanded(project.projectId)}
-                              onUpdateName={(name) => onUpdateProjectName(project.projectId, name)}
-                              onStopEditing={() => {
-                                setEditingProjectId(null);
-                                setEditingName("");
-                              }}
-                              onEditingNameChange={setEditingName}
-                              justDropped={justDroppedId === project.projectId}
-                            >
-                              {isExpanded && conversations.length > 0 && (
-                                <div className="ml-6 mt-0.5 flex flex-col gap-0.5 transition-all duration-200">
-                                  {conversations.map((conv) => (
-                                    <SortableConversationItem
-                                      key={conv.conversationId}
-                                      conversation={conv}
-                                      projectId={project.projectId}
-                                      isActive={currentView === "chat" && conversationId === conv.conversationId}
-                                      onSelect={() => onSelectConversation(conv.conversationId)}
-                                    />
-                                  ))}
-                                </div>
-                              )}
+                        {/* Projects have their own SortableContext */}
+                        <SortableContext
+                          items={projectIds}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {orderedProjects.map((project) => {
+                            const isExpanded = expandedProjects.has(project.projectId);
+                            const conversations = projectConversations[project.projectId] || [];
+                            return (
+                              <SortableProjectItem
+                                key={project.projectId}
+                                project={project}
+                                isExpanded={isExpanded}
+                                isActive={currentView === "projects" && selectedProjectId === project.projectId}
+                                isEditing={editingProjectId === project.projectId}
+                                editingName={editingName}
+                                onSelect={() => onSelectProject(project.projectId)}
+                                onToggleExpand={() => toggleProjectExpanded(project.projectId)}
+                                onUpdateName={(name) => onUpdateProjectName(project.projectId, name)}
+                                onStopEditing={() => {
+                                  setEditingProjectId(null);
+                                  setEditingName("");
+                                }}
+                                onEditingNameChange={setEditingName}
+                                justDropped={justDroppedId === project.projectId}
+                              >
+                                {isExpanded && conversations.length > 0 && (
+                                  <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
+                                    {conversations.map((conv) => (
+                                      <SortableConversationItem
+                                        key={conv.conversationId}
+                                        conversation={conv}
+                                        projectId={project.projectId}
+                                        isActive={currentView === "chat" && conversationId === conv.conversationId}
+                                        onSelect={() => onSelectConversation(conv.conversationId)}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
                               {isExpanded && conversations.length === 0 && (
                                 <div className="ml-6 mt-0.5 py-1">
                                   <span className="text-xs text-muted-foreground px-2">No conversations</span>
@@ -808,8 +821,9 @@ export function AppSidebar({
                             </SortableProjectItem>
                           );
                         })}
+                        </SortableContext>
                       </SortableContext>
-                    </SortableContext>
+                    </LayoutGroup>
                     <DragOverlay
                       dropAnimation={{
                         duration: 250,
