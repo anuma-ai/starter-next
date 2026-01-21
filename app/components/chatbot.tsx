@@ -121,15 +121,15 @@ const ChatBotDemo = () => {
   const thinkingPanel = useThinkingPanel();
   const hasRedirectedRef = useRef(false);
 
-  const [selectedModel, setSelectedModel] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("chat_selectedModel");
-      if (saved && MODELS.some((m) => m.id === saved)) {
-        return saved;
-      }
+  const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
+
+  // Load saved model preference from localStorage after mount to avoid SSR/hydration mismatch
+  useEffect(() => {
+    const saved = localStorage.getItem("chat_selectedModel");
+    if (saved && MODELS.some((m) => m.id === saved)) {
+      setSelectedModel(saved);
     }
-    return MODELS[0].id;
-  });
+  }, []);
 
   const handleSelectModel = useCallback((modelId: string) => {
     setSelectedModel(modelId);
