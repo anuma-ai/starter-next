@@ -272,11 +272,13 @@ function SortableConversationItem({
   projectId,
   isActive,
   onSelect,
+  isDropAnimating,
 }: {
   conversation: ConversationWithTitle;
   projectId: string;
   isActive: boolean;
   onSelect: () => void;
+  isDropAnimating?: boolean;
 }) {
   const {
     attributes,
@@ -293,8 +295,8 @@ function SortableConversationItem({
     },
   });
 
-  // Show lighter gray placeholder for drop target
-  if (isDragging) {
+  // Show empty placeholder when being dragged or during drop animation
+  if (isDragging || isDropAnimating) {
     return (
       <motion.div
         ref={setNodeRef}
@@ -385,6 +387,7 @@ export function AppSidebar({
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [draggedConversation, setDraggedConversation] = useState<ConversationWithTitle | null>(null);
   const [dragSourceProjectId, setDragSourceProjectId] = useState<string | null>(null);
+  const [dropAnimatingConvId, setDropAnimatingConvId] = useState<string | null>(null);
 
   // Load saved order from localStorage on mount
   useEffect(() => {
@@ -637,6 +640,10 @@ export function AppSidebar({
       // ID format is now conv:conversationId (no project in ID)
       const conversationId = activeIdStr.split(":")[1];
 
+      // Keep placeholder visible during drop animation (matches DragOverlay duration)
+      setDropAnimatingConvId(conversationId);
+      setTimeout(() => setDropAnimatingConvId(null), 250);
+
       // Find where the conversation ended up (after dragOver updates)
       let currentProjectId: string | null = null;
       for (const [projId, convs] of Object.entries(projectConversations)) {
@@ -808,6 +815,7 @@ export function AppSidebar({
                                         projectId={project.projectId}
                                         isActive={currentView === "chat" && conversationId === conv.conversationId}
                                         onSelect={() => onSelectConversation(conv.conversationId)}
+                                        isDropAnimating={dropAnimatingConvId === conv.conversationId}
                                       />
                                     ))}
                                   </div>
