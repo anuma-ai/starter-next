@@ -38,7 +38,7 @@ type UseToolsProps = {
 };
 
 const ENABLED_TOOLS_KEY = "chat_enabledServerTools";
-const DEFAULT_ENABLED_TOOLS = ["generate_cloud_image", "perplexity_search"];
+const DEFAULT_ENABLED_TOOLS = ["generate_cloud_image", "perplexity_search", "analyze_image"];
 
 /**
  * Get enabled tools from localStorage

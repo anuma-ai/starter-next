@@ -1,9 +1,24 @@
 "use client";
 
 import { useCallback, useState, useEffect, useRef } from "react";
-import { useChatStorage } from "@reverbia/sdk/react";
+import {
+  useChatStorage,
+  hasEncryptionKey,
+  getEncryptionKey,
+  readEncryptedFile,
+} from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
+
+// Helper to convert blob to data URL
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 type MessagePart =
   | {
@@ -236,22 +251,38 @@ export function useAppChatStorage({
               parts.push({ type: "reasoning" as const, text: msg.thinking });
             }
 
-            // SDK now stores files directly on the message, not in metadata
-            // FileMetadata format: { id, name, type, size, url? }
-            const storedFiles = msg.files || [];
-
             // Add text content - strip memory context prefix if present
+            // For assistant messages, SDK resolves image placeholders to markdown in content
+            // (e.g., __SDKFILE__{fileId}__ becomes ![image-{fileId}](blob:...))
             const textContent = stripMemoryContext(msg.content);
             if (textContent) {
               parts.push({ type: "text" as const, text: textContent });
             }
 
-            // Reconstruct file parts from SDK's files array
-            // SDK with encryption resolves file URLs automatically
+            // SDK stores file metadata for user-uploaded files
+            // Files may have `url` (direct data URI) or need to be read from OPFS
+            // Generated images (from MCP tools) have `sourceUrl` - they're embedded in content as markdown
+            const storedFiles = msg.files || [];
             if (storedFiles.length > 0) {
               for (const file of storedFiles) {
                 const mimeType = file.type || "";
-                const fileUrl = file.url || "";
+                let fileUrl = file.url || "";
+
+                // If no URL but file has an ID, try to read from OPFS (user uploads)
+                // Skip files with sourceUrl - those are MCP-generated and embedded in content
+                if (!fileUrl && file.id && !file.sourceUrl && walletAddress && hasEncryptionKey(walletAddress)) {
+                  try {
+                    const encryptionKey = await getEncryptionKey(walletAddress);
+                    const result = await readEncryptedFile(file.id, encryptionKey);
+                    if (result) {
+                      fileUrl = await blobToDataUrl(result.blob);
+                    }
+                  } catch (err) {
+                    console.error(`Failed to read file ${file.id} from OPFS:`, err);
+                  }
+                }
+
+                if (!fileUrl) continue;
 
                 if (mimeType.startsWith("image/")) {
                   parts.push({
@@ -513,22 +544,35 @@ export function useAppChatStorage({
             parts.push({ type: "reasoning" as const, text: msg.thinking });
           }
 
-          // SDK now stores files directly on the message, not in metadata
-          // FileMetadata format: { id, name, type, size, url? }
-          const storedFiles = msg.files || [];
-
           // Add text content - strip memory context prefix if present
+          // For assistant messages, SDK resolves image placeholders to markdown in content
           const textContent = stripMemoryContext(msg.content);
           if (textContent) {
             parts.push({ type: "text" as const, text: textContent });
           }
 
-          // Reconstruct file parts from SDK's files array
-          // Retrieve data URLs from IndexedDB using file IDs
+          // Files may have `url` (direct data URI) or need to be read from OPFS
+          // Generated images (from MCP tools) have `sourceUrl` - they're embedded in content as markdown
+          const storedFiles = msg.files || [];
           if (storedFiles.length > 0) {
             for (const file of storedFiles) {
               const mimeType = file.type || "";
-              const fileUrl = file.url || "";
+              let fileUrl = file.url || "";
+
+              // If no URL but file has an ID, try to read from OPFS (user uploads)
+              if (!fileUrl && file.id && !file.sourceUrl && walletAddress && hasEncryptionKey(walletAddress)) {
+                try {
+                  const encryptionKey = await getEncryptionKey(walletAddress);
+                  const result = await readEncryptedFile(file.id, encryptionKey);
+                  if (result) {
+                    fileUrl = await blobToDataUrl(result.blob);
+                  }
+                } catch (err) {
+                  console.error(`Failed to read file ${file.id} from OPFS:`, err);
+                }
+              }
+
+              if (!fileUrl) continue;
 
               if (mimeType.startsWith("image/")) {
                 parts.push({

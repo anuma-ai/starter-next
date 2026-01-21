@@ -7,6 +7,16 @@ import { memo, useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { marked } from "marked";
 import { codeToHtml } from "shiki";
 import { Streamdown } from "streamdown";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+
+// Custom sanitize schema that allows blob: URLs for images
+const sanitizeSchema = {
+  ...defaultSchema,
+  protocols: {
+    ...defaultSchema.protocols,
+    src: [...(defaultSchema.protocols?.src || []), "blob"],
+  },
+};
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: MessageRole;
@@ -53,9 +63,17 @@ export type MessageResponseProps = {
 const IMAGE_URL_REGEX =
   /(?<!\[.*?\]\()(?<!!.*?\]\()(https?:\/\/[^\s<>"]+?\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[^\s<>"]*)?|https?:\/\/[^\s<>"]*?(?:image|img)[^\s<>"]*?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s<>"]*)?)/gi;
 
+// Regex to detect SDK file placeholders that haven't been resolved yet
+const SDK_FILE_PLACEHOLDER_REGEX = /__SDKFILE__[a-f0-9-]+__/gi;
+
 // Convert standalone image URLs to markdown image syntax
 function convertImageUrlsToMarkdown(text: string): string {
   return text.replace(IMAGE_URL_REGEX, (url) => `\n\n![Generated image](${url})\n\n`);
+}
+
+// Remove unresolved SDK file placeholders from display
+function replaceUnresolvedPlaceholders(text: string): string {
+  return text.replace(SDK_FILE_PLACEHOLDER_REGEX, "");
 }
 
 
@@ -154,7 +172,7 @@ export const MessageResponse = memo(
         return [];
       }
 
-      const processedText = convertImageUrlsToMarkdown(children);
+      const processedText = replaceUnresolvedPlaceholders(convertImageUrlsToMarkdown(children));
       const tokens = marked.lexer(processedText);
       const result: Array<{ type: "html" | "code"; html?: string; code?: string; lang?: string }> = [];
 
@@ -270,7 +288,7 @@ export const StreamingMessage = ({
 
   // Process text for display - must be before early return to follow Rules of Hooks
   const processedText = useMemo(
-    () => convertImageUrlsToMarkdown(text),
+    () => replaceUnresolvedPlaceholders(convertImageUrlsToMarkdown(text)),
     [text]
   );
 
@@ -290,6 +308,7 @@ export const StreamingMessage = ({
       )}
       shikiTheme={["github-light", "github-dark"]}
       components={{ img: MarkdownImage }}
+      rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
     >
       {processedText}
     </Streamdown>

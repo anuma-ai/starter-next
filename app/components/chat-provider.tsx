@@ -43,6 +43,7 @@ type ChatState = {
   addMessageOptimistically: (text: string, files?: any[], displayText?: string) => string;
   isLoading: boolean;
   status: any;
+  error: string | null;
   setMessages: React.Dispatch<React.SetStateAction<any[]>>;
   subscribeToStreaming: (callback: (text: string) => void) => () => void;
   subscribeToThinking: (callback: (text: string) => void) => () => void;
@@ -387,6 +388,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     serverTools: enabledServerTools,
     clientTools,
   });
+
+  // Reload current conversation once when encryption becomes ready on page load
+  // This ensures SDK can resolve file placeholders to blob URLs
+  const hasReloadedForEncryptionRef = useRef(false);
+  useEffect(() => {
+    if (
+      encryptionReady &&
+      baseChatState.conversationId &&
+      !hasReloadedForEncryptionRef.current
+    ) {
+      hasReloadedForEncryptionRef.current = true;
+      // Reload the current conversation to resolve file placeholders
+      baseChatState.switchConversation(baseChatState.conversationId);
+    }
+  }, [encryptionReady, baseChatState.conversationId, baseChatState.switchConversation]);
 
   // Wrap handleSubmit to track the current message for OAuth retry
   const handleSubmit = useCallback(

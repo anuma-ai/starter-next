@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon } from "lucide-react";
+import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 
 import {
@@ -148,6 +148,7 @@ const ChatBotDemo = () => {
     addMessageOptimistically,
     isLoading,
     status,
+    error,
     subscribeToStreaming,
     subscribeToThinking,
     conversationId,
@@ -293,7 +294,17 @@ const ChatBotDemo = () => {
                       message.role === "assistant" &&
                       isLastAssistantMessage &&
                       (isSubmitting || isLoading) &&
-                      !streamingText;
+                      !streamingText &&
+                      !error;
+
+                    // Show error when there's an error or empty response
+                    // Only for the last assistant message when not loading
+                    const showError =
+                      message.role === "assistant" &&
+                      isLastAssistantMessage &&
+                      !isLoading &&
+                      !isSubmitting &&
+                      (error || (!part.text && !streamingText));
 
                     // For user messages, just render the message
                     if (message.role === "user") {
@@ -315,6 +326,17 @@ const ChatBotDemo = () => {
                             <span className="inline-block size-3 rounded-full bg-foreground flex-shrink-0 animate-[scale-pulse_1.5s_ease-in-out_infinite]" />
                             {streamingThinking && <span>Thinking...</span>}
                           </div>
+                        )}
+                        {/* Error message when streaming fails or response is empty */}
+                        {showError && (
+                          <Message from={message.role}>
+                            <MessageContent>
+                              <div className="flex items-center gap-2 text-destructive">
+                                <AlertCircleIcon className="size-4 flex-shrink-0" />
+                                <span>{error || "Something went wrong. Please try again."}</span>
+                              </div>
+                            </MessageContent>
+                          </Message>
                         )}
                         {/* After streaming starts: show brain + "Thought for X seconds" if there was thinking */}
                         {showReasoning && (
