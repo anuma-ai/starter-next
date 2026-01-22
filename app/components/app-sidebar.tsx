@@ -40,7 +40,6 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-  MeasuringStrategy,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -51,10 +50,9 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { motion, LayoutGroup, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 
 // Conversation with enriched title from first message
 type ConversationWithTitle = StoredConversation & { displayTitle?: string };
@@ -74,144 +72,68 @@ type AppSidebarProps = {
   inboxProjectId: string | null;
   onSelectProject: (projectId: string) => void;
   onCreateProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
-  onUpdateProjectName: (projectId: string, name: string) => Promise<boolean>;
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
   getMessages: (conversationId: string) => Promise<StoredMessage[]>;
   updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
 };
 
-type SortableProjectItemProps = {
-  project: StoredProject;
-  isExpanded: boolean;
-  isActive: boolean;
-  isEditing: boolean;
-  editingName: string;
-  hasConversations: boolean;
-  onSelect: () => void;
-  onCollapse: () => void;
-  onToggleExpand: () => void;
-  onUpdateName: (name: string) => void;
-  onStopEditing: () => void;
-  onEditingNameChange: (name: string) => void;
-  isDropTarget?: boolean;
-  children?: React.ReactNode;
-};
-
-function SortableProjectItem({
+// Static project item - no dnd-kit hooks, no inline editing
+function StaticProjectItem({
   project,
   isExpanded,
   isActive,
-  isEditing,
-  editingName,
   hasConversations,
   onSelect,
-  onCollapse,
   onToggleExpand,
-  onUpdateName,
-  onStopEditing,
-  onEditingNameChange,
   isDropTarget = false,
   children,
-}: SortableProjectItemProps) {
+}: {
+  project: StoredProject;
+  isExpanded: boolean;
+  isActive: boolean;
+  hasConversations: boolean;
+  onSelect: () => void;
+  onToggleExpand: () => void;
+  isDropTarget?: boolean;
+  children?: React.ReactNode;
+}) {
   const [isHovered, setIsHovered] = useState(false);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging: isSortableDragging,
-  } = useSortable({ id: project.projectId });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isSortableDragging ? 50 : "auto",
-  };
-
-  // Show transparent placeholder when being dragged (just reserves space)
-  if (isSortableDragging) {
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className="mb-0.5"
-      >
-        <div className="h-8" />
-      </div>
-    );
-  }
-
   const showChevron = hasConversations && isHovered;
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="mb-0.5"
-    >
+    <div className="border-0">
       <SidebarMenuItem
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {isEditing ? (
-          <form
-            className="flex-1 px-2"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (editingName.trim()) {
-                onUpdateName(editingName.trim());
+        <SidebarMenuButton
+          isActive={isActive || isDropTarget}
+          onClick={onSelect}
+          className="cursor-pointer"
+        >
+          <span
+            onClick={(e) => {
+              if (showChevron) {
+                e.stopPropagation();
+                onToggleExpand();
               }
-              onStopEditing();
             }}
+            className={`relative w-4 h-4 flex items-center justify-center -ml-2 -my-2 pl-2 py-2 ${showChevron ? 'cursor-pointer' : ''}`}
+            role={showChevron ? "button" : undefined}
           >
-            <input
-              type="text"
-              value={editingName}
-              onChange={(e) => onEditingNameChange(e.target.value)}
-              onBlur={onStopEditing}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  onStopEditing();
-                }
-              }}
-              className="w-full bg-transparent border-b border-foreground/20 focus:border-foreground/50 outline-none text-sm py-1"
-              autoFocus
+            <HugeiconsIcon
+              icon={FolderLibraryIcon}
+              size={16}
+              className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
             />
-          </form>
-        ) : (
-          <SidebarMenuButton
-            isActive={isActive || isDropTarget}
-            onClick={onSelect}
-            onDoubleClick={onCollapse}
-            className="cursor-pointer"
-            {...attributes}
-            {...listeners}
-          >
-            <span
-              onClick={(e) => {
-                if (showChevron) {
-                  e.stopPropagation();
-                  onToggleExpand();
-                }
-              }}
-              className={`relative w-4 h-4 flex items-center justify-center -ml-2 -my-2 pl-2 py-2 ${showChevron ? 'cursor-pointer' : ''}`}
-              role={showChevron ? "button" : undefined}
-            >
-              <HugeiconsIcon
-                icon={FolderLibraryIcon}
-                size={16}
-                className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
-              />
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={16}
-                className={`absolute ${showChevron ? 'opacity-100' : 'opacity-0'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-              />
-            </span>
-            <span className="truncate">{project.name || "Project"}</span>
-          </SidebarMenuButton>
-        )}
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              size={16}
+              className={`absolute ${showChevron ? 'opacity-100' : 'opacity-0'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            />
+          </span>
+          <span className="truncate">{project.name || "Project"}</span>
+        </SidebarMenuButton>
       </SidebarMenuItem>
       {children}
     </div>
@@ -358,14 +280,11 @@ export function AppSidebar({
   inboxProjectId,
   onSelectProject,
   onCreateProject,
-  onUpdateProjectName,
   getProjectConversations,
   getMessages,
   updateConversationProject,
 }: AppSidebarProps) {
   const { authenticated, login, ready } = usePrivy();
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
     // Initialize from localStorage
     if (typeof window !== "undefined") {
@@ -385,6 +304,7 @@ export function AppSidebar({
   });
   const [projectConversations, setProjectConversations] = useState<Record<string, ConversationWithTitle[]>>({});
   const [orderedProjectIds, setOrderedProjectIds] = useState<string[]>([]);
+  const [newlyAddedProjectIds, setNewlyAddedProjectIds] = useState<Set<string>>(new Set());
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [draggedConversation, setDraggedConversation] = useState<ConversationWithTitle | null>(null);
   const [dragSourceProjectId, setDragSourceProjectId] = useState<string | null>(null);
@@ -420,8 +340,25 @@ export function AppSidebar({
       // Keep existing order for projects that still exist, append new ones
       const existingOrdered = prev.filter(id => currentIds.includes(id));
       const newIds = currentIds.filter(id => !prev.includes(id));
-      const newOrder = [...existingOrdered, ...newIds];
-      return newOrder;
+
+      // Track newly added project IDs (only after initial load)
+      if (newIds.length > 0 && hasLoadedFromStorage.current) {
+        setNewlyAddedProjectIds(prevNew => {
+          const updated = new Set(prevNew);
+          newIds.forEach(id => updated.add(id));
+          return updated;
+        });
+        // Clear the "new" flag after a short delay
+        setTimeout(() => {
+          setNewlyAddedProjectIds(prevNew => {
+            const updated = new Set(prevNew);
+            newIds.forEach(id => updated.delete(id));
+            return updated;
+          });
+        }, 100);
+      }
+
+      return [...existingOrdered, ...newIds];
     });
   }, [projects]);
 
@@ -841,9 +778,11 @@ export function AppSidebar({
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={async () => {
-                      const name = prompt("Enter project name:");
-                      if (name?.trim()) {
-                        await onCreateProject({ name: name.trim() });
+                      // Create project with default empty name
+                      const project = await onCreateProject({ name: "" });
+                      if (project?.projectId) {
+                        // Navigate to the project page where user can edit the name
+                        onSelectProject(project.projectId);
                       }
                     }}
                   >
@@ -881,130 +820,40 @@ export function AppSidebar({
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {/* Unified DndContext for both projects and conversations */}
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDragEnd={handleDragEnd}
-                    onDragCancel={handleDragCancel}
-                    measuring={{
-                      droppable: {
-                        strategy: MeasuringStrategy.Always,
-                      },
-                    }}
-                  >
-                    {/* LayoutGroup enables cross-container animations with framer-motion */}
-                    <LayoutGroup>
-                      {/* Single SortableContext for ALL conversations across all projects */}
-                      <SortableContext
-                        items={allConversationIds}
-                        strategy={rectSortingStrategy}
+                  {/* TEMPORARILY using static items to test if dnd-kit causes flash */}
+                  {orderedProjects.map((project) => {
+                    const isExpanded = expandedProjects.has(project.projectId);
+                    const conversations = projectConversations[project.projectId] || [];
+                    return (
+                      <StaticProjectItem
+                        key={project.projectId}
+                        project={project}
+                        isExpanded={isExpanded}
+                        isActive={currentView === "projects" && selectedProjectId === project.projectId}
+                        hasConversations={conversations.length > 0}
+                        onSelect={() => onSelectProject(project.projectId)}
+                        onToggleExpand={() => toggleProjectExpanded(project.projectId)}
                       >
-                        {/* Projects have their own SortableContext */}
-                        <SortableContext
-                          items={projectIds}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {orderedProjects.map((project) => {
-                            const isExpanded = expandedProjects.has(project.projectId);
-                            const conversations = projectConversations[project.projectId] || [];
-                            return (
-                              <SortableProjectItem
-                                key={project.projectId}
-                                project={project}
-                                isExpanded={isExpanded}
-                                isActive={currentView === "projects" && selectedProjectId === project.projectId}
-                                isEditing={editingProjectId === project.projectId}
-                                editingName={editingName}
-                                hasConversations={conversations.length > 0}
-                                onSelect={() => {
-                                  // Just navigate to the project page - no expand/collapse
-                                  onSelectProject(project.projectId);
-                                }}
-                                onCollapse={() => {
-                                  // Do nothing on double click - expand/collapse only via chevron
-                                }}
-                                onToggleExpand={() => toggleProjectExpanded(project.projectId)}
-                                onUpdateName={(name) => onUpdateProjectName(project.projectId, name)}
-                                onStopEditing={() => {
-                                  setEditingProjectId(null);
-                                  setEditingName("");
-                                }}
-                                onEditingNameChange={setEditingName}
-                                isDropTarget={dropTargetProjectId === project.projectId}
-                              >
-                                {/* During drag: no container animation to prevent layout shifts */}
-                                {/* When not dragging: animate container expand/collapse */}
-                                {draggedConversation ? (
-                                  // During drag - static container, no animations
-                                  isExpanded && conversations.length > 0 && (
-                                    <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
-                                      {conversations.map((conv) => (
-                                        <SortableConversationItem
-                                          key={conv.conversationId}
-                                          conversation={conv}
-                                          projectId={project.projectId}
-                                          isActive={currentView === "chat" && conversationId === conv.conversationId}
-                                          onSelect={() => onSelectConversation(conv.conversationId)}
-                                          isDropAnimating={dropAnimatingConvId === conv.conversationId}
-                                          isDragActive={true}
-                                          skipAnimations={skipInitialAnimations}
-                                        />
-                                      ))}
-                                    </div>
-                                  )
-                                ) : (
-                                  // Not dragging - full animations (unless initial mount)
-                                  <AnimatePresence initial={false}>
-                                    {isExpanded && conversations.length > 0 && (
-                                      <motion.div
-                                        initial={skipInitialAnimations ? false : { height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={skipInitialAnimations ? undefined : { height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                                        className="ml-6 mt-0.5 flex flex-col gap-0.5 overflow-hidden"
-                                      >
-                                        <AnimatePresence initial={false}>
-                                          {conversations.map((conv) => (
-                                            <SortableConversationItem
-                                              key={conv.conversationId}
-                                              conversation={conv}
-                                              projectId={project.projectId}
-                                              isActive={currentView === "chat" && conversationId === conv.conversationId}
-                                              onSelect={() => onSelectConversation(conv.conversationId)}
-                                              isDropAnimating={dropAnimatingConvId === conv.conversationId}
-                                              isDragActive={false}
-                                              skipAnimations={skipInitialAnimations}
-                                            />
-                                          ))}
-                                        </AnimatePresence>
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-                                )}
-                            </SortableProjectItem>
-                          );
-                        })}
-                        </SortableContext>
-                      </SortableContext>
-                    </LayoutGroup>
-                    <DragOverlay
-                      dropAnimation={{
-                        duration: 250,
-                        easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
-                      }}
-                    >
-                      {activeProjectId && orderedProjects.find(p => p.projectId === activeProjectId) ? (
-                        <ProjectItemOverlay
-                          project={orderedProjects.find(p => p.projectId === activeProjectId)!}
-                        />
-                      ) : draggedConversation ? (
-                        <ConversationItemOverlay conversation={draggedConversation} />
-                      ) : null}
-                    </DragOverlay>
-                  </DndContext>
+                        {isExpanded && conversations.length > 0 && (
+                          <div className="ml-6 mt-0.5 flex flex-col gap-0.5">
+                            {conversations.map((conv) => (
+                              <SidebarMenuItem key={conv.conversationId}>
+                                <SidebarMenuButton
+                                  isActive={currentView === "chat" && conversationId === conv.conversationId}
+                                  onClick={() => onSelectConversation(conv.conversationId)}
+                                  className="text-sm"
+                                >
+                                  <span className="truncate">
+                                    {conv.displayTitle || conv.title || `Chat ${conv.conversationId.slice(0, 8)}`}
+                                  </span>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            ))}
+                          </div>
+                        )}
+                      </StaticProjectItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

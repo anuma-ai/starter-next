@@ -168,7 +168,6 @@ export function AppLayout({ children }: AppLayoutProps) {
           inboxProjectId={inboxProjectId}
           onSelectProject={handleSelectProject}
           onCreateProject={createProject}
-          onUpdateProjectName={updateProjectName}
           getProjectConversations={getProjectConversations}
           getMessages={getMessages}
           updateConversationProject={updateConversationProject}

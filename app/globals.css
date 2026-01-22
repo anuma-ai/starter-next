@@ -116,7 +116,8 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply outline-ring/50;
+    border-color: transparent;
   }
   body {
     @apply bg-background text-foreground;
@@ -124,6 +125,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
 
 @keyframes pulse-dot {
   0%,
