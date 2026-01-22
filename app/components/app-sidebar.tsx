@@ -85,7 +85,6 @@ type SortableProjectItemProps = {
   onUpdateName: (name: string) => void;
   onStopEditing: () => void;
   onEditingNameChange: (name: string) => void;
-  justDropped?: boolean;
   isDropTarget?: boolean;
   children?: React.ReactNode;
 };
@@ -102,23 +101,9 @@ function SortableProjectItem({
   onUpdateName,
   onStopEditing,
   onEditingNameChange,
-  justDropped = false,
   isDropTarget = false,
   children,
 }: SortableProjectItemProps) {
-  const [isTransitioning, setIsTransitioning] = useState(justDropped);
-
-  // When justDropped becomes true, start transitioning, then clear after animation
-  useEffect(() => {
-    if (justDropped) {
-      setIsTransitioning(true);
-      const timer = setTimeout(() => {
-        setIsTransitioning(false);
-      }, 300); // Match the CSS transition duration
-      return () => clearTimeout(timer);
-    }
-  }, [justDropped]);
-
   const {
     attributes,
     listeners,
@@ -182,11 +167,10 @@ function SortableProjectItem({
         ) : (
           <>
             <SidebarMenuButton
-              isActive={isActive || isTransitioning || isDropTarget}
+              isActive={isActive || isDropTarget}
               onClick={onSelect}
               onDoubleClick={onCollapse}
-              className={`cursor-pointer ${isTransitioning ? "transition-colors duration-300 pointer-events-none" : ""}`}
-              style={isTransitioning ? { backgroundColor: "#ffffff" } : undefined}
+              className="cursor-pointer"
               {...attributes}
               {...listeners}
             >
@@ -380,7 +364,6 @@ export function AppSidebar({
     return new Set();
   });
   const [projectConversations, setProjectConversations] = useState<Record<string, ConversationWithTitle[]>>({});
-  const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const [orderedProjectIds, setOrderedProjectIds] = useState<string[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [draggedConversation, setDraggedConversation] = useState<ConversationWithTitle | null>(null);
@@ -745,9 +728,6 @@ export function AppSidebar({
 
     const projectOverIdStr = over.id as string;
     if (activeIdStr !== projectOverIdStr && orderedProjectIds.includes(projectOverIdStr)) {
-      setJustDroppedId(activeIdStr);
-      setTimeout(() => setJustDroppedId(null), 350);
-
       setOrderedProjectIds((items) => {
         const oldIndex = items.indexOf(activeIdStr);
         const newIndex = items.indexOf(projectOverIdStr);
@@ -886,7 +866,6 @@ export function AppSidebar({
                                   setEditingName("");
                                 }}
                                 onEditingNameChange={setEditingName}
-                                justDropped={justDroppedId === project.projectId}
                                 isDropTarget={dropTargetProjectId === project.projectId}
                               >
                                 {/* During drag: no container animation to prevent layout shifts */}
