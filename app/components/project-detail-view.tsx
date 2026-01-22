@@ -76,14 +76,14 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     loadConversations();
   }, [loadConversations]);
 
-  // Only sync from project when it changes (not when we're actively editing)
-  const lastProjectNameRef = useRef(project?.name);
+  // Sync editedName from project when project data becomes available or changes
+  const lastProjectNameRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (project && project.name !== lastProjectNameRef.current) {
       lastProjectNameRef.current = project.name;
-      setEditedName(project.name);
+      setEditedName(project.name || "");
     }
-  }, [project]);
+  }, [project, project?.name]);
 
   const handleNameChange = async (newName: string) => {
     setEditedName(newName);
