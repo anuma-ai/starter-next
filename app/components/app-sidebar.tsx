@@ -8,7 +8,14 @@ import {
   Folder01Icon,
   FolderLibraryIcon,
   ArrowRight01Icon,
+  ArrowDown01Icon,
 } from "@hugeicons/core-free-icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
@@ -775,6 +782,30 @@ export function AppSidebar({
                 <HugeiconsIcon icon={QuillWrite02Icon} size={16} />
                 <span>New chat</span>
               </SidebarMenuButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction className="!opacity-100">
+                    <HugeiconsIcon icon={ArrowDown01Icon} size={14} />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="bottom">
+                  <DropdownMenuItem onClick={onNewConversation}>
+                    <HugeiconsIcon icon={QuillWrite02Icon} size={16} />
+                    New chat
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      const name = prompt("Enter project name:");
+                      if (name?.trim()) {
+                        await onCreateProject({ name: name.trim() });
+                      }
+                    }}
+                  >
+                    <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
+                    New project
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -934,19 +965,6 @@ export function AppSidebar({
                       ) : null}
                     </DragOverlay>
                   </DndContext>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={async () => {
-                        const name = prompt("Enter project name:");
-                        if (name?.trim()) {
-                          await onCreateProject({ name: name.trim() });
-                        }
-                      }}
-                      className="text-muted-foreground"
-                    >
-                      <span>+ New project</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
