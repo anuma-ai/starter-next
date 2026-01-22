@@ -25,6 +25,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     createConversation,
     getMessages,
     updateConversationProject,
+    refreshProjects,
   } = useChatContext();
 
   const [projectConversations, setProjectConversations] = useState<
@@ -71,16 +72,22 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     loadConversations();
   }, [loadConversations]);
 
+  // Only sync from project when it changes (not when we're actively editing)
+  const lastProjectNameRef = useRef(project?.name);
   useEffect(() => {
-    if (project) {
+    if (project && project.name !== lastProjectNameRef.current) {
+      lastProjectNameRef.current = project.name;
       setEditedName(project.name);
     }
   }, [project]);
 
-  const handleSaveName = async () => {
-    if (editedName.trim() && editedName !== project?.name) {
-      await updateProjectName(projectId, editedName.trim());
-    }
+  const handleNameChange = async (newName: string) => {
+    setEditedName(newName);
+    // Update the ref so useEffect doesn't reset our value
+    lastProjectNameRef.current = newName;
+    // Save immediately (including empty names)
+    await updateProjectName(projectId, newName);
+    await refreshProjects();
   };
 
   const handleSelectConversation = (conversationId: string) => {
@@ -113,15 +120,14 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
             ref={titleInputRef}
             type="text"
             value={editedName}
-            onChange={(e) => setEditedName(e.target.value)}
-            onBlur={handleSaveName}
+            onChange={(e) => handleNameChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                handleSaveName();
                 titleInputRef.current?.blur();
               }
             }}
+            placeholder="Project Name"
             className="text-2xl font-semibold bg-transparent border-none outline-none w-full"
           />
         </div>
