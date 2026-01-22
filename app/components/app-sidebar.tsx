@@ -201,12 +201,12 @@ function SortableProjectItem({
               <HugeiconsIcon
                 icon={FolderLibraryIcon}
                 size={16}
-                className={`absolute transition-opacity duration-150 ${showChevron ? 'opacity-0' : 'opacity-100'}`}
+                className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
               />
               <HugeiconsIcon
                 icon={ArrowRight01Icon}
                 size={16}
-                className={`absolute transition-opacity duration-150 ${showChevron ? 'opacity-100' : 'opacity-0'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                className={`absolute ${showChevron ? 'opacity-100' : 'opacity-0'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
               />
             </span>
             <span className="truncate">{project.name || "Project"}</span>
