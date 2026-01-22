@@ -112,6 +112,7 @@ function SortableProjectItem({
   isDropTarget = false,
   children,
 }: SortableProjectItemProps) {
+  const [isHovered, setIsHovered] = useState(false);
   const {
     attributes,
     listeners,
@@ -140,13 +141,18 @@ function SortableProjectItem({
     );
   }
 
+  const showChevron = hasConversations && isHovered;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className="mb-0.5"
     >
-      <SidebarMenuItem>
+      <SidebarMenuItem
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         {isEditing ? (
           <form
             className="flex-1 px-2"
@@ -173,35 +179,37 @@ function SortableProjectItem({
             />
           </form>
         ) : (
-          <>
-            <SidebarMenuButton
-              isActive={isActive || isDropTarget}
-              onClick={onSelect}
-              onDoubleClick={onCollapse}
-              className="cursor-pointer"
-              {...attributes}
-              {...listeners}
-            >
-              <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
-              <span className="truncate">{project.name || "Project"}</span>
-            </SidebarMenuButton>
-            {hasConversations && (
-              <SidebarMenuAction
-                showOnHover
+          <SidebarMenuButton
+            isActive={isActive || isDropTarget}
+            onClick={onSelect}
+            onDoubleClick={onCollapse}
+            className="cursor-pointer"
+            {...attributes}
+            {...listeners}
+          >
+            <span className="relative w-4 h-4 flex items-center justify-center">
+              <HugeiconsIcon
+                icon={FolderLibraryIcon}
+                size={16}
+                className={`absolute transition-opacity duration-150 ${showChevron ? 'opacity-0' : 'opacity-100'}`}
+              />
+              <span
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleExpand();
                 }}
-                className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
+                className={`absolute flex items-center justify-center cursor-pointer transition-opacity duration-150 ${showChevron ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                role="button"
               >
                 <HugeiconsIcon
                   icon={ArrowRight01Icon}
-                  size={14}
+                  size={16}
                   className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
                 />
-              </SidebarMenuAction>
-            )}
-          </>
+              </span>
+            </span>
+            <span className="truncate">{project.name || "Project"}</span>
+          </SidebarMenuButton>
         )}
       </SidebarMenuItem>
       {children}
