@@ -85,6 +85,7 @@ type SortableProjectItemProps = {
   isActive: boolean;
   isEditing: boolean;
   editingName: string;
+  hasConversations: boolean;
   onSelect: () => void;
   onCollapse: () => void;
   onToggleExpand: () => void;
@@ -101,6 +102,7 @@ function SortableProjectItem({
   isActive,
   isEditing,
   editingName,
+  hasConversations,
   onSelect,
   onCollapse,
   onToggleExpand,
@@ -183,20 +185,22 @@ function SortableProjectItem({
               <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
               <span className="truncate">{project.name || "Project"}</span>
             </SidebarMenuButton>
-            <SidebarMenuAction
-              showOnHover
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExpand();
-              }}
-              className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
-            >
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={14}
-                className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-              />
-            </SidebarMenuAction>
+            {hasConversations && (
+              <SidebarMenuAction
+                showOnHover
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpand();
+                }}
+                className="!w-7 !h-7 !top-1/2 !-translate-y-1/2 rounded-full hover:bg-muted flex items-center justify-center cursor-pointer"
+              >
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={14}
+                  className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                />
+              </SidebarMenuAction>
+            )}
           </>
         )}
       </SidebarMenuItem>
@@ -872,6 +876,7 @@ export function AppSidebar({
                                 isActive={currentView === "projects" && selectedProjectId === project.projectId}
                                 isEditing={editingProjectId === project.projectId}
                                 editingName={editingName}
+                                hasConversations={conversations.length > 0}
                                 onSelect={() => {
                                   // Expand on single click (if not already expanded)
                                   if (!expandedProjects.has(project.projectId)) {

@@ -2,6 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Setting07Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useChatContext } from "./chat-provider";
 import type { StoredConversation, StoredMessage } from "@reverbia/sdk/react";
 
@@ -18,6 +26,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     projects,
     getProjectConversations,
     updateProjectName,
+    deleteProject,
     setConversationId,
     getMessages,
     refreshProjects,
@@ -101,7 +110,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   return (
     <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
       <div className="mx-auto w-full max-w-2xl">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center gap-2">
           <input
             ref={titleInputRef}
             type="text"
@@ -114,13 +123,30 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
               }
             }}
             placeholder="Project Name"
-            className="text-2xl font-semibold bg-transparent border-none outline-none w-full"
+            className="text-2xl font-semibold bg-transparent border-none outline-none flex-1"
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+                <HugeiconsIcon icon={Setting07Icon} size={20} className="text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={async () => {
+                  if (confirm("Are you sure you want to delete this project? Conversations will not be deleted.")) {
+                    await deleteProject(projectId);
+                    router.push("/");
+                  }
+                }}
+                className="text-destructive focus:text-destructive"
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={16} className="text-destructive" />
+                Delete project
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-
-        <h2 className="text-lg font-medium text-muted-foreground mb-4">
-          Conversations
-        </h2>
 
         <div className="rounded-xl bg-white dark:bg-card p-1 mb-6">
           {isLoading ? (

@@ -68,6 +68,7 @@ type ChatState = {
   projectConversationsVersion: number;
   createProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
   updateProjectName: (projectId: string, name: string) => Promise<boolean>;
+  deleteProject: (projectId: string) => Promise<boolean>;
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
   updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
   refreshProjects: () => Promise<void>;
@@ -415,6 +416,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     inboxProjectId,
     createProject,
     updateProjectName,
+    deleteProject,
     getProjectConversations,
     updateConversationProject,
     refreshProjects,
@@ -564,6 +566,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       projectConversationsVersion,
       createProject,
       updateProjectName,
+      deleteProject,
       getProjectConversations,
       updateConversationProject,
       refreshProjects,
@@ -578,6 +581,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       projectConversationsVersion,
       createProject,
       updateProjectName,
+      deleteProject,
       getProjectConversations,
       updateConversationProject,
       refreshProjects,
