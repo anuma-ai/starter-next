@@ -501,6 +501,30 @@ export function AppSidebar({
     setExpandedProjects(newExpanded);
   };
 
+  // Load conversations for all projects on initial mount to show chevrons correctly
+  useEffect(() => {
+    const loadAllProjectConversations = async () => {
+      if (!projectsReady || orderedProjects.length === 0) return;
+
+      const updates: Record<string, ConversationWithTitle[]> = {};
+      for (const project of orderedProjects) {
+        // Skip if already loaded
+        if (projectConversations[project.projectId]) continue;
+
+        const convs = await getProjectConversations(project.projectId);
+        const enrichedConvs = await enrichConversationsWithTitles(convs);
+        updates[project.projectId] = enrichedConvs;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        setProjectConversations(prev => ({ ...prev, ...updates }));
+      }
+    };
+
+    loadAllProjectConversations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectsReady, orderedProjects.length]);
+
   // Refresh expanded project conversations when project conversations version changes
   // Also auto-expand the project when a new conversation is added to it
   useEffect(() => {
@@ -508,11 +532,7 @@ export function AppSidebar({
       // Check if this is initial load before any async work
       const isInitialLoad = !hasInitialConversationsLoaded.current;
 
-      // Auto-expand the currently selected project when a conversation is added
-      if (selectedProjectId && projectConversationsVersion > 0 && !expandedProjects.has(selectedProjectId)) {
-        setExpandedProjects(prev => new Set([...prev, selectedProjectId]));
-      }
-      // Also auto-expand inbox project when a conversation is added (for conversations created from chat)
+      // Auto-expand inbox project when a conversation is added (for conversations created from chat)
       if (inboxProjectId && projectConversationsVersion > 0 && !expandedProjects.has(inboxProjectId)) {
         setExpandedProjects(prev => new Set([...prev, inboxProjectId]));
       }
@@ -523,9 +543,6 @@ export function AppSidebar({
 
       // Determine which projects to refresh (including newly expanded projects)
       const projectsToRefresh = new Set(expandedProjects);
-      if (selectedProjectId && projectConversationsVersion > 0) {
-        projectsToRefresh.add(selectedProjectId);
-      }
       if (inboxProjectId && projectConversationsVersion > 0) {
         projectsToRefresh.add(inboxProjectId);
       }
@@ -570,7 +587,7 @@ export function AppSidebar({
 
     refreshExpandedProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectConversationsVersion, getProjectConversations, inboxProjectId, selectedProjectId, lastAssignedProjectId]);
+  }, [projectConversationsVersion, getProjectConversations, inboxProjectId, lastAssignedProjectId]);
 
   // === UNIFIED DRAG HANDLERS (single DndContext for both projects and conversations) ===
   const handleDragStart = (event: DragStartEvent) => {
@@ -903,18 +920,11 @@ export function AppSidebar({
                                 editingName={editingName}
                                 hasConversations={conversations.length > 0}
                                 onSelect={() => {
-                                  // Expand on single click (if not already expanded)
-                                  if (!expandedProjects.has(project.projectId)) {
-                                    toggleProjectExpanded(project.projectId);
-                                  }
-                                  // Navigate to the project page
+                                  // Just navigate to the project page - no expand/collapse
                                   onSelectProject(project.projectId);
                                 }}
                                 onCollapse={() => {
-                                  // Collapse on double click (if expanded)
-                                  if (expandedProjects.has(project.projectId)) {
-                                    toggleProjectExpanded(project.projectId);
-                                  }
+                                  // Do nothing on double click - expand/collapse only via chevron
                                 }}
                                 onToggleExpand={() => toggleProjectExpanded(project.projectId)}
                                 onUpdateName={(name) => onUpdateProjectName(project.projectId, name)}
