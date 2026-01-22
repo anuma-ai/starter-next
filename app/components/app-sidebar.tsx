@@ -175,7 +175,7 @@ function SortableProjectItem({
               {...listeners}
             >
               <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
-              <span className="truncate">{project.name}</span>
+              <span className="truncate">{project.name || "Project"}</span>
             </SidebarMenuButton>
             <SidebarMenuAction
               showOnHover
@@ -215,7 +215,7 @@ function ProjectItemOverlay({
       <SidebarMenuItem>
         <SidebarMenuButton className="cursor-grabbing !bg-transparent hover:!bg-transparent">
           <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
-          <span className="truncate">{project.name}</span>
+          <span className="truncate">{project.name || "Project"}</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </div>
