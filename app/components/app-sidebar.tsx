@@ -18,7 +18,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
@@ -803,9 +802,6 @@ export function AppSidebar({
         <SidebarContent>
           {projectsReady && (
             <SidebarGroup>
-              <SidebarGroupLabel className="text-muted-foreground">
-                Projects
-              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {/* Unified DndContext for both projects and conversations */}

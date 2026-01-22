@@ -2,9 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/ui/button";
 import { useChatContext } from "./chat-provider";
 import type { StoredConversation, StoredMessage } from "@reverbia/sdk/react";
 
@@ -22,9 +19,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     getProjectConversations,
     updateProjectName,
     setConversationId,
-    createConversation,
     getMessages,
-    updateConversationProject,
     refreshProjects,
   } = useChatContext();
 
@@ -95,15 +90,6 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     router.push(`/c/${conversationId}`);
   };
 
-  const handleNewConversation = async () => {
-    const conv = await createConversation();
-    if (conv?.id) {
-      await updateConversationProject(conv.id, projectId);
-      await loadConversations();
-      router.push(`/c/${conv.id}`);
-    }
-  };
-
   if (!project) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
@@ -132,15 +118,9 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
           />
         </div>
 
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-muted-foreground">
-            Conversations
-          </h2>
-          <Button onClick={handleNewConversation} variant="outline" size="sm">
-            <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" />
-            New conversation
-          </Button>
-        </div>
+        <h2 className="text-lg font-medium text-muted-foreground mb-4">
+          Conversations
+        </h2>
 
         <div className="rounded-xl bg-white dark:bg-card p-1 mb-6">
           {isLoading ? (
