@@ -2,16 +2,108 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Setting07Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import { ImageIcon, CheckIcon, CpuIcon } from "lucide-react";
+import { usePrivy } from "@privy-io/react-auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  PromptInput,
+  PromptInputAttachment,
+  PromptInputAttachments,
+  PromptInputTextarea,
+  PromptInputSubmit,
+  PromptInputButton,
+  usePromptInputAttachments,
+  type PromptInputMessage,
+} from "@/components/chat/prompt-input";
+import {
+  CHAT_INPUT_PLACEHOLDER,
+  CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED,
+} from "@/lib/constants";
 import { useChatContext } from "./chat-provider";
 import type { StoredConversation, StoredMessage } from "@reverbia/sdk/react";
+
+const MODELS = [
+  {
+    id: "openai/gpt-5.2-2025-12-11",
+    name: "GPT 5.2",
+    apiType: "responses" as const,
+  },
+  {
+    id: "fireworks/accounts/fireworks/models/gpt-oss-20b",
+    name: "GPT-OSS 20B",
+    apiType: "responses" as const,
+  },
+  {
+    id: "grok/grok-4-1-fast-reasoning",
+    name: "Grok 4.1 Fast",
+    apiType: "completions" as const,
+  },
+  {
+    id: "fireworks/accounts/fireworks/models/qwen3-235b-a22b-instruct-2507",
+    name: "Anuma Private - Fast",
+    apiType: "completions" as const,
+  },
+  {
+    id: "fireworks/accounts/fireworks/models/glm-4p7",
+    name: "Anuma Private - Thinking",
+    apiType: "completions" as const,
+  },
+];
+
+type PromptMenuProps = {
+  selectedModel: string;
+  onSelectModel: (modelId: string) => void;
+};
+
+const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
+  const attachments = usePromptInputAttachments();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <PromptInputButton>
+          <MenuSquareIcon className="size-4" strokeWidth={2} />
+        </PromptInputButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="top" className="overflow-hidden">
+        <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
+          <ImageIcon className="size-4" />
+          Add photos & files
+        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <CpuIcon className="size-4" />
+            Select model
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {MODELS.map((model) => (
+              <DropdownMenuItem
+                key={model.id}
+                onClick={() => onSelectModel(model.id)}
+              >
+                {selectedModel === model.id && <CheckIcon className="size-4" />}
+                <span className={selectedModel !== model.id ? "pl-6" : ""}>
+                  {model.name}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 type ProjectDetailViewProps = {
   projectId: string;
@@ -22,7 +114,10 @@ type ConversationWithTitle = StoredConversation & { displayTitle?: string };
 
 export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   const router = useRouter();
+  const { authenticated } = usePrivy();
   const {
+    input,
+    setInput,
     projects,
     getProjectConversations,
     updateProjectName,
@@ -30,6 +125,10 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     setConversationId,
     getMessages,
     refreshProjects,
+    handleSubmit,
+    addMessageOptimistically,
+    createConversation,
+    triggerProjectConversationsRefresh,
   } = useChatContext();
 
   const [projectConversations, setProjectConversations] = useState<
@@ -37,7 +136,21 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editedName, setEditedName] = useState("");
+  const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Load saved model preference from localStorage after mount
+  useEffect(() => {
+    const saved = localStorage.getItem("chat_selectedModel");
+    if (saved && MODELS.some((m) => m.id === saved)) {
+      setSelectedModel(saved);
+    }
+  }, []);
+
+  const handleSelectModel = useCallback((modelId: string) => {
+    setSelectedModel(modelId);
+    localStorage.setItem("chat_selectedModel", modelId);
+  }, []);
 
   const project = projects.find((p) => p.projectId === projectId);
 
@@ -94,6 +207,70 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     await refreshProjects();
   };
 
+  const handlePromptSubmit = useCallback(
+    async (message: PromptInputMessage) => {
+      console.log("[ProjectDetailView] handlePromptSubmit called", { message, input });
+
+      // Use input from context if message.text is empty (controlled input case)
+      const messageText = message.text || input;
+      if (!messageText.trim()) {
+        console.log("[ProjectDetailView] No message text, aborting");
+        return;
+      }
+
+      // Clear input immediately
+      setInput("");
+
+      // Create a new conversation assigned to this project directly
+      // The projectId is passed to the SDK, so conversation is created with project already assigned
+      console.log("[ProjectDetailView] Creating conversation with projectId...", projectId);
+      const conv = await createConversation({ projectId });
+      console.log("[ProjectDetailView] Conversation created:", JSON.stringify(conv, null, 2));
+
+      if (!conv?.conversationId) {
+        console.error("[ProjectDetailView] No conversationId returned. conv:", conv, "type:", typeof conv);
+        return;
+      }
+
+      const convId = conv.conversationId;
+
+      // Add message optimistically to UI
+      addMessageOptimistically(messageText, message.files, messageText);
+
+      // Navigate to conversation FIRST - this is important because:
+      // 1. The ChatProvider/SDK state is shared across both pages
+      // 2. The chatbot.tsx page will show the optimistic message
+      // 3. handleSubmit will send to the current conversationId (set by createConversation)
+      console.log("[ProjectDetailView] Navigating to conversation...");
+      router.push(`/c/${convId}`);
+
+      // Submit the message to API
+      // The SDK's conversationId state was set by createConversation above
+      const currentModel = MODELS.find((m) => m.id === selectedModel);
+      console.log("[ProjectDetailView] Submitting message with conversationId:", convId);
+      await handleSubmit(
+        {
+          text: messageText,
+          displayText: messageText,
+          files: message.files,
+        },
+        {
+          model: selectedModel,
+          apiType: currentModel?.apiType,
+          maxOutputTokens: 32000,
+          toolChoice: "auto",
+          skipOptimisticUpdate: true,
+          conversationId: convId,
+        }
+      );
+      console.log("[ProjectDetailView] Message submitted");
+
+      // Trigger sidebar refresh to update conversation title (message is now stored)
+      triggerProjectConversationsRefresh();
+    },
+    [createConversation, projectId, handleSubmit, addMessageOptimistically, router, setInput, selectedModel, input, triggerProjectConversationsRefresh]
+  );
+
   const handleSelectConversation = (conversationId: string) => {
     setConversationId(conversationId);
     router.push(`/c/${conversationId}`);
@@ -146,6 +323,49 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+
+        <div className="mb-6">
+          <PromptInput
+            accept="image/*,application/pdf,.xlsx,.xls,.docx,.zip,application/zip"
+            multiple
+            onSubmit={handlePromptSubmit}
+            className="[&_[data-slot=input-group]]:bg-white [&_[data-slot=input-group]]:dark:bg-input/30"
+          >
+            <div
+              data-align="block-end"
+              className="order-first w-full min-w-0 max-w-full overflow-hidden"
+            >
+              <PromptInputAttachments>
+                {(attachment) => (
+                  <PromptInputAttachment
+                    key={attachment.id}
+                    data={attachment}
+                  />
+                )}
+              </PromptInputAttachments>
+            </div>
+            <div className="flex w-full min-w-0 items-center gap-1 px-3 py-2">
+              <PromptMenu
+                selectedModel={selectedModel}
+                onSelectModel={handleSelectModel}
+              />
+              <PromptInputTextarea
+                disabled={!authenticated}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={
+                  authenticated
+                    ? CHAT_INPUT_PLACEHOLDER
+                    : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
+                }
+                value={input}
+                className="flex-1 px-2"
+              />
+              <PromptInputSubmit
+                disabled={!input || !authenticated}
+              />
+            </div>
+          </PromptInput>
         </div>
 
         <div className="rounded-xl bg-white dark:bg-card p-1 mb-6">

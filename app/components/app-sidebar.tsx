@@ -70,6 +70,7 @@ type AppSidebarProps = {
   projectsReady: boolean;
   projectConversationsVersion: number;
   selectedProjectId: string | null;
+  lastAssignedProjectId: string | null;
   inboxProjectId: string | null;
   onSelectProject: (projectId: string) => void;
   onCreateProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
@@ -353,6 +354,7 @@ export function AppSidebar({
   projectsReady,
   projectConversationsVersion,
   selectedProjectId,
+  lastAssignedProjectId,
   inboxProjectId,
   onSelectProject,
   onCreateProject,
@@ -500,21 +502,36 @@ export function AppSidebar({
   };
 
   // Refresh expanded project conversations when project conversations version changes
-  // Also auto-expand the inbox project when a new conversation is added to it
+  // Also auto-expand the project when a new conversation is added to it
   useEffect(() => {
     const refreshExpandedProjects = async () => {
       // Check if this is initial load before any async work
       const isInitialLoad = !hasInitialConversationsLoaded.current;
 
-      // Auto-expand inbox project when a conversation is added (version > 0 means assignment happened)
+      // Auto-expand the currently selected project when a conversation is added
+      if (selectedProjectId && projectConversationsVersion > 0 && !expandedProjects.has(selectedProjectId)) {
+        setExpandedProjects(prev => new Set([...prev, selectedProjectId]));
+      }
+      // Also auto-expand inbox project when a conversation is added (for conversations created from chat)
       if (inboxProjectId && projectConversationsVersion > 0 && !expandedProjects.has(inboxProjectId)) {
         setExpandedProjects(prev => new Set([...prev, inboxProjectId]));
       }
+      // Auto-expand the last assigned project (for conversations created from project page then navigated away)
+      if (lastAssignedProjectId && projectConversationsVersion > 0 && !expandedProjects.has(lastAssignedProjectId)) {
+        setExpandedProjects(prev => new Set([...prev, lastAssignedProjectId]));
+      }
 
-      // Determine which projects to refresh (including newly expanded inbox)
+      // Determine which projects to refresh (including newly expanded projects)
       const projectsToRefresh = new Set(expandedProjects);
+      if (selectedProjectId && projectConversationsVersion > 0) {
+        projectsToRefresh.add(selectedProjectId);
+      }
       if (inboxProjectId && projectConversationsVersion > 0) {
         projectsToRefresh.add(inboxProjectId);
+      }
+      // Include last assigned project in refresh (even after navigating away from project page)
+      if (lastAssignedProjectId && projectConversationsVersion > 0) {
+        projectsToRefresh.add(lastAssignedProjectId);
       }
 
       if (projectsToRefresh.size === 0) {
@@ -553,7 +570,7 @@ export function AppSidebar({
 
     refreshExpandedProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectConversationsVersion, getProjectConversations, inboxProjectId]);
+  }, [projectConversationsVersion, getProjectConversations, inboxProjectId, selectedProjectId, lastAssignedProjectId]);
 
   // === UNIFIED DRAG HANDLERS (single DndContext for both projects and conversations) ===
   const handleDragStart = (event: DragStartEvent) => {

@@ -55,16 +55,18 @@ type ChatState = {
   subscribeToThinking: (callback: (text: string) => void) => () => void;
   conversationId: string | null;
   conversations: any[];
-  createConversation: () => Promise<any>;
+  createConversation: (opts?: { projectId?: string }) => Promise<any>;
   setConversationId: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
   getMessages: (conversationId: string) => Promise<any[]>;
+  getConversation: (id: string) => Promise<any>;
   // Projects
   projects: StoredProject[];
   projectsLoading: boolean;
   projectsReady: boolean;
   inboxProjectId: string | null;
+  lastAssignedProjectId: string | null;
   projectConversationsVersion: number;
   createProject: (opts?: CreateProjectOptions) => Promise<StoredProject>;
   updateProjectName: (projectId: string, name: string) => Promise<boolean>;
@@ -72,6 +74,9 @@ type ChatState = {
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
   updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
   refreshProjects: () => Promise<void>;
+  markConversationAssigned: (conversationId: string) => void;
+  setPendingProjectAssignment: (projectId: string | null) => void;
+  triggerProjectConversationsRefresh: () => void;
 };
 
 const ChatContext = createContext<ChatState | null>(null);
@@ -422,46 +427,84 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     refreshProjects,
   } = useAppProjects();
 
-  // Track which conversations have been assigned to inbox to avoid duplicate assignments
-  const assignedToInboxRef = useRef<Set<string>>(new Set());
+  // Track which conversations have been assigned to a project to avoid duplicate/overwriting assignments
+  const assignedToProjectRef = useRef<Set<string>>(new Set());
+  // Pending project assignment - set this BEFORE creating a conversation to assign it to a specific project
+  const pendingProjectAssignmentRef = useRef<string | null>(null);
+  // Track the last project that had a conversation assigned (for sidebar refresh)
+  const [lastAssignedProjectId, setLastAssignedProjectId] = useState<string | null>(null);
   // Version counter to trigger sidebar refresh when project conversations change
   const [projectConversationsVersion, setProjectConversationsVersion] = useState(0);
 
-  // Automatically assign new conversations to the Inbox project
+  // Mark a conversation as already assigned to a project (prevents auto-inbox assignment)
+  const markConversationAssigned = useCallback((conversationId: string) => {
+    assignedToProjectRef.current.add(conversationId);
+  }, []);
+
+  // Set pending project assignment - call this BEFORE createConversation to assign to a specific project
+  const setPendingProjectAssignment = useCallback((projectId: string | null) => {
+    pendingProjectAssignmentRef.current = projectId;
+  }, []);
+
+  // Trigger a refresh of project conversations in the sidebar
+  const triggerProjectConversationsRefresh = useCallback(() => {
+    setProjectConversationsVersion(v => v + 1);
+  }, []);
+
+  // Automatically assign new conversations to inbox (only if not already assigned)
   useEffect(() => {
     const conversationId = baseChatState.conversationId;
 
-    // Skip if no conversation, no inbox project, or already assigned
-    if (!conversationId || !inboxProjectId || assignedToInboxRef.current.has(conversationId)) {
+    // Skip if no conversation or already processed
+    if (!conversationId || assignedToProjectRef.current.has(conversationId)) {
       return;
     }
 
-    // Check if this is a new conversation (not in the existing conversations list)
-    const existingConversation = baseChatState.conversations.find(
-      (c: any) => c.id === conversationId || c.conversationId === conversationId
-    );
+    // Check the actual conversation data to see if it already has a projectId
+    // This handles conversations created with projectId option (from project page)
+    const checkAndAssign = async () => {
+      // Mark as processed immediately to prevent duplicate processing
+      assignedToProjectRef.current.add(conversationId);
 
-    // Only assign to inbox if this is a new conversation
-    // We detect this by checking if the conversation exists but has no project assigned yet
-    // For truly new conversations, they won't exist in the list yet
-    if (!existingConversation) {
-      // Mark as assigned immediately to prevent race conditions
-      assignedToInboxRef.current.add(conversationId);
+      try {
+        // Fetch the conversation to check if it already has a projectId
+        const conversation = await baseChatState.getConversation(conversationId);
 
-      // Assign to inbox project
-      updateConversationProject(conversationId, inboxProjectId).then((success) => {
+        // If conversation already has a projectId, it was created from a project page
+        // Just trigger a refresh and don't overwrite the assignment
+        if (conversation?.projectId) {
+          console.log(`[ChatProvider] Conversation ${conversationId} already assigned to project ${conversation.projectId}`);
+          setLastAssignedProjectId(conversation.projectId);
+          setProjectConversationsVersion(v => v + 1);
+          return;
+        }
+
+        // Conversation has no projectId, assign to inbox
+        const targetProjectId = inboxProjectId;
+        if (!targetProjectId) {
+          console.log(`[ChatProvider] No inbox project for conversation ${conversationId}`);
+          return;
+        }
+
+        const success = await updateConversationProject(conversationId, targetProjectId);
         if (success) {
-          console.log(`[ChatProvider] Assigned conversation ${conversationId} to Inbox project ${inboxProjectId}`);
-          // Increment version to trigger sidebar refresh
+          console.log(`[ChatProvider] Assigned conversation ${conversationId} to inbox ${targetProjectId}`);
+          setLastAssignedProjectId(targetProjectId);
           setProjectConversationsVersion(v => v + 1);
         } else {
           // Remove from set if assignment failed so it can be retried
-          assignedToInboxRef.current.delete(conversationId);
-          console.error(`[ChatProvider] Failed to assign conversation ${conversationId} to Inbox`);
+          assignedToProjectRef.current.delete(conversationId);
+          console.error(`[ChatProvider] Failed to assign conversation ${conversationId} to inbox`);
         }
-      });
-    }
-  }, [baseChatState.conversationId, baseChatState.conversations, inboxProjectId, updateConversationProject]);
+      } catch (error) {
+        console.error(`[ChatProvider] Error checking/assigning conversation ${conversationId}:`, error);
+        // Remove from set so it can be retried
+        assignedToProjectRef.current.delete(conversationId);
+      }
+    };
+
+    checkAndAssign();
+  }, [baseChatState.conversationId, baseChatState.getConversation, inboxProjectId, updateConversationProject]);
 
   // Reload current conversation once when encryption becomes ready on page load
   // This ensures SDK can resolve file placeholders to blob URLs
@@ -563,6 +606,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       projectsLoading,
       projectsReady,
       inboxProjectId,
+      lastAssignedProjectId,
       projectConversationsVersion,
       createProject,
       updateProjectName,
@@ -570,6 +614,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       getProjectConversations,
       updateConversationProject,
       refreshProjects,
+      markConversationAssigned,
+      setPendingProjectAssignment,
+      triggerProjectConversationsRefresh,
     }),
     [
       baseChatState,
@@ -578,6 +625,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       projectsLoading,
       projectsReady,
       inboxProjectId,
+      lastAssignedProjectId,
       projectConversationsVersion,
       createProject,
       updateProjectName,
@@ -585,6 +633,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       getProjectConversations,
       updateConversationProject,
       refreshProjects,
+      markConversationAssigned,
+      setPendingProjectAssignment,
+      triggerProjectConversationsRefresh,
     ]
   );
 

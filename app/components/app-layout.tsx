@@ -73,6 +73,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     projectsReady,
     projectConversationsVersion,
     inboxProjectId,
+    lastAssignedProjectId,
     createProject,
     updateProjectName,
     getProjectConversations,
@@ -163,6 +164,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           projectsReady={projectsReady}
           projectConversationsVersion={projectConversationsVersion}
           selectedProjectId={selectedProjectId}
+          lastAssignedProjectId={lastAssignedProjectId}
           inboxProjectId={inboxProjectId}
           onSelectProject={handleSelectProject}
           onCreateProject={createProject}
