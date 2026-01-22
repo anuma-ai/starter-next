@@ -530,15 +530,22 @@ export function useAppChatStorage({
   //#endregion sendMessage
 
   //#region conversationManagement
-  const handleNewConversation = useCallback(async (opts?: { projectId?: string }) => {
+  const handleNewConversation = useCallback(async (opts?: { projectId?: string; createImmediately?: boolean }) => {
     // Reset UI state
     setMessages([]);
     loadedConversationIdRef.current = null;
-    // Create a new conversation via SDK and return it
-    // Pass through projectId if provided to assign conversation to project on creation
-    const conv = await createConversation(opts);
-    return conv;
-  }, [createConversation]);
+
+    // If createImmediately is true (e.g., from project page), create conversation now
+    // Otherwise, just reset state - conversation will be created on first message via autoCreateConversation
+    if (opts?.createImmediately || opts?.projectId) {
+      const conv = await createConversation(opts);
+      return conv;
+    }
+
+    // Clear conversation ID so SDK will auto-create on first message
+    setConversationId(null as any);
+    return null;
+  }, [createConversation, setConversationId]);
 
   const handleSwitchConversation = useCallback(
     async (id: string) => {

@@ -83,7 +83,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const handleNewConversation = useCallback(async () => {
     // Reset to empty state and navigate to root
-    // Conversation ID will be auto-created when first message is sent
+    // Don't create conversation yet - it will be auto-created when first message is sent
     await createConversation();
     router.push("/");
   }, [createConversation, router]);

@@ -55,7 +55,7 @@ type ChatState = {
   subscribeToThinking: (callback: (text: string) => void) => () => void;
   conversationId: string | null;
   conversations: any[];
-  createConversation: (opts?: { projectId?: string }) => Promise<any>;
+  createConversation: (opts?: { projectId?: string; createImmediately?: boolean }) => Promise<any>;
   setConversationId: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
