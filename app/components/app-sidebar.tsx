@@ -187,26 +187,26 @@ function SortableProjectItem({
             {...attributes}
             {...listeners}
           >
-            <span className="relative w-4 h-4 flex items-center justify-center">
+            <span
+              onClick={(e) => {
+                if (showChevron) {
+                  e.stopPropagation();
+                  onToggleExpand();
+                }
+              }}
+              className={`relative w-4 h-4 flex items-center justify-center -ml-2 -my-2 pl-2 py-2 ${showChevron ? 'cursor-pointer' : ''}`}
+              role={showChevron ? "button" : undefined}
+            >
               <HugeiconsIcon
                 icon={FolderLibraryIcon}
                 size={16}
                 className={`absolute transition-opacity duration-150 ${showChevron ? 'opacity-0' : 'opacity-100'}`}
               />
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleExpand();
-                }}
-                className={`absolute flex items-center justify-center cursor-pointer transition-opacity duration-150 ${showChevron ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                role="button"
-              >
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  size={16}
-                  className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                />
-              </span>
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={16}
+                className={`absolute transition-opacity duration-150 ${showChevron ? 'opacity-100' : 'opacity-0'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              />
             </span>
             <span className="truncate">{project.name || "Project"}</span>
           </SidebarMenuButton>
