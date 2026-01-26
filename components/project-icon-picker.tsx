@@ -42,8 +42,9 @@ const svgContext = require.context(
 // Cache for loaded SVG data URLs
 const svgUrlCache = new Map<string, string>();
 
-// Apply color and optional stroke width to SVG content
-function applyColor(svg: string, color: string, strokeWidth?: number): string {
+// Apply color, stroke width, and optional scale to SVG content
+// scale > 1 crops the viewBox padding to make the icon appear larger
+function applyColor(svg: string, color: string, strokeWidth?: number, scale?: number): string {
   // Step 1: Add fill="#000" to shape elements that don't have any fill attribute
   // This makes the default black fill explicit so we can replace it in step 3
   let result = svg.replace(
@@ -85,19 +86,31 @@ function applyColor(svg: string, color: string, strokeWidth?: number): string {
     result = result.replace(/stroke-width="[^"]+"/g, `stroke-width="${strokeWidth}"`);
   }
 
+  // Step 5: Optionally scale by cropping viewBox (removes padding to make icon larger)
+  // Openmoji icons have viewBox="0 0 72 72" with ~10% padding on each side
+  if (scale !== undefined && scale > 1) {
+    const originalSize = 72;
+    const newSize = originalSize / scale;
+    const offset = (originalSize - newSize) / 2;
+    result = result.replace(
+      /viewBox="0 0 72 72"/,
+      `viewBox="${offset} ${offset} ${newSize} ${newSize}"`
+    );
+  }
+
   return result;
 }
 
-// Load an SVG and convert to data URL with custom color and stroke width
-function getSvgDataUrl(hexcode: string, color: string = "currentColor", strokeWidth?: number): string | null {
-  const cacheKey = `${hexcode}-${color}-${strokeWidth ?? "default"}`;
+// Load an SVG and convert to data URL with custom color, stroke width, and scale
+function getSvgDataUrl(hexcode: string, color: string = "currentColor", strokeWidth?: number, scale?: number): string | null {
+  const cacheKey = `${hexcode}-${color}-${strokeWidth ?? "default"}-${scale ?? "default"}`;
   if (svgUrlCache.has(cacheKey)) {
     return svgUrlCache.get(cacheKey)!;
   }
 
   try {
     const svgContent = svgContext(`./${hexcode}.svg`) as string;
-    const coloredSvg = applyColor(svgContent, color, strokeWidth);
+    const coloredSvg = applyColor(svgContent, color, strokeWidth, scale);
 
     const encoded = encodeURIComponent(coloredSvg)
       .replace(/'/g, "%27")
@@ -116,19 +129,21 @@ export function ProjectIcon({
   size = 24,
   color,
   strokeWidth,
+  scale,
   className = "",
 }: {
   hexcode: string;
   size?: number;
   color?: string;
   strokeWidth?: number;
+  scale?: number; // > 1 crops padding to make icon fill more space
   className?: string;
 }) {
   // Use provided color, or default based on theme
   const effectiveColor = color || "#000";
   const dataUrl = useMemo(
-    () => getSvgDataUrl(hexcode, effectiveColor, strokeWidth),
-    [hexcode, effectiveColor, strokeWidth]
+    () => getSvgDataUrl(hexcode, effectiveColor, strokeWidth, scale),
+    [hexcode, effectiveColor, strokeWidth, scale]
   );
 
   if (!dataUrl) {
@@ -164,11 +179,13 @@ export function ThemedProjectIcon({
   hexcode,
   size = 24,
   strokeWidth,
+  scale,
   className = "",
 }: {
   hexcode: string;
   size?: number;
   strokeWidth?: number;
+  scale?: number;
   className?: string;
 }) {
   // Initialize with current theme state to avoid flash
@@ -191,6 +208,7 @@ export function ThemedProjectIcon({
       hexcode={hexcode}
       size={size}
       strokeWidth={strokeWidth}
+      scale={scale}
       color={useWhite ? "#fff" : "#000"}
       className={className}
     />
