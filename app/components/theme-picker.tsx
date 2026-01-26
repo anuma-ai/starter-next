@@ -19,7 +19,7 @@ export function ThemePicker() {
               onClick={() => setTheme(preset)}
               className={cn(
                 "relative h-10 w-10 rounded-full border-2 transition-all cursor-pointer",
-                "hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                "hover:scale-110 focus:outline-none",
                 isSelected ? "border-foreground" : "border-transparent"
               )}
               style={{ backgroundColor: preset.background }}
