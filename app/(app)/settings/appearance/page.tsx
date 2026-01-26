@@ -5,13 +5,18 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, CheckIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ThemePicker } from "@/app/components/theme-picker";
-import { useIconTheme, useChatPattern, ICON_THEMES, type IconThemeId } from "@/lib/chat-pattern";
+import { useIconTheme, useChatPattern, getChatPatternStyle, getPatternStrokeColor, ICON_THEMES, type IconThemeId } from "@/lib/chat-pattern";
+import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 
 export default function AppearancePage() {
   const router = useRouter();
   const { iconTheme, setIconTheme } = useIconTheme();
+  const { currentThemeId } = useTheme();
   const patternStyle = useChatPattern();
+
+  // Get the stroke color for pattern previews based on current theme
+  const previewStrokeColor = getPatternStrokeColor(currentThemeId);
 
   return (
     <div
@@ -51,23 +56,26 @@ export default function AppearancePage() {
                   Choose a background pattern for chats
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {(Object.entries(ICON_THEMES) as [IconThemeId, typeof ICON_THEMES[IconThemeId]][]).map(
                   ([id, theme]) => {
                     const isSelected = iconTheme === id;
+                    const previewStyle = getChatPatternStyle(previewStrokeColor, id);
                     return (
                       <button
                         key={id}
                         onClick={() => setIconTheme(id)}
                         className={cn(
-                          "px-3 py-1.5 rounded-full text-sm transition-all",
-                          "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                          isSelected
-                            ? "bg-foreground text-background"
-                            : "bg-muted/50 text-foreground"
+                          "relative flex flex-col items-center gap-1.5 p-1 rounded-lg transition-all",
+                          "hover:ring-2 hover:ring-ring focus:outline-none focus:ring-2 focus:ring-ring",
+                          isSelected && "ring-2 ring-foreground"
                         )}
                       >
-                        <span className="flex items-center gap-1.5">
+                        <div
+                          className="w-full aspect-[4/3] rounded-md bg-background"
+                          style={previewStyle}
+                        />
+                        <span className="text-xs font-medium flex items-center gap-1">
                           {isSelected && <CheckIcon className="size-3" />}
                           {theme.name}
                         </span>

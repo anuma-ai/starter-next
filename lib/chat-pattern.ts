@@ -12,11 +12,20 @@ export const ICON_THEMES = {
   nature: {
     name: "Nature",
     group: "animals-nature",
+    subgroups: ["plant-flower", "plant-other"],
     description: "Plants, flowers, and weather",
   },
   animals: {
     name: "Animals",
     group: "animals-nature",
+    subgroups: [
+      "animal-mammal",
+      "animal-bird",
+      "animal-amphibian",
+      "animal-reptile",
+      "animal-marine",
+      "animal-bug",
+    ],
     description: "Cute animal faces and creatures",
   },
   travel: {
@@ -51,19 +60,29 @@ export type IconThemeId = keyof typeof ICON_THEMES;
 // Filter metadata to get valid hexcodes (simple codes without modifiers)
 function getIconsForTheme(themeId: IconThemeId, limit: number = 20): string[] {
   const theme = ICON_THEMES[themeId];
+  const themeSubgroups: readonly string[] | undefined =
+    "subgroups" in theme ? theme.subgroups : undefined;
 
   // Filter icons by group, excluding compound emojis (with dashes) and skin tone variants
   const icons = (openmojiData as Array<{
     hexcode: string;
     group: string;
+    subgroups: string;
     skintone: string;
   }>)
-    .filter(
-      (emoji) =>
-        emoji.group === theme.group &&
-        !emoji.hexcode.includes("-") && // Skip compound emojis
-        !emoji.skintone // Skip skin tone variants
-    )
+    .filter((emoji) => {
+      // Must match group
+      if (emoji.group !== theme.group) return false;
+      // Skip compound emojis
+      if (emoji.hexcode.includes("-")) return false;
+      // Skip skin tone variants
+      if (emoji.skintone) return false;
+      // If theme has subgroups filter, must match one of them
+      if (themeSubgroups && !themeSubgroups.includes(emoji.subgroups)) {
+        return false;
+      }
+      return true;
+    })
     .map((emoji) => emoji.hexcode);
 
   // Return a subset, selecting evenly distributed icons
@@ -77,16 +96,138 @@ function getIconsForTheme(themeId: IconThemeId, limit: number = 20): string[] {
 
 // Dynamically import SVG files using webpack's require.context
 // This creates a bundle with all black SVGs at build time
+// Regex matches hexcode filenames (uppercase A-F and digits 0-9)
 const svgContext = require.context(
   "openmoji/black/svg",
   false,
-  /^\.\/[A-F0-9]+\.svg$/
+  /^\.\/[A-Fa-f0-9]+\.svg$/
 );
 
 // Cache for loaded SVG content (stores raw extracted content, not color-normalized)
 // Cache is cleared on each module load to ensure fresh data
 const svgCache = new Map<string, string>();
 svgCache.clear(); // Ensure clean slate
+
+// Debug: expose function to test SVG loading (call from browser console)
+if (typeof window !== "undefined") {
+  const debugSvgLoad = (hexcode: string) => {
+    try {
+      const content = svgContext(`./${hexcode}.svg`);
+      console.log(`[debug] ${hexcode} type:`, typeof content);
+      console.log(`[debug] ${hexcode} length:`, typeof content === "string" ? content.length : "N/A");
+      console.log(`[debug] ${hexcode} first 100:`, typeof content === "string" ? content.substring(0, 100) : content);
+      return content;
+    } catch (e) {
+      console.error(`[debug] ${hexcode} error:`, e);
+      return null;
+    }
+  };
+  const debugThemeIcons = (themeId: string) => {
+    const hexcodes = getIconsForTheme(themeId as IconThemeId);
+    console.log(`[debug] ${themeId} hexcodes:`, hexcodes);
+    hexcodes.slice(0, 3).forEach(hex => debugSvgLoad(hex));
+  };
+  const debugPatternIcons = (themeId: string) => {
+    const icons = getPatternIcons(themeId as IconThemeId);
+    console.log(`[debug] ${themeId} patternIcons count:`, icons.length);
+    icons.slice(0, 3).forEach(icon => {
+      console.log(`[debug] ${icon.name} svg length:`, icon.svg.length);
+      console.log(`[debug] ${icon.name} svg first 100:`, icon.svg.substring(0, 100));
+    });
+  };
+  const debugFullPattern = (themeId: string) => {
+    const strokeColor = "#404040"; // dark theme color
+    const svg = generateChatPatternSVG(strokeColor, themeId as IconThemeId);
+    console.log(`[debug] ${themeId} full SVG length:`, svg.length);
+    console.log(`[debug] ${themeId} SVG start:`, svg.substring(0, 200));
+    console.log(`[debug] ${themeId} SVG contains icons:`, svg.includes("<g transform"));
+
+    const dataUrl = generateChatPatternDataURL(strokeColor, themeId as IconThemeId);
+    console.log(`[debug] ${themeId} dataURL length:`, dataUrl.length);
+    console.log(`[debug] ${themeId} dataURL start:`, dataUrl.substring(0, 100));
+  };
+
+  // Debug: test rendering SVG directly in DOM
+  const debugRenderPattern = (themeId: string) => {
+    const strokeColor = "#404040";
+    const svg = generateChatPatternSVG(strokeColor, themeId as IconThemeId);
+    const dataUrl = generateChatPatternDataURL(strokeColor, themeId as IconThemeId);
+
+    // Create a test div
+    const testDiv = document.createElement("div");
+    testDiv.id = `debug-pattern-${themeId}`;
+    testDiv.style.cssText = `
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      width: 300px;
+      height: 300px;
+      border: 2px solid red;
+      background-color: #f0f0f0;
+      background-image: url("${dataUrl}");
+      background-repeat: repeat;
+      background-size: 150px 150px;
+      z-index: 99999;
+    `;
+    document.body.appendChild(testDiv);
+
+    // Also create an img element to test
+    const img = document.createElement("img");
+    img.id = `debug-img-${themeId}`;
+    img.src = dataUrl;
+    img.style.cssText = `
+      position: fixed;
+      top: 10px;
+      left: 320px;
+      width: 300px;
+      height: 300px;
+      border: 2px solid blue;
+      z-index: 99999;
+    `;
+    img.onerror = () => console.error(`[debug] ${themeId} img failed to load`);
+    img.onload = () => console.log(`[debug] ${themeId} img loaded successfully`);
+    document.body.appendChild(img);
+
+    console.log(`[debug] ${themeId} test elements created. Remove with: document.getElementById('debug-pattern-${themeId}').remove(); document.getElementById('debug-img-${themeId}').remove();`);
+    return { svg, dataUrl };
+  };
+
+  // Debug: compare raw SVG content between two themes
+  const debugCompareThemes = (theme1: string, theme2: string) => {
+    const hexcodes1 = getIconsForTheme(theme1 as IconThemeId);
+    const hexcodes2 = getIconsForTheme(theme2 as IconThemeId);
+
+    console.log(`[debug] ${theme1} first hexcode:`, hexcodes1[0]);
+    console.log(`[debug] ${theme2} first hexcode:`, hexcodes2[0]);
+
+    // Get raw SVG content
+    const raw1 = svgContext(`./${hexcodes1[0]}.svg`) as string;
+    const raw2 = svgContext(`./${hexcodes2[0]}.svg`) as string;
+
+    console.log(`[debug] ${theme1} raw length:`, raw1.length);
+    console.log(`[debug] ${theme2} raw length:`, raw2.length);
+
+    // Check if they have <g id="line">
+    console.log(`[debug] ${theme1} has <g id="line">:`, raw1.includes('<g id="line"'));
+    console.log(`[debug] ${theme2} has <g id="line">:`, raw2.includes('<g id="line"'));
+
+    // Show the structure
+    console.log(`[debug] ${theme1} raw SVG (first 500):`, raw1.substring(0, 500));
+    console.log(`[debug] ${theme2} raw SVG (first 500):`, raw2.substring(0, 500));
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).debugSvgLoad = debugSvgLoad;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).debugThemeIcons = debugThemeIcons;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).debugPatternIcons = debugPatternIcons;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).debugFullPattern = debugFullPattern;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).debugRenderPattern = debugRenderPattern;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).debugCompareThemes = debugCompareThemes;
+}
 
 // Load an SVG by hexcode (returns raw extracted content without color normalization)
 function loadSvg(hexcode: string): string | null {
@@ -108,9 +249,40 @@ function loadSvg(hexcode: string): string | null {
 // Returns raw content - color normalization is done later with actual color value
 function extractSvgContent(svgString: string): string {
   // Find the <g id="line"> group which contains the outline paths
-  const lineMatch = svgString.match(/<g id="line"[^>]*>([\s\S]*?)<\/g>/);
-  if (lineMatch) {
-    return lineMatch[1];
+  // We need to handle nested <g> elements properly by counting open/close tags
+  const lineStartMatch = svgString.match(/<g id="line"[^>]*>/);
+  if (lineStartMatch) {
+    const startIndex = lineStartMatch.index! + lineStartMatch[0].length;
+    let depth = 1;
+    let endIndex = startIndex;
+
+    // Walk through the string, tracking nested <g> depth
+    for (let i = startIndex; i < svgString.length; i++) {
+      // Check for opening <g> tag
+      if (svgString.slice(i, i + 2) === "<g") {
+        const tagEnd = svgString.indexOf(">", i);
+        if (tagEnd !== -1) {
+          // Check if it's a self-closing tag <g ... />
+          if (svgString[tagEnd - 1] !== "/") {
+            depth++;
+          }
+          i = tagEnd;
+        }
+      }
+      // Check for closing </g> tag
+      else if (svgString.slice(i, i + 4) === "</g>") {
+        depth--;
+        if (depth === 0) {
+          endIndex = i;
+          break;
+        }
+        i += 3; // Skip past </g>
+      }
+    }
+
+    if (depth === 0) {
+      return svgString.slice(startIndex, endIndex);
+    }
   }
 
   // Fallback: extract all path/polygon/circle/line elements
