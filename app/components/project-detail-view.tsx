@@ -278,14 +278,14 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
 
   if (!project) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
+      <div className="flex flex-1 flex-col items-center justify-center p-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
         <p className="text-muted-foreground">Project not found</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
+    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-6 flex items-center gap-2">
           <input

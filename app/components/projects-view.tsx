@@ -41,7 +41,7 @@ export function ProjectsView() {
   };
 
   return (
-    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
+    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
       <div className="mx-auto w-full max-w-2xl">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">Projects</h1>
