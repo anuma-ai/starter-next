@@ -589,7 +589,12 @@ export function useChatPattern(): React.CSSProperties {
   }, []);
 
   const strokeColor = getPatternStrokeColor(colorThemeId);
-  return getChatPatternStyle(strokeColor, iconTheme);
+
+  // Memoize the pattern style to prevent expensive SVG regeneration on every render
+  return React.useMemo(
+    () => getChatPatternStyle(strokeColor, iconTheme),
+    [strokeColor, iconTheme]
+  );
 }
 
 // Hook to manage icon theme selection
@@ -661,5 +666,10 @@ export function useChatPatternWithProject(
     (projectIconTheme as IconThemeId) || globalIconTheme;
 
   const strokeColor = getPatternStrokeColor(effectiveColorTheme);
-  return getChatPatternStyle(strokeColor, effectiveIconTheme);
+
+  // Memoize the pattern style to prevent expensive SVG regeneration on every render
+  return React.useMemo(
+    () => getChatPatternStyle(strokeColor, effectiveIconTheme),
+    [strokeColor, effectiveIconTheme]
+  );
 }

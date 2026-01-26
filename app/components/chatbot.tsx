@@ -218,11 +218,13 @@ const ChatBotDemo = () => {
 
   // Keep the last valid pattern during transitions to prevent flickering
   // This is especially important when switching between chats in the same project
-  const lastValidPatternRef = useRef<React.CSSProperties>({});
+  const lastValidPatternRef = useRef<React.CSSProperties | null>(null);
   if (isSettingsReady) {
     lastValidPatternRef.current = computedPatternStyle;
   }
-  const patternStyle = lastValidPatternRef.current;
+  // Use the cached pattern if available, otherwise fall back to computed pattern
+  // This ensures we always show a pattern (computed is always valid, just might be global during transitions)
+  const patternStyle = lastValidPatternRef.current ?? computedPatternStyle;
 
   const [streamingThinking, setStreamingThinking] = useState<string>("");
   const [streamingText, setStreamingText] = useState<string>("");
