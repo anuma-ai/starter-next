@@ -161,6 +161,7 @@ function SortableProjectItem({
               <ThemedProjectIcon
                 hexcode={projectIcon}
                 size={16}
+                strokeWidth={2.5}
                 className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
               />
             ) : (
@@ -202,7 +203,7 @@ function ProjectItemOverlay({
       <SidebarMenuItem>
         <SidebarMenuButton className="cursor-grabbing !bg-transparent hover:!bg-transparent">
           {projectIcon ? (
-            <ThemedProjectIcon hexcode={projectIcon} size={16} />
+            <ThemedProjectIcon hexcode={projectIcon} size={16} strokeWidth={2.5} />
           ) : (
             <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
           )}

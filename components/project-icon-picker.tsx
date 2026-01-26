@@ -42,8 +42,8 @@ const svgContext = require.context(
 // Cache for loaded SVG data URLs
 const svgUrlCache = new Map<string, string>();
 
-// Apply color to SVG content - replaces black strokes/fills with the specified color
-function applyColor(svg: string, color: string): string {
+// Apply color and optional stroke width to SVG content
+function applyColor(svg: string, color: string, strokeWidth?: number): string {
   // Step 1: Add fill="#000" to shape elements that don't have any fill attribute
   // This makes the default black fill explicit so we can replace it in step 3
   let result = svg.replace(
@@ -80,19 +80,24 @@ function applyColor(svg: string, color: string): string {
     .replace(/fill="#000"/g, `fill="${color}"`)
     .replace(/fill="black"/g, `fill="${color}"`);
 
+  // Step 4: Optionally adjust stroke width
+  if (strokeWidth !== undefined) {
+    result = result.replace(/stroke-width="[^"]+"/g, `stroke-width="${strokeWidth}"`);
+  }
+
   return result;
 }
 
-// Load an SVG and convert to data URL with custom color
-function getSvgDataUrl(hexcode: string, color: string = "currentColor"): string | null {
-  const cacheKey = `${hexcode}-${color}`;
+// Load an SVG and convert to data URL with custom color and stroke width
+function getSvgDataUrl(hexcode: string, color: string = "currentColor", strokeWidth?: number): string | null {
+  const cacheKey = `${hexcode}-${color}-${strokeWidth ?? "default"}`;
   if (svgUrlCache.has(cacheKey)) {
     return svgUrlCache.get(cacheKey)!;
   }
 
   try {
     const svgContent = svgContext(`./${hexcode}.svg`) as string;
-    const coloredSvg = applyColor(svgContent, color);
+    const coloredSvg = applyColor(svgContent, color, strokeWidth);
 
     const encoded = encodeURIComponent(coloredSvg)
       .replace(/'/g, "%27")
@@ -110,16 +115,21 @@ export function ProjectIcon({
   hexcode,
   size = 24,
   color,
+  strokeWidth,
   className = "",
 }: {
   hexcode: string;
   size?: number;
   color?: string;
+  strokeWidth?: number;
   className?: string;
 }) {
   // Use provided color, or default based on theme
   const effectiveColor = color || "#000";
-  const dataUrl = useMemo(() => getSvgDataUrl(hexcode, effectiveColor), [hexcode, effectiveColor]);
+  const dataUrl = useMemo(
+    () => getSvgDataUrl(hexcode, effectiveColor, strokeWidth),
+    [hexcode, effectiveColor, strokeWidth]
+  );
 
   if (!dataUrl) {
     return <div className={`bg-muted rounded ${className}`} style={{ width: size, height: size }} />;
@@ -137,34 +147,41 @@ export function ProjectIcon({
   );
 }
 
+// Check if current theme needs white icons (non-light themes)
+function checkNeedsWhiteIcon(): boolean {
+  if (typeof document === "undefined") return false;
+  const root = document.documentElement;
+  // Use white icons for any non-light theme
+  return root.classList.contains("dark") ||
+    root.classList.contains("theme-dark") ||
+    root.classList.contains("theme-orange") ||
+    root.classList.contains("theme-green") ||
+    root.classList.contains("theme-blue");
+}
+
 // Icon component that auto-detects theme
 export function ThemedProjectIcon({
   hexcode,
   size = 24,
+  strokeWidth,
   className = "",
 }: {
   hexcode: string;
   size?: number;
+  strokeWidth?: number;
   className?: string;
 }) {
-  const [useWhite, setUseWhite] = useState(false);
+  // Initialize with current theme state to avoid flash
+  const [useWhite, setUseWhite] = useState(checkNeedsWhiteIcon);
 
   React.useEffect(() => {
-    // Check initial theme
-    const checkTheme = () => {
-      const root = document.documentElement;
-      // Use white icons for dark, orange, green, and blue themes
-      const needsWhite = root.classList.contains("dark") ||
-        root.classList.contains("theme-dark") ||
-        root.classList.contains("theme-orange") ||
-        root.classList.contains("theme-green") ||
-        root.classList.contains("theme-blue");
-      setUseWhite(needsWhite);
-    };
-    checkTheme();
+    // Re-check on mount (in case SSR mismatch)
+    setUseWhite(checkNeedsWhiteIcon());
 
-    // Observe class changes
-    const observer = new MutationObserver(checkTheme);
+    // Observe class changes for theme switches
+    const observer = new MutationObserver(() => {
+      setUseWhite(checkNeedsWhiteIcon());
+    });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
@@ -173,6 +190,7 @@ export function ThemedProjectIcon({
     <ProjectIcon
       hexcode={hexcode}
       size={size}
+      strokeWidth={strokeWidth}
       color={useWhite ? "#fff" : "#000"}
       className={className}
     />
