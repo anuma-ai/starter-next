@@ -32,6 +32,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import type { StoredProject, StoredConversation, CreateProjectOptions, StoredMessage } from "@reverbia/sdk/react";
+import { ThemedProjectIcon } from "@/components/project-icon-picker";
+import { getProjectTheme } from "@/lib/project-theme";
 import {
   DndContext,
   closestCenter,
@@ -88,6 +90,7 @@ function SortableProjectItem({
   onSelect,
   onToggleExpand,
   isDropTarget = false,
+  projectIcon,
   children,
 }: {
   project: StoredProject;
@@ -97,6 +100,7 @@ function SortableProjectItem({
   onSelect: () => void;
   onToggleExpand: () => void;
   isDropTarget?: boolean;
+  projectIcon?: string;
   children?: React.ReactNode;
 }) {
   const [isHovered, setIsHovered] = useState(false);
@@ -153,11 +157,19 @@ function SortableProjectItem({
             className={`relative w-4 h-4 flex items-center justify-center -ml-2 -my-2 pl-2 py-2 ${showChevron ? 'cursor-pointer' : ''}`}
             role={showChevron ? "button" : undefined}
           >
-            <HugeiconsIcon
-              icon={FolderLibraryIcon}
-              size={16}
-              className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
-            />
+            {projectIcon ? (
+              <ThemedProjectIcon
+                hexcode={projectIcon}
+                size={16}
+                className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
+              />
+            ) : (
+              <HugeiconsIcon
+                icon={FolderLibraryIcon}
+                size={16}
+                className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
+              />
+            )}
             <HugeiconsIcon
               icon={ArrowRight01Icon}
               size={16}
@@ -175,8 +187,10 @@ function SortableProjectItem({
 // Static project item for drag overlay (no sortable hooks)
 function ProjectItemOverlay({
   project,
+  projectIcon,
 }: {
   project: StoredProject;
+  projectIcon?: string;
 }) {
   return (
     <div
@@ -187,7 +201,11 @@ function ProjectItemOverlay({
     >
       <SidebarMenuItem>
         <SidebarMenuButton className="cursor-grabbing !bg-transparent hover:!bg-transparent">
-          <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
+          {projectIcon ? (
+            <ThemedProjectIcon hexcode={projectIcon} size={16} />
+          ) : (
+            <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
+          )}
           <span className="truncate">{project.name || "Project"}</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -347,6 +365,8 @@ export function AppSidebar({
   // Use a ref for the actual tracking, and state to trigger re-renders
   const hasInitialConversationsLoaded = useRef(false);
   const [skipInitialAnimations, setSkipInitialAnimations] = useState(true);
+  // Track project icons (loaded from project theme settings)
+  const [projectIcons, setProjectIcons] = useState<Record<string, string | undefined>>({});
 
   // Load saved project order from localStorage on mount
   useEffect(() => {
@@ -414,6 +434,30 @@ export function AppSidebar({
       // Ignore localStorage errors
     }
   }, [expandedProjects]);
+
+  // Load project icons from project theme settings
+  useEffect(() => {
+    const icons: Record<string, string | undefined> = {};
+    for (const project of projects) {
+      const theme = getProjectTheme(project.projectId);
+      icons[project.projectId] = theme.projectIcon;
+    }
+    setProjectIcons(icons);
+  }, [projects]);
+
+  // Listen for storage changes to update project icons
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key?.startsWith("project_theme_")) {
+        // Extract projectId from key and update icon
+        const projectId = e.key.replace("project_theme_", "");
+        const theme = e.newValue ? JSON.parse(e.newValue) : {};
+        setProjectIcons(prev => ({ ...prev, [projectId]: theme.projectIcon }));
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   // Compute ordered projects based on orderedProjectIds
   const orderedProjects = useMemo(() => {
@@ -890,6 +934,7 @@ export function AppSidebar({
                                 onSelect={() => onSelectProject(project.projectId)}
                                 onToggleExpand={() => toggleProjectExpanded(project.projectId)}
                                 isDropTarget={dropTargetProjectId === project.projectId}
+                                projectIcon={projectIcons[project.projectId]}
                               >
                                 {/* During drag: no container animation to prevent layout shifts */}
                                 {/* When not dragging: animate container expand/collapse */}
@@ -955,6 +1000,7 @@ export function AppSidebar({
                       {activeProjectId && orderedProjects.find(p => p.projectId === activeProjectId) ? (
                         <ProjectItemOverlay
                           project={orderedProjects.find(p => p.projectId === activeProjectId)!}
+                          projectIcon={projectIcons[activeProjectId]}
                         />
                       ) : draggedConversation ? (
                         <ConversationItemOverlay conversation={draggedConversation} />
