@@ -89,6 +89,25 @@ export function useProjectTheme(projectId: string | null) {
   );
 
   /**
+   * Update the project icon (openmoji hexcode)
+   * @param projectIcon - Openmoji hexcode or undefined to remove
+   */
+  const updateProjectIcon = useCallback(
+    (projectIcon: string | undefined) => {
+      if (!projectId) return;
+
+      const newSettings = { ...settings, projectIcon };
+      // Clean up undefined values
+      if (projectIcon === undefined) {
+        delete newSettings.projectIcon;
+      }
+      setSettings(newSettings);
+      setProjectTheme(projectId, newSettings);
+    },
+    [projectId, settings]
+  );
+
+  /**
    * Clear all theme overrides for this project
    */
   const clearTheme = useCallback(() => {
@@ -104,8 +123,10 @@ export function useProjectTheme(projectId: string | null) {
     loadedForProjectId,
     updateColorTheme,
     updateIconTheme,
+    updateProjectIcon,
     clearTheme,
     hasColorOverride: settings.colorTheme !== undefined,
     hasIconOverride: settings.iconTheme !== undefined,
+    hasProjectIcon: settings.projectIcon !== undefined,
   };
 }

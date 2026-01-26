@@ -4,6 +4,7 @@
 export type ProjectThemeSettings = {
   colorTheme?: string; // undefined = inherit from global settings
   iconTheme?: string; // undefined = inherit from global settings
+  projectIcon?: string; // openmoji hexcode for the project icon
 };
 
 // Storage key pattern for project themes
@@ -40,6 +41,9 @@ export function setProjectTheme(
   }
   if (settings.iconTheme !== undefined) {
     cleanSettings.iconTheme = settings.iconTheme;
+  }
+  if (settings.projectIcon !== undefined) {
+    cleanSettings.projectIcon = settings.projectIcon;
   }
 
   // If both are undefined, remove the storage entry entirely

@@ -37,6 +37,8 @@ import { ICON_THEMES, type IconThemeId, useChatPatternWithProject } from "@/lib/
 import { THEME_PRESETS } from "@/lib/theme-colors";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
+import { ThemedProjectIcon, ProjectIconPicker } from "@/components/project-icon-picker";
+import { FolderLibraryIcon } from "@hugeicons/core-free-icons";
 
 const MODELS = [
   {
@@ -149,7 +151,11 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     settings: projectTheme,
     updateColorTheme,
     updateIconTheme,
+    updateProjectIcon,
   } = useProjectTheme(projectId);
+
+  // Icon picker dialog state
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   // Apply project color theme to entire app when on this project page
   // Don't restore on cleanup - let the next page apply its own theme
@@ -320,6 +326,20 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     >
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-6 flex items-center gap-2">
+          <button
+            onClick={() => setIconPickerOpen(true)}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors shrink-0"
+            title="Change project icon"
+          >
+            {projectTheme.projectIcon ? (
+              <ThemedProjectIcon
+                hexcode={projectTheme.projectIcon}
+                size={28}
+              />
+            ) : (
+              <HugeiconsIcon icon={FolderLibraryIcon} size={28} />
+            )}
+          </button>
           <input
             ref={titleInputRef}
             type="text"
@@ -506,6 +526,13 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
           )}
         </div>
       </div>
+
+      <ProjectIconPicker
+        open={iconPickerOpen}
+        onOpenChange={setIconPickerOpen}
+        selectedIcon={projectTheme.projectIcon}
+        onSelectIcon={updateProjectIcon}
+      />
     </div>
   );
 }
