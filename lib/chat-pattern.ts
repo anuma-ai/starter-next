@@ -48,11 +48,6 @@ export const ICON_THEMES = {
     group: "objects",
     description: "Everyday items and tools",
   },
-  symbols: {
-    name: "Symbols",
-    group: "symbols",
-    description: "Hearts, stars, and shapes",
-  },
 } as const;
 
 export type IconThemeId = keyof typeof ICON_THEMES;
@@ -510,31 +505,35 @@ export function getPatternStrokeColor(themeId: string): string {
 // Storage key for icon theme preference
 const ICON_THEME_STORAGE_KEY = "chat_icon_theme";
 
+// Helper to get color theme from HTML element classes (works during SSR and CSR)
+function getThemeFromClasses(): string {
+  if (typeof document === "undefined") return "light";
+  const root = document.documentElement;
+  for (const theme of Object.keys(THEME_PATTERN_COLORS)) {
+    if (theme !== "light" && root.classList.contains(`theme-${theme}`)) {
+      return theme;
+    }
+  }
+  return "light";
+}
+
+// Helper to get saved icon theme from localStorage
+function getSavedIconTheme(): IconThemeId {
+  if (typeof localStorage === "undefined") return "nature";
+  const saved = localStorage.getItem(ICON_THEME_STORAGE_KEY);
+  if (saved && saved in ICON_THEMES) {
+    return saved as IconThemeId;
+  }
+  return "nature";
+}
+
 // React hook to get chat pattern styles based on current theme and icon theme
 export function useChatPattern(): React.CSSProperties {
-  const [colorThemeId, setColorThemeId] = React.useState<string>("light");
-  const [iconTheme, setIconTheme] = React.useState<IconThemeId>("nature");
+  // Use lazy initializers to read from DOM/localStorage synchronously (prevents flicker)
+  const [colorThemeId, setColorThemeId] = React.useState<string>(getThemeFromClasses);
+  const [iconTheme, setIconTheme] = React.useState<IconThemeId>(getSavedIconTheme);
 
   React.useEffect(() => {
-    // Get color theme from HTML element classes
-    const getThemeFromClasses = () => {
-      const root = document.documentElement;
-      for (const theme of Object.keys(THEME_PATTERN_COLORS)) {
-        if (theme !== "light" && root.classList.contains(`theme-${theme}`)) {
-          return theme;
-        }
-      }
-      return "light";
-    };
-
-    // Get icon theme from localStorage
-    const savedIconTheme = localStorage.getItem(ICON_THEME_STORAGE_KEY);
-    if (savedIconTheme && savedIconTheme in ICON_THEMES) {
-      setIconTheme(savedIconTheme as IconThemeId);
-    }
-
-    setColorThemeId(getThemeFromClasses());
-
     // Observe class changes on html element
     const observer = new MutationObserver(() => {
       setColorThemeId(getThemeFromClasses());
@@ -567,14 +566,8 @@ export function useChatPattern(): React.CSSProperties {
 
 // Hook to manage icon theme selection
 export function useIconTheme() {
-  const [iconTheme, setIconThemeState] = React.useState<IconThemeId>("nature");
-
-  React.useEffect(() => {
-    const saved = localStorage.getItem(ICON_THEME_STORAGE_KEY);
-    if (saved && saved in ICON_THEMES) {
-      setIconThemeState(saved as IconThemeId);
-    }
-  }, []);
+  // Use lazy initializer to read from localStorage synchronously (prevents flicker)
+  const [iconTheme, setIconThemeState] = React.useState<IconThemeId>(getSavedIconTheme);
 
   const setIconTheme = React.useCallback((theme: IconThemeId) => {
     setIconThemeState(theme);
@@ -601,31 +594,13 @@ export function useChatPatternWithProject(
   projectColorTheme?: string,
   projectIconTheme?: string
 ): React.CSSProperties {
+  // Use lazy initializers to read from DOM/localStorage synchronously (prevents flicker)
   const [globalColorThemeId, setGlobalColorThemeId] =
-    React.useState<string>("light");
+    React.useState<string>(getThemeFromClasses);
   const [globalIconTheme, setGlobalIconTheme] =
-    React.useState<IconThemeId>("nature");
+    React.useState<IconThemeId>(getSavedIconTheme);
 
   React.useEffect(() => {
-    // Get global color theme from HTML element classes
-    const getThemeFromClasses = () => {
-      const root = document.documentElement;
-      for (const theme of Object.keys(THEME_PATTERN_COLORS)) {
-        if (theme !== "light" && root.classList.contains(`theme-${theme}`)) {
-          return theme;
-        }
-      }
-      return "light";
-    };
-
-    // Get global icon theme from localStorage
-    const savedIconTheme = localStorage.getItem(ICON_THEME_STORAGE_KEY);
-    if (savedIconTheme && savedIconTheme in ICON_THEMES) {
-      setGlobalIconTheme(savedIconTheme as IconThemeId);
-    }
-
-    setGlobalColorThemeId(getThemeFromClasses());
-
     // Observe class changes on html element
     const observer = new MutationObserver(() => {
       setGlobalColorThemeId(getThemeFromClasses());
