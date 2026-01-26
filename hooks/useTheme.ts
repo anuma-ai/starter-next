@@ -48,10 +48,31 @@ export function useTheme() {
     applyTheme(storedId);
   }, []);
 
+  // Listen for theme changes from other components/tabs
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === THEME_STORAGE_KEY && e.newValue) {
+        if (THEME_PRESETS.some((t) => t.id === e.newValue)) {
+          setCurrentThemeId(e.newValue);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   const setTheme = useCallback((preset: ThemePreset) => {
     setCurrentThemeId(preset.id);
     applyTheme(preset.id);
     localStorage.setItem(THEME_STORAGE_KEY, preset.id);
+    // Dispatch storage event for same-tab listeners
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: THEME_STORAGE_KEY,
+        newValue: preset.id,
+      })
+    );
   }, []);
 
   return {
