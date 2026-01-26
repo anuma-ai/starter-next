@@ -10,7 +10,8 @@
     "docs": "rimraf docs && typedoc",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "p laywright test --headed",
+    "seed": "open http://localhost:3000/dev/seed"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
