@@ -116,6 +116,33 @@ const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
   );
 };
 
+// Cache helpers for conversation -> projectId mapping
+// This enables synchronous theme application on navigation
+const CONV_PROJECT_CACHE_KEY = (convId: string) => `conv_project_${convId}`;
+
+function getCachedProjectId(conversationId: string | null): string | null {
+  if (!conversationId || typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(CONV_PROJECT_CACHE_KEY(conversationId));
+  } catch {
+    return null;
+  }
+}
+
+function setCachedProjectId(conversationId: string, projectId: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    const key = CONV_PROJECT_CACHE_KEY(conversationId);
+    if (projectId) {
+      localStorage.setItem(key, projectId);
+    } else {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 const ChatBotDemo = () => {
   const pathname = usePathname();
   const router = useRouter();
@@ -123,6 +150,31 @@ const ChatBotDemo = () => {
   const { authenticated } = usePrivy();
   const thinkingPanel = useThinkingPanel();
   const hasRedirectedRef = useRef(false);
+
+  // Get conversationId early to determine if this is a new chat
+  const { conversationId: currentConversationId } = chatState;
+
+  // Apply theme SYNCHRONOUSLY at start of render to prevent flash
+  // - For new chat (no conversationId): apply global theme
+  // - For existing conversation: check cache for projectId and apply its theme
+  if (typeof window !== "undefined") {
+    if (!currentConversationId) {
+      applyTheme(getStoredThemeId());
+    } else {
+      const cachedProjectId = getCachedProjectId(currentConversationId);
+      if (cachedProjectId) {
+        // Apply project theme synchronously from cache
+        const stored = localStorage.getItem(`project_theme_${cachedProjectId}`);
+        const settings = stored ? JSON.parse(stored) : {};
+        if (settings.colorTheme) {
+          applyTheme(settings.colorTheme);
+        } else {
+          applyTheme(getStoredThemeId());
+        }
+      }
+      // If no cache, theme will be applied after async fetch (small flash on first visit)
+    }
+  }
 
   const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
 
@@ -176,7 +228,10 @@ const ChatBotDemo = () => {
     const fetchProjectId = async () => {
       try {
         const conversation = await getConversation(conversationId);
-        setCurrentProjectId(conversation?.projectId || null);
+        const projectId = conversation?.projectId || null;
+        setCurrentProjectId(projectId);
+        // Cache the projectId for synchronous theme application on future visits
+        setCachedProjectId(conversationId, projectId);
       } catch {
         setCurrentProjectId(null);
       }

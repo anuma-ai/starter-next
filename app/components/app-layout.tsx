@@ -15,6 +15,7 @@ import { ThinkingPanel } from "./thinking-panel";
 import { RightSidebarHandle } from "@/components/ui/right-sidebar";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
+import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -82,6 +83,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   } = chatState;
 
   const handleNewConversation = useCallback(async () => {
+    // Apply global theme immediately before navigation to prevent flash
+    applyTheme(getStoredThemeId());
+
     // Reset to empty state and navigate to root
     // Don't create conversation yet - it will be auto-created when first message is sent
     await createConversation();

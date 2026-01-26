@@ -280,6 +280,13 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
 
       const convId = conv.conversationId;
 
+      // Pre-cache projectId for synchronous theme application in chatbot
+      try {
+        localStorage.setItem(`conv_project_${convId}`, projectId);
+      } catch {
+        // Ignore storage errors
+      }
+
       // Add message optimistically to UI
       addMessageOptimistically(messageText, message.files, messageText);
 
@@ -318,6 +325,12 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   );
 
   const handleSelectConversation = (conversationId: string) => {
+    // Pre-cache projectId for synchronous theme application in chatbot
+    try {
+      localStorage.setItem(`conv_project_${conversationId}`, projectId);
+    } catch {
+      // Ignore storage errors
+    }
     setConversationId(conversationId);
     router.push(`/c/${conversationId}`);
   };

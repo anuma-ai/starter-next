@@ -34,6 +34,7 @@ import {
 import type { StoredProject, StoredConversation, CreateProjectOptions, StoredMessage } from "@reverbia/sdk/react";
 import { ThemedProjectIcon } from "@/components/project-icon-picker";
 import { getProjectTheme } from "@/lib/project-theme";
+import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import {
   DndContext,
   closestCenter,
@@ -216,6 +217,25 @@ function ProjectItemOverlay({
 }
 
 
+// Apply project theme and cache conversation -> projectId mapping
+// This must happen BEFORE navigation to prevent flash
+function applyProjectThemeAndCache(conversationId: string, projectId: string) {
+  try {
+    // Cache for future visits
+    localStorage.setItem(`conv_project_${conversationId}`, projectId);
+
+    // Apply theme immediately (before navigation)
+    const projectTheme = getProjectTheme(projectId);
+    if (projectTheme.colorTheme) {
+      applyTheme(projectTheme.colorTheme);
+    } else {
+      applyTheme(getStoredThemeId());
+    }
+  } catch {
+    // Ignore errors
+  }
+}
+
 // Sortable conversation item - can be reordered within and across projects
 function SortableConversationItem({
   conversation,
@@ -281,7 +301,11 @@ function SortableConversationItem({
       <SidebarMenuItem>
         <SidebarMenuButton
           isActive={isActive}
-          onClick={onSelect}
+          onClick={() => {
+            // Apply theme immediately before navigation to prevent flash
+            applyProjectThemeAndCache(conversation.conversationId, projectId);
+            onSelect();
+          }}
           className="text-sm cursor-grab"
         >
           <span className="truncate">
