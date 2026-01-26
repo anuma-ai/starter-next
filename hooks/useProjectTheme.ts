@@ -17,21 +17,27 @@ import {
 export function useProjectTheme(projectId: string | null) {
   const [settings, setSettings] = useState<ProjectThemeSettings>({});
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  // Track which projectId the settings were loaded for
+  // This prevents using stale settings during projectId transitions
+  const [loadedForProjectId, setLoadedForProjectId] = useState<string | null>(null);
 
   // Load initial settings and listen for changes
   useEffect(() => {
     // Reset loaded state when projectId changes
     setSettingsLoaded(false);
+    setLoadedForProjectId(null);
 
     if (!projectId) {
       setSettings({});
       setSettingsLoaded(true);
+      setLoadedForProjectId(null);
       return;
     }
 
     // Load initial settings from localStorage
     setSettings(getProjectTheme(projectId));
     setSettingsLoaded(true);
+    setLoadedForProjectId(projectId);
 
     // Listen for storage changes (from other tabs or components)
     const handleStorage = (e: StorageEvent) => {
@@ -95,6 +101,7 @@ export function useProjectTheme(projectId: string | null) {
   return {
     settings,
     settingsLoaded,
+    loadedForProjectId,
     updateColorTheme,
     updateIconTheme,
     clearTheme,

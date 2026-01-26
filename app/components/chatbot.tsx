@@ -187,12 +187,16 @@ const ChatBotDemo = () => {
   }, [conversationId, getConversation]);
 
   // Get project theme settings (returns empty settings if no projectId)
-  const { settings: projectTheme, settingsLoaded } = useProjectTheme(currentProjectId);
+  const { settings: projectTheme, settingsLoaded, loadedForProjectId } = useProjectTheme(currentProjectId);
 
   // Apply project color theme to entire app when viewing a conversation in this project
-  // Wait until projectId is determined AND settings are loaded to avoid flashing
+  // Wait until projectId is determined AND settings are loaded for the correct projectId
   useEffect(() => {
     if (!projectIdDetermined || !settingsLoaded) return;
+
+    // Ensure settings are loaded for the current projectId to prevent flash during transitions
+    // When currentProjectId changes, loadedForProjectId will be stale until the effect runs
+    if (currentProjectId !== null && loadedForProjectId !== currentProjectId) return;
 
     if (projectTheme.colorTheme) {
       applyTheme(projectTheme.colorTheme);
@@ -200,7 +204,7 @@ const ChatBotDemo = () => {
       // No project override - apply global theme
       applyTheme(getStoredThemeId());
     }
-  }, [projectIdDetermined, settingsLoaded, projectTheme.colorTheme]);
+  }, [projectIdDetermined, settingsLoaded, loadedForProjectId, currentProjectId, projectTheme.colorTheme]);
 
   // Use project-aware pattern hook with optional project overrides
   const patternStyle = useChatPatternWithProject(
