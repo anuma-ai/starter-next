@@ -206,11 +206,23 @@ const ChatBotDemo = () => {
     }
   }, [projectIdDetermined, settingsLoaded, loadedForProjectId, currentProjectId, projectTheme.colorTheme]);
 
+  // Check if settings are ready (loaded for the correct projectId)
+  const isSettingsReady = projectIdDetermined && settingsLoaded &&
+    (currentProjectId === null || loadedForProjectId === currentProjectId);
+
   // Use project-aware pattern hook with optional project overrides
-  const patternStyle = useChatPatternWithProject(
+  const computedPatternStyle = useChatPatternWithProject(
     projectTheme.colorTheme,
     projectTheme.iconTheme
   );
+
+  // Keep the last valid pattern during transitions to prevent flickering
+  // This is especially important when switching between chats in the same project
+  const lastValidPatternRef = useRef<React.CSSProperties>({});
+  if (isSettingsReady) {
+    lastValidPatternRef.current = computedPatternStyle;
+  }
+  const patternStyle = lastValidPatternRef.current;
 
   const [streamingThinking, setStreamingThinking] = useState<string>("");
   const [streamingText, setStreamingText] = useState<string>("");
