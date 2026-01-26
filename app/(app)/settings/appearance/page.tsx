@@ -93,8 +93,9 @@ export default function AppearancePage() {
                             "text-xs font-medium px-2 py-0.5 rounded-full transition-colors",
                             isSelected
                               ? "bg-foreground text-background"
-                              : "group-hover:ring-1 group-hover:ring-gray-300 dark:group-hover:ring-gray-600"
+                              : "group-hover:ring-1"
                           )}
+                          style={!isSelected ? { '--tw-ring-color': previewStrokeColor } as React.CSSProperties : undefined}
                         >
                           {theme.name}
                         </span>
