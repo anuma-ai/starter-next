@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, CheckIcon } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ThemePicker } from "@/app/components/theme-picker";
 import { useIconTheme, useChatPattern, getChatPatternStyle, getPatternStrokeColor, ICON_THEMES, type IconThemeId } from "@/lib/chat-pattern";
@@ -65,18 +65,20 @@ export default function AppearancePage() {
                       <button
                         key={id}
                         onClick={() => setIconTheme(id)}
-                        className={cn(
-                          "relative flex flex-col items-center gap-1.5 p-1 rounded-lg transition-all",
-                          "hover:ring-2 hover:ring-ring focus:outline-none focus:ring-2 focus:ring-ring",
-                          isSelected && "ring-2 ring-foreground"
-                        )}
+                        className="group relative flex flex-col items-center gap-1.5 p-1 rounded-lg focus:outline-none cursor-pointer"
                       >
                         <div
                           className="w-full aspect-[4/3] rounded-md bg-background border border-gray-200 dark:border-transparent"
                           style={previewStyle}
                         />
-                        <span className="text-xs font-medium flex items-center gap-1">
-                          {isSelected && <CheckIcon className="size-3" />}
+                        <span
+                          className={cn(
+                            "text-xs font-medium px-2 py-0.5 rounded-full transition-colors",
+                            isSelected
+                              ? "bg-foreground text-background"
+                              : "group-hover:ring-1 group-hover:ring-gray-300 dark:group-hover:ring-gray-600"
+                          )}
+                        >
                           {theme.name}
                         </span>
                       </button>
