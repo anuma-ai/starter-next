@@ -264,7 +264,7 @@ export function ProjectIconPicker({
         </DialogHeader>
 
         {/* Search input */}
-        <div className="flex items-center gap-2 border rounded-md px-3 py-2 bg-muted/50">
+        <div className="flex items-center gap-2 border border-input rounded-md px-3 py-2 bg-muted/50">
           <SearchIcon className="size-4 text-muted-foreground" />
           <input
             type="text"
@@ -300,7 +300,7 @@ export function ProjectIconPicker({
                 }`}
                 title={icon.annotation}
               >
-                <ThemedProjectIcon hexcode={icon.hexcode} size={36} />
+                <ThemedProjectIcon hexcode={icon.hexcode} size={36} strokeWidth={2.5} scale={1.15} />
               </button>
             ))}
           </div>
