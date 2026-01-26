@@ -40,7 +40,9 @@ import {
 import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
-import { useChatPattern } from "@/lib/chat-pattern";
+import { useChatPatternWithProject } from "@/lib/chat-pattern";
+import { useProjectTheme } from "@/hooks/useProjectTheme";
+import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 
 const MODELS = [
   {
@@ -121,9 +123,11 @@ const ChatBotDemo = () => {
   const { authenticated } = usePrivy();
   const thinkingPanel = useThinkingPanel();
   const hasRedirectedRef = useRef(false);
-  const patternStyle = useChatPattern();
 
   const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
+
+  // Track current conversation's projectId for theme inheritance
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
 
   // Load saved model preference from localStorage after mount to avoid SSR/hydration mismatch
   useEffect(() => {
@@ -154,7 +158,49 @@ const ChatBotDemo = () => {
     subscribeToStreaming,
     subscribeToThinking,
     conversationId,
+    getConversation,
   } = chatState;
+
+  // Fetch conversation's projectId when conversationId changes
+  useEffect(() => {
+    if (!conversationId) {
+      setCurrentProjectId(null);
+      return;
+    }
+
+    const fetchProjectId = async () => {
+      try {
+        const conversation = await getConversation(conversationId);
+        setCurrentProjectId(conversation?.projectId || null);
+      } catch {
+        setCurrentProjectId(null);
+      }
+    };
+
+    fetchProjectId();
+  }, [conversationId, getConversation]);
+
+  // Get project theme settings (returns empty settings if no projectId)
+  const { settings: projectTheme } = useProjectTheme(currentProjectId);
+
+  // Apply project color theme to entire app when viewing a conversation in this project
+  useEffect(() => {
+    if (projectTheme.colorTheme) {
+      applyTheme(projectTheme.colorTheme);
+    }
+
+    // Restore global theme when leaving or when theme changes
+    return () => {
+      const globalTheme = getStoredThemeId();
+      applyTheme(globalTheme);
+    };
+  }, [projectTheme.colorTheme]);
+
+  // Use project-aware pattern hook with optional project overrides
+  const patternStyle = useChatPatternWithProject(
+    projectTheme.colorTheme,
+    projectTheme.iconTheme
+  );
 
   const [streamingThinking, setStreamingThinking] = useState<string>("");
   const [streamingText, setStreamingText] = useState<string>("");

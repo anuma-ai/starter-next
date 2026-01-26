@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Setting07Icon, Delete02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon } from "lucide-react";
+import { ImageIcon, CheckIcon, CpuIcon, PaletteIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   PromptInput,
@@ -32,6 +33,10 @@ import {
 } from "@/lib/constants";
 import { useChatContext } from "./chat-provider";
 import type { StoredConversation, StoredMessage } from "@reverbia/sdk/react";
+import { ICON_THEMES, type IconThemeId, useChatPatternWithProject } from "@/lib/chat-pattern";
+import { THEME_PRESETS } from "@/lib/theme-colors";
+import { useProjectTheme } from "@/hooks/useProjectTheme";
+import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 
 const MODELS = [
   {
@@ -138,6 +143,32 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   const [editedName, setEditedName] = useState("");
   const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Project theme settings
+  const {
+    settings: projectTheme,
+    updateColorTheme,
+    updateIconTheme,
+  } = useProjectTheme(projectId);
+
+  // Apply project color theme to entire app when on this project page
+  useEffect(() => {
+    if (projectTheme.colorTheme) {
+      applyTheme(projectTheme.colorTheme);
+    }
+
+    // Restore global theme when leaving this page or when theme changes
+    return () => {
+      const globalTheme = getStoredThemeId();
+      applyTheme(globalTheme);
+    };
+  }, [projectTheme.colorTheme]);
+
+  // Get pattern style with project overrides
+  const patternStyle = useChatPatternWithProject(
+    projectTheme.colorTheme,
+    projectTheme.iconTheme
+  );
 
   // Load saved model preference from localStorage after mount
   useEffect(() => {
@@ -285,7 +316,10 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
+    <div
+      className="flex flex-1 flex-col p-8 bg-background border-l border-border dark:border-l-0"
+      style={patternStyle}
+    >
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-6 flex items-center gap-2">
           <input
@@ -309,6 +343,72 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* Background (Icon Theme) Submenu */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <ImageIcon className="size-4" />
+                  Background
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => updateIconTheme(undefined)}>
+                    {!projectTheme.iconTheme && <CheckIcon className="size-4" />}
+                    <span className={projectTheme.iconTheme ? "pl-6" : ""}>
+                      Inherit from settings
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {Object.entries(ICON_THEMES).map(([id, theme]) => (
+                    <DropdownMenuItem
+                      key={id}
+                      onClick={() => updateIconTheme(id)}
+                    >
+                      {projectTheme.iconTheme === id && (
+                        <CheckIcon className="size-4" />
+                      )}
+                      <span className={projectTheme.iconTheme !== id ? "pl-6" : ""}>
+                        {theme.name}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              {/* Color Theme Submenu */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <PaletteIcon className="size-4" />
+                  Color Theme
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => updateColorTheme(undefined)}>
+                    {!projectTheme.colorTheme && <CheckIcon className="size-4" />}
+                    <span className={projectTheme.colorTheme ? "pl-6" : ""}>
+                      Inherit from settings
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {THEME_PRESETS.map((preset) => (
+                    <DropdownMenuItem
+                      key={preset.id}
+                      onClick={() => updateColorTheme(preset.id)}
+                    >
+                      <div
+                        className="size-4 rounded-full border border-border"
+                        style={{ backgroundColor: preset.background }}
+                      />
+                      {projectTheme.colorTheme === preset.id && (
+                        <CheckIcon className="size-4" />
+                      )}
+                      <span className={projectTheme.colorTheme !== preset.id ? "pl-2" : ""}>
+                        {preset.name}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSeparator />
+
               <DropdownMenuItem
                 onClick={async () => {
                   if (confirm("Are you sure you want to delete this project? Conversations will not be deleted.")) {

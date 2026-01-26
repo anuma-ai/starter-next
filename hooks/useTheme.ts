@@ -9,7 +9,7 @@ import {
   type ThemePreset,
 } from "@/lib/theme-colors";
 
-function getStoredThemeId(): string {
+export function getStoredThemeId(): string {
   if (typeof window === "undefined") {
     return DEFAULT_THEME.id;
   }
@@ -24,7 +24,7 @@ function getStoredThemeId(): string {
   return DEFAULT_THEME.id;
 }
 
-function applyTheme(themeId: string): void {
+export function applyTheme(themeId: string): void {
   const root = document.documentElement;
 
   // Remove all theme classes

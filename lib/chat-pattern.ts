@@ -324,7 +324,7 @@ export function getChatPatternStyle(
 // Using solid colors slightly different from background for subtle tone-on-tone effect
 export const THEME_PATTERN_COLORS: Record<string, string> = {
   light: "#e8e8e8", // Light gray on white background
-  dark: "#3a3a3a", // Slightly lighter gray on dark background (~oklch 0.25)
+  dark: "#424242", // Very subtle gray on dark background (#3d3d3d)
   orange: "#d4885a", // Slightly lighter orange on #c57742
   green: "#3d8050", // Slightly lighter green on #2e6f40
   blue: "#1a1a9a", // Slightly lighter blue on #000080
@@ -421,4 +421,70 @@ export function useIconTheme() {
     setIconTheme,
     themes: ICON_THEMES,
   };
+}
+
+// Hook to get chat pattern styles with project-level overrides
+// Project overrides take precedence over global settings
+export function useChatPatternWithProject(
+  projectColorTheme?: string,
+  projectIconTheme?: string
+): React.CSSProperties {
+  const [globalColorThemeId, setGlobalColorThemeId] =
+    React.useState<string>("light");
+  const [globalIconTheme, setGlobalIconTheme] =
+    React.useState<IconThemeId>("nature");
+
+  React.useEffect(() => {
+    // Get global color theme from HTML element classes
+    const getThemeFromClasses = () => {
+      const root = document.documentElement;
+      for (const theme of Object.keys(THEME_PATTERN_COLORS)) {
+        if (theme !== "light" && root.classList.contains(`theme-${theme}`)) {
+          return theme;
+        }
+      }
+      return "light";
+    };
+
+    // Get global icon theme from localStorage
+    const savedIconTheme = localStorage.getItem(ICON_THEME_STORAGE_KEY);
+    if (savedIconTheme && savedIconTheme in ICON_THEMES) {
+      setGlobalIconTheme(savedIconTheme as IconThemeId);
+    }
+
+    setGlobalColorThemeId(getThemeFromClasses());
+
+    // Observe class changes on html element
+    const observer = new MutationObserver(() => {
+      setGlobalColorThemeId(getThemeFromClasses());
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    // Listen for icon theme changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === ICON_THEME_STORAGE_KEY && e.newValue) {
+        if (e.newValue in ICON_THEMES) {
+          setGlobalIconTheme(e.newValue as IconThemeId);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
+  // Use project theme if provided, otherwise fall back to global
+  const effectiveColorTheme = projectColorTheme || globalColorThemeId;
+  const effectiveIconTheme =
+    (projectIconTheme as IconThemeId) || globalIconTheme;
+
+  const strokeColor = getPatternStrokeColor(effectiveColorTheme);
+  return getChatPatternStyle(strokeColor, effectiveIconTheme);
 }
