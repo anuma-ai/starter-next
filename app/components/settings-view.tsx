@@ -4,8 +4,6 @@ import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, Logout02Icon } from "@hugeicons/core-free-icons";
-import { Label } from "@/components/ui/label";
-import { ThemePicker } from "./theme-picker";
 
 export function SettingsView() {
   const router = useRouter();
@@ -18,15 +16,22 @@ export function SettingsView() {
 
         <div className="space-y-4">
           <div className="rounded-xl bg-white dark:bg-card p-1">
-            <div className="px-4 py-3">
-              <div className="space-y-0.5 mb-3">
-                <Label className="text-base">Theme</Label>
+            <button
+              onClick={() => router.push("/settings/appearance")}
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <div className="space-y-0.5 text-left">
+                <span className="text-base">Appearance</span>
                 <p className="text-sm text-muted-foreground">
-                  Choose a background color for the app
+                  Customize theme and background patterns
                 </p>
               </div>
-              <ThemePicker />
-            </div>
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={20}
+                className="text-muted-foreground"
+              />
+            </button>
             <button
               onClick={() => router.push("/settings/memories")}
               className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"

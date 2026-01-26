@@ -324,7 +324,7 @@ export function getChatPatternStyle(
 // Using solid colors slightly different from background for subtle tone-on-tone effect
 export const THEME_PATTERN_COLORS: Record<string, string> = {
   light: "#e8e8e8", // Light gray on white background
-  dark: "#424242", // Very subtle gray on dark background (#3d3d3d)
+  dark: "#404040", // Very subtle gray on dark background (#3d3d3d)
   orange: "#d4885a", // Slightly lighter orange on #c57742
   green: "#3d8050", // Slightly lighter green on #2e6f40
   blue: "#1a1a9a", // Slightly lighter blue on #000080
