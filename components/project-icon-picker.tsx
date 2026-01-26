@@ -283,7 +283,7 @@ export function ProjectIconPicker({
             {!search.trim() && (
               <button
                 onClick={() => handleSelect(undefined)}
-                className={`p-2 rounded-md hover:bg-muted transition-colors flex items-center justify-center ${
+                className={`p-2 rounded-md hover:bg-muted transition-colors flex items-center justify-center cursor-pointer ${
                   !selectedIcon ? "bg-muted ring-2 ring-primary" : ""
                 }`}
                 title="Default folder icon"
@@ -295,7 +295,7 @@ export function ProjectIconPicker({
               <button
                 key={icon.hexcode}
                 onClick={() => handleSelect(icon.hexcode)}
-                className={`p-2 rounded-md hover:bg-muted transition-colors flex items-center justify-center ${
+                className={`p-2 rounded-md hover:bg-muted transition-colors flex items-center justify-center cursor-pointer ${
                   selectedIcon === icon.hexcode ? "bg-muted ring-2 ring-primary" : ""
                 }`}
                 title={icon.annotation}

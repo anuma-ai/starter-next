@@ -328,7 +328,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
         <div className="mb-6 flex items-center gap-2">
           <button
             onClick={() => setIconPickerOpen(true)}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors shrink-0"
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors shrink-0 cursor-pointer"
             title="Change project icon"
           >
             {projectTheme.projectIcon ? (
