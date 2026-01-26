@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ThemePicker } from "@/app/components/theme-picker";
-import { useIconTheme, useChatPattern, getChatPatternStyle, getPatternStrokeColor, ICON_THEMES, type IconThemeId } from "@/lib/chat-pattern";
+import { useIconTheme, useChatPattern, getPreviewIcons, getPatternStrokeColor, ICON_THEMES, type IconThemeId } from "@/lib/chat-pattern";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 
@@ -60,17 +60,34 @@ export default function AppearancePage() {
                 {(Object.entries(ICON_THEMES) as [IconThemeId, typeof ICON_THEMES[IconThemeId]][]).map(
                   ([id, theme]) => {
                     const isSelected = iconTheme === id;
-                    const previewStyle = getChatPatternStyle(previewStrokeColor, id);
+                    const previewIcons = getPreviewIcons(id, previewStrokeColor);
                     return (
                       <button
                         key={id}
                         onClick={() => setIconTheme(id)}
                         className="group relative flex flex-col items-center gap-1.5 p-1 rounded-lg focus:outline-none cursor-pointer"
                       >
-                        <div
-                          className="w-full aspect-[4/3] rounded-md bg-background border border-gray-200 dark:border-transparent"
-                          style={previewStyle}
-                        />
+                        <div className="w-full aspect-[4/3] rounded-md bg-background border border-gray-200 dark:border-transparent relative flex items-center justify-center">
+                          {previewIcons.length >= 3 && (
+                            <>
+                              <img
+                                src={previewIcons[0]}
+                                alt=""
+                                className="absolute top-3 left-1/2 -translate-x-1/2 size-10"
+                              />
+                              <img
+                                src={previewIcons[1]}
+                                alt=""
+                                className="absolute bottom-3 left-1/3 -translate-x-1/2 size-10"
+                              />
+                              <img
+                                src={previewIcons[2]}
+                                alt=""
+                                className="absolute bottom-3 right-1/3 translate-x-1/2 size-10"
+                              />
+                            </>
+                          )}
+                        </div>
                         <span
                           className={cn(
                             "text-xs font-medium px-2 py-0.5 rounded-full transition-colors",

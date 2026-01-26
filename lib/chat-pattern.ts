@@ -9,6 +9,12 @@ import openmojiData from "openmoji/data/openmoji.json";
 
 // Define available icon themes based on openmoji groups
 export const ICON_THEMES = {
+  smileys: {
+    name: "Smileys",
+    group: "smileys-emotion",
+    subgroups: ["face-smiling", "face-affection", "face-tongue", "face-hand"],
+    description: "Smiley faces and emotions",
+  },
   nature: {
     name: "Nature",
     group: "animals-nature",
@@ -350,6 +356,28 @@ function getPatternIcons(themeId: IconThemeId): Array<{ name: string; svg: strin
   }
 
   return icons;
+}
+
+// Get preview icon data URLs for a theme (returns 3 icons for triangle preview)
+export function getPreviewIcons(
+  themeId: IconThemeId,
+  strokeColor: string
+): string[] {
+  const icons = getPatternIcons(themeId);
+  if (icons.length === 0) return [];
+
+  // Pick 3 evenly spaced icons
+  const indices = [0, Math.floor(icons.length / 3), Math.floor((icons.length * 2) / 3)];
+
+  return indices.map((i) => {
+    const icon = icons[i % icons.length];
+    const coloredSvg = applyColor(icon.svg, strokeColor);
+    const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72">${coloredSvg}</svg>`;
+    const encoded = encodeURIComponent(fullSvg)
+      .replace(/'/g, "%27")
+      .replace(/"/g, "%22");
+    return `data:image/svg+xml,${encoded}`;
+  });
 }
 
 // Seeded random number generator for consistent patterns
