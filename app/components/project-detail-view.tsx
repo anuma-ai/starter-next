@@ -334,10 +334,12 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
             {projectTheme.projectIcon ? (
               <ThemedProjectIcon
                 hexcode={projectTheme.projectIcon}
-                size={28}
+                size={32}
+                strokeWidth={2.5}
+                scale={1.1}
               />
             ) : (
-              <HugeiconsIcon icon={FolderLibraryIcon} size={28} />
+              <HugeiconsIcon icon={FolderLibraryIcon} size={32} />
             )}
           </button>
           <input
