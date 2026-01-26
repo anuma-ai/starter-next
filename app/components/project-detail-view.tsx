@@ -152,16 +152,14 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   } = useProjectTheme(projectId);
 
   // Apply project color theme to entire app when on this project page
+  // Don't restore on cleanup - let the next page apply its own theme
   useEffect(() => {
     if (projectTheme.colorTheme) {
       applyTheme(projectTheme.colorTheme);
+    } else {
+      // No project override - apply global theme
+      applyTheme(getStoredThemeId());
     }
-
-    // Restore global theme when leaving this page or when theme changes
-    return () => {
-      const globalTheme = getStoredThemeId();
-      applyTheme(globalTheme);
-    };
   }, [projectTheme.colorTheme]);
 
   // Get pattern style with project overrides

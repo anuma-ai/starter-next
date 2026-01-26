@@ -128,6 +128,7 @@ const ChatBotDemo = () => {
 
   // Track current conversation's projectId for theme inheritance
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [projectIdDetermined, setProjectIdDetermined] = useState(false);
 
   // Load saved model preference from localStorage after mount to avoid SSR/hydration mismatch
   useEffect(() => {
@@ -163,8 +164,12 @@ const ChatBotDemo = () => {
 
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
+    // Reset determination state when conversation changes
+    setProjectIdDetermined(false);
+
     if (!conversationId) {
       setCurrentProjectId(null);
+      setProjectIdDetermined(true);
       return;
     }
 
@@ -175,26 +180,27 @@ const ChatBotDemo = () => {
       } catch {
         setCurrentProjectId(null);
       }
+      setProjectIdDetermined(true);
     };
 
     fetchProjectId();
   }, [conversationId, getConversation]);
 
   // Get project theme settings (returns empty settings if no projectId)
-  const { settings: projectTheme } = useProjectTheme(currentProjectId);
+  const { settings: projectTheme, settingsLoaded } = useProjectTheme(currentProjectId);
 
   // Apply project color theme to entire app when viewing a conversation in this project
+  // Wait until projectId is determined AND settings are loaded to avoid flashing
   useEffect(() => {
+    if (!projectIdDetermined || !settingsLoaded) return;
+
     if (projectTheme.colorTheme) {
       applyTheme(projectTheme.colorTheme);
+    } else {
+      // No project override - apply global theme
+      applyTheme(getStoredThemeId());
     }
-
-    // Restore global theme when leaving or when theme changes
-    return () => {
-      const globalTheme = getStoredThemeId();
-      applyTheme(globalTheme);
-    };
-  }, [projectTheme.colorTheme]);
+  }, [projectIdDetermined, settingsLoaded, projectTheme.colorTheme]);
 
   // Use project-aware pattern hook with optional project overrides
   const patternStyle = useChatPatternWithProject(
@@ -310,7 +316,7 @@ const ChatBotDemo = () => {
       style={patternStyle}
     >
       <div
-        className={`min-h-0 flex-1 px-4 bg-background overflow-y-auto ${
+        className={`min-h-0 flex-1 px-4 overflow-y-auto ${
           messages.length === 0 ? "hidden" : ""
         }`}
       >

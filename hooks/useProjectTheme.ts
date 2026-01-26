@@ -16,16 +16,22 @@ import {
  */
 export function useProjectTheme(projectId: string | null) {
   const [settings, setSettings] = useState<ProjectThemeSettings>({});
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Load initial settings and listen for changes
   useEffect(() => {
+    // Reset loaded state when projectId changes
+    setSettingsLoaded(false);
+
     if (!projectId) {
       setSettings({});
+      setSettingsLoaded(true);
       return;
     }
 
-    // Load initial settings
+    // Load initial settings from localStorage
     setSettings(getProjectTheme(projectId));
+    setSettingsLoaded(true);
 
     // Listen for storage changes (from other tabs or components)
     const handleStorage = (e: StorageEvent) => {
@@ -88,6 +94,7 @@ export function useProjectTheme(projectId: string | null) {
 
   return {
     settings,
+    settingsLoaded,
     updateColorTheme,
     updateIconTheme,
     clearTheme,
