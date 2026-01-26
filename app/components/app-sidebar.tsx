@@ -154,7 +154,7 @@ function SortableProjectItem({
                 onToggleExpand();
               }
             }}
-            className={`relative w-4 h-4 flex items-center justify-center -ml-2 -my-2 pl-2 py-2 ${showChevron ? 'cursor-pointer' : ''}`}
+            className={`relative shrink-0 w-4 h-4 flex items-center justify-center ${showChevron ? 'cursor-pointer' : ''}`}
             role={showChevron ? "button" : undefined}
           >
             {projectIcon ? (
