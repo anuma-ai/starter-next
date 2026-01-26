@@ -31,9 +31,9 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('theme');
-                  if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
+                  var theme = localStorage.getItem('app_theme');
+                  if (theme && theme !== 'light') {
+                    document.documentElement.classList.add('theme-' + theme);
                   }
                 } catch (e) {}
               })();

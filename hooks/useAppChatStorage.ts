@@ -71,6 +71,8 @@ type SendMessageOptions = {
   clientTools?: any[];
   toolChoice?: string;
   apiType?: "responses" | "completions";
+  /** Explicitly specify the conversation ID to send this message to */
+  conversationId?: string;
 };
 
 // Memory context prefix used when injecting memories into messages
@@ -115,6 +117,7 @@ export function useAppChatStorage({
     isLoading,
     conversationId,
     getMessages,
+    getConversation,
     getConversations,
     createConversation,
     setConversationId,
@@ -395,6 +398,7 @@ export function useAppChatStorage({
         clientTools,
         toolChoice,
         apiType,
+        conversationId: explicitConversationId,
       } = options;
 
       let assistantMessageId: string;
@@ -486,6 +490,7 @@ export function useAppChatStorage({
         ...(clientTools && clientTools.length > 0 && { clientTools }),
         ...(toolChoice && { toolChoice }),
         ...(apiType && { apiType }),
+        ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
           // Accumulate text
           streamingTextRef.current += chunk;
@@ -525,15 +530,33 @@ export function useAppChatStorage({
   //#endregion sendMessage
 
   //#region conversationManagement
-  const handleNewConversation = useCallback(async () => {
-    // Reset to empty state - let SDK auto-create conversation on first message
+  const handleNewConversation = useCallback(async (opts?: { projectId?: string; createImmediately?: boolean }) => {
+    // Reset UI state
     setMessages([]);
     loadedConversationIdRef.current = null;
-    setConversationId(null as any); // Clear current conversation
-  }, [setConversationId]);
+
+    // If createImmediately is true (e.g., from project page), create conversation now
+    // Otherwise, just reset state - conversation will be created on first message via autoCreateConversation
+    if (opts?.createImmediately || opts?.projectId) {
+      const conv = await createConversation(opts);
+      return conv;
+    }
+
+    // Clear conversation ID so SDK will auto-create on first message
+    setConversationId(null as any);
+    return null;
+  }, [createConversation, setConversationId]);
 
   const handleSwitchConversation = useCallback(
     async (id: string) => {
+      // If we're actively sending a message, don't overwrite optimistic messages
+      // Just update the conversation ID in the SDK
+      if (isSendingMessageRef.current) {
+        loadedConversationIdRef.current = id;
+        setConversationId(id);
+        return;
+      }
+
       // Preload messages before switching to prevent flicker
       // This ensures new messages are ready before we update state
       const msgs = await getMessages(id);
@@ -633,5 +656,7 @@ export function useAppChatStorage({
     deleteConversation: handleDeleteConversation,
     refreshConversations,
     getAllFiles,
+    getMessages,
+    getConversation,
   };
 }

@@ -84,6 +84,8 @@ export function useAppChat({
     setConversationId,
     deleteConversation,
     refreshConversations,
+    getMessages,
+    getConversation,
   } = useAppChatStorage({
     database,
     getToken,
@@ -120,6 +122,8 @@ export function useAppChat({
         clientTools?: any[];
         toolChoice?: string;
         apiType?: "responses" | "completions";
+        /** Explicitly specify the conversation ID to send this message to */
+        conversationId?: string;
       }
     ) => {
       console.log("[APPCHAT sendMessage] START", {
@@ -181,6 +185,7 @@ export function useAppChat({
           ...(effectiveClientTools && { clientTools: effectiveClientTools }),
           ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
           ...(options?.apiType && { apiType: options.apiType }),
+          ...(options?.conversationId && { conversationId: options.conversationId }),
           onThinking,
         });
 
@@ -225,6 +230,8 @@ export function useAppChat({
         onThinking?: (chunk: string) => void;
         skipOptimisticUpdate?: boolean;
         apiType?: "responses" | "completions";
+        /** Explicitly specify the conversation ID to send this message to */
+        conversationId?: string;
       }
     ) => {
       console.log("[APPCHAT handleSubmit] START", {
@@ -247,6 +254,7 @@ export function useAppChat({
         files: message.files,
         displayText: message.displayText,
         skipOptimisticUpdate: options?.skipOptimisticUpdate,
+        conversationId: options?.conversationId,
       });
       console.log("[APPCHAT handleSubmit] sendMessage completed");
     },
@@ -299,6 +307,8 @@ export function useAppChat({
     refreshConversations,
     subscribeToStreaming,
     subscribeToThinking,
+    getMessages,
+    getConversation,
 
     // Memory actions
     findRelevantMemories,

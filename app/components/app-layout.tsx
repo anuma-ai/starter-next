@@ -69,11 +69,21 @@ export function AppLayout({ children }: AppLayoutProps) {
     createConversation,
     setConversationId,
     deleteConversation,
+    projects,
+    projectsReady,
+    projectConversationsVersion,
+    inboxProjectId,
+    lastAssignedProjectId,
+    createProject,
+    updateProjectName,
+    getProjectConversations,
+    getMessages,
+    updateConversationProject,
   } = chatState;
 
   const handleNewConversation = useCallback(async () => {
     // Reset to empty state and navigate to root
-    // Conversation ID will be auto-created when first message is sent
+    // Don't create conversation yet - it will be auto-created when first message is sent
     await createConversation();
     router.push("/");
   }, [createConversation, router]);
@@ -89,16 +99,25 @@ export function AppLayout({ children }: AppLayoutProps) {
   );
 
   const handleViewChange = useCallback(
-    (view: "chat" | "settings" | "conversations" | "files") => {
+    (view: "chat" | "settings" | "conversations" | "files" | "projects") => {
       if (view === "settings") {
         router.push("/settings");
       } else if (view === "conversations") {
         router.push("/conversations");
       } else if (view === "files") {
         router.push("/files");
+      } else if (view === "projects") {
+        router.push("/projects");
       } else {
         router.push("/");
       }
+    },
+    [router]
+  );
+
+  const handleSelectProject = useCallback(
+    (projectId: string) => {
+      router.push(`/projects/${projectId}`);
     },
     [router]
   );
@@ -109,12 +128,19 @@ export function AppLayout({ children }: AppLayoutProps) {
     ? "conversations"
     : pathname.startsWith("/files")
     ? "files"
+    : pathname.startsWith("/projects")
+    ? "projects"
     : "chat";
   const insetBackground = "bg-background";
 
   // Use context's conversationId for sidebar active state (not pathname)
   // This ensures immediate visual feedback when switching conversations
   const activeConversationId = conversationId;
+
+  // Extract selected project ID from pathname (e.g., /projects/abc123)
+  const selectedProjectId = pathname.startsWith("/projects/")
+    ? pathname.split("/")[2]
+    : null;
 
   // Show loading state while auth is initializing or user is not authenticated
   if (!ready || !authenticated) {
@@ -129,13 +155,22 @@ export function AppLayout({ children }: AppLayoutProps) {
     <ThinkingPanelProvider>
       <SidebarProvider>
         <AppSidebar
-          conversations={conversations}
           conversationId={activeConversationId}
           onNewConversation={handleNewConversation}
           onSelectConversation={handleSelectConversation}
-          onDeleteConversation={deleteConversation}
           currentView={currentView}
           onViewChange={handleViewChange}
+          projects={projects}
+          projectsReady={projectsReady}
+          projectConversationsVersion={projectConversationsVersion}
+          selectedProjectId={selectedProjectId}
+          lastAssignedProjectId={lastAssignedProjectId}
+          inboxProjectId={inboxProjectId}
+          onSelectProject={handleSelectProject}
+          onCreateProject={createProject}
+          getProjectConversations={getProjectConversations}
+          getMessages={getMessages}
+          updateConversationProject={updateConversationProject}
         />
         <SidebarHandle />
         <SidebarInset className={`min-h-dvh min-w-0 ${insetBackground}`}>

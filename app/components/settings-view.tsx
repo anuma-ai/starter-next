@@ -1,56 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, Logout02Icon } from "@hugeicons/core-free-icons";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 export function SettingsView() {
   const router = useRouter();
   const { logout } = usePrivy();
-  const [darkMode, setDarkMode] = useState(false);
-
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark");
-    setDarkMode(isDark);
-  }, []);
-
-  const handleDarkModeToggle = (checked: boolean) => {
-    setDarkMode(checked);
-    if (checked) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
 
   return (
-    <div className="flex flex-1 flex-col p-8 pt-16 md:pt-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
+    <div className="flex flex-1 flex-col p-8 pt-16 md:pt-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
       <div className="mx-auto w-full max-w-2xl">
         <h1 className="mb-6 text-2xl font-semibold">Settings</h1>
 
         <div className="space-y-4">
           <div className="rounded-xl bg-white dark:bg-card p-1">
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="space-y-0.5">
-                <Label htmlFor="dark-mode" className="text-base">
-                  Dark mode
-                </Label>
+            <button
+              onClick={() => router.push("/settings/appearance")}
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <div className="space-y-0.5 text-left">
+                <span className="text-base">Appearance</span>
                 <p className="text-sm text-muted-foreground">
-                  Toggle dark mode on or off
+                  Customize theme and background patterns
                 </p>
               </div>
-              <Switch
-                id="dark-mode"
-                checked={darkMode}
-                onCheckedChange={handleDarkModeToggle}
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={20}
+                className="text-muted-foreground"
               />
-            </div>
+            </button>
             <button
               onClick={() => router.push("/settings/memories")}
               className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"

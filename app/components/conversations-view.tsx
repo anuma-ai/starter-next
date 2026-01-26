@@ -29,7 +29,7 @@ export function ConversationsView() {
   };
 
   return (
-    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
+    <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
       <div className="mx-auto w-full max-w-2xl">
         <h1 className="mb-6 text-2xl font-semibold">Conversations</h1>
 
