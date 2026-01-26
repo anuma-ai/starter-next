@@ -72,7 +72,7 @@ export default function AppearancePage() {
                         )}
                       >
                         <div
-                          className="w-full aspect-[4/3] rounded-md bg-background"
+                          className="w-full aspect-[4/3] rounded-md bg-background border border-gray-200 dark:border-transparent"
                           style={previewStyle}
                         />
                         <span className="text-xs font-medium flex items-center gap-1">
