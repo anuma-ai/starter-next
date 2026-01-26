@@ -199,7 +199,7 @@ export function generateChatPatternSVG(
 
   // Use scattered placement
   const numIcons = Math.floor(
-    (tileSize * tileSize) / (avgIconSize * avgIconSize * 4)
+    (tileSize * tileSize) / (avgIconSize * avgIconSize * 3.2)
   );
 
   // Helper to check overlap with wrapping
@@ -222,7 +222,7 @@ export function generateChatPatternSVG(
     const iconSize =
       minIconSize + seededRandom(seedVal + 3000) * (maxIconSize - minIconSize);
 
-    const minDistance = avgIconSize * 1.4;
+    const minDistance = avgIconSize * 1.25;
     if (!checkOverlap(x, y, minDistance)) {
       positions.push({ x, y, size: iconSize });
       const icon = patternIcons[i % patternIcons.length];
