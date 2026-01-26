@@ -486,7 +486,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
           </PromptInput>
         </div>
 
-        <div className="rounded-xl bg-white dark:bg-card p-1 mb-6">
+        <div className="rounded-xl bg-white dark:bg-card p-1 mb-6 border border-input dark:border-transparent">
           {isLoading ? (
             <p className="text-center text-muted-foreground py-8">Loading...</p>
           ) : projectConversations.length === 0 ? (
