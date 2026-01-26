@@ -40,6 +40,7 @@ import {
 import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
+import { useChatPattern } from "@/lib/chat-pattern";
 
 const MODELS = [
   {
@@ -120,6 +121,7 @@ const ChatBotDemo = () => {
   const { authenticated } = usePrivy();
   const thinkingPanel = useThinkingPanel();
   const hasRedirectedRef = useRef(false);
+  const patternStyle = useChatPattern();
 
   const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
 
@@ -259,6 +261,7 @@ const ChatBotDemo = () => {
       className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${
         messages.length === 0 ? "justify-center" : ""
       }`}
+      style={patternStyle}
     >
       <div
         className={`min-h-0 flex-1 px-4 bg-background overflow-y-auto ${
