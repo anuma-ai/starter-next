@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef, useReducer } from "react";
 import {
   type ProjectThemeSettings,
   getProjectTheme,
@@ -10,45 +10,46 @@ import {
 
 /**
  * React hook for managing project-level theme settings
+ * Uses synchronous reads during render to prevent flash of wrong theme
  *
  * @param projectId - The project ID to manage themes for (null if no project)
  * @returns Theme settings and update functions
  */
 export function useProjectTheme(projectId: string | null) {
-  const [settings, setSettings] = useState<ProjectThemeSettings>({});
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  // Track which projectId the settings were loaded for
-  // This prevents using stale settings during projectId transitions
-  const [loadedForProjectId, setLoadedForProjectId] = useState<string | null>(null);
+  // Use ref to track which projectId we've loaded settings for
+  const loadedProjectIdRef = useRef<string | null>(null);
+  const settingsRef = useRef<ProjectThemeSettings>({});
 
-  // Load initial settings and listen for changes
+  // Synchronously update settings when projectId changes (during render phase)
+  // This ensures settings are available on the FIRST render, not after an effect
+  if (projectId !== loadedProjectIdRef.current) {
+    loadedProjectIdRef.current = projectId;
+    settingsRef.current = projectId ? getProjectTheme(projectId) : {};
+  }
+
+  // Use reducer to force re-renders when settings change from external sources
+  const [, forceUpdate] = useReducer((x) => x + 1, 0);
+
+  // Settings are always loaded synchronously now
+  const settingsLoaded = true;
+
+  // Listen for storage changes (from other tabs or components)
   useEffect(() => {
-    // Reset loaded state when projectId changes
-    setSettingsLoaded(false);
-    setLoadedForProjectId(null);
+    if (!projectId) return;
 
-    if (!projectId) {
-      setSettings({});
-      setSettingsLoaded(true);
-      setLoadedForProjectId(null);
-      return;
-    }
-
-    // Load initial settings from localStorage
-    setSettings(getProjectTheme(projectId));
-    setSettingsLoaded(true);
-    setLoadedForProjectId(projectId);
-
-    // Listen for storage changes (from other tabs or components)
     const handleStorage = (e: StorageEvent) => {
       if (e.key === getProjectThemeStorageKey(projectId)) {
-        setSettings(e.newValue ? JSON.parse(e.newValue) : {});
+        settingsRef.current = e.newValue ? JSON.parse(e.newValue) : {};
+        forceUpdate();
       }
     };
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
   }, [projectId]);
+
+  // Get current settings from ref
+  const settings = settingsRef.current;
 
   /**
    * Update the color theme for this project
@@ -58,15 +59,16 @@ export function useProjectTheme(projectId: string | null) {
     (colorTheme: string | undefined) => {
       if (!projectId) return;
 
-      const newSettings = { ...settings, colorTheme };
+      const newSettings = { ...settingsRef.current, colorTheme };
       // Clean up undefined values
       if (colorTheme === undefined) {
         delete newSettings.colorTheme;
       }
-      setSettings(newSettings);
+      settingsRef.current = newSettings;
       setProjectTheme(projectId, newSettings);
+      forceUpdate();
     },
-    [projectId, settings]
+    [projectId]
   );
 
   /**
@@ -77,15 +79,16 @@ export function useProjectTheme(projectId: string | null) {
     (iconTheme: string | undefined) => {
       if (!projectId) return;
 
-      const newSettings = { ...settings, iconTheme };
+      const newSettings = { ...settingsRef.current, iconTheme };
       // Clean up undefined values
       if (iconTheme === undefined) {
         delete newSettings.iconTheme;
       }
-      setSettings(newSettings);
+      settingsRef.current = newSettings;
       setProjectTheme(projectId, newSettings);
+      forceUpdate();
     },
-    [projectId, settings]
+    [projectId]
   );
 
   /**
@@ -96,15 +99,16 @@ export function useProjectTheme(projectId: string | null) {
     (projectIcon: string | undefined) => {
       if (!projectId) return;
 
-      const newSettings = { ...settings, projectIcon };
+      const newSettings = { ...settingsRef.current, projectIcon };
       // Clean up undefined values
       if (projectIcon === undefined) {
         delete newSettings.projectIcon;
       }
-      setSettings(newSettings);
+      settingsRef.current = newSettings;
       setProjectTheme(projectId, newSettings);
+      forceUpdate();
     },
-    [projectId, settings]
+    [projectId]
   );
 
   /**
@@ -113,14 +117,15 @@ export function useProjectTheme(projectId: string | null) {
   const clearTheme = useCallback(() => {
     if (!projectId) return;
 
-    setSettings({});
+    settingsRef.current = {};
     setProjectTheme(projectId, {});
+    forceUpdate();
   }, [projectId]);
 
   return {
     settings,
     settingsLoaded,
-    loadedForProjectId,
+    loadedForProjectId: loadedProjectIdRef.current,
     updateColorTheme,
     updateIconTheme,
     updateProjectIcon,

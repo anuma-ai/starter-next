@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -120,6 +120,18 @@ type ProjectDetailViewProps = {
 type ConversationWithTitle = StoredConversation & { displayTitle?: string };
 
 export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
+  // Apply theme SYNCHRONOUSLY at start of render to prevent flash
+  // This must happen before any hooks or rendering to ensure CSS variables are set
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(`project_theme_${projectId}`);
+    const settings = stored ? JSON.parse(stored) : {};
+    if (settings.colorTheme) {
+      applyTheme(settings.colorTheme);
+    } else {
+      applyTheme(getStoredThemeId());
+    }
+  }
+
   const router = useRouter();
   const { authenticated } = usePrivy();
   const {
@@ -157,13 +169,12 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   // Icon picker dialog state
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
-  // Apply project color theme to entire app when on this project page
-  // Don't restore on cleanup - let the next page apply its own theme
-  useEffect(() => {
+  // Theme is applied synchronously at the top of this component
+  // Re-apply if colorTheme changes via the settings UI
+  useLayoutEffect(() => {
     if (projectTheme.colorTheme) {
       applyTheme(projectTheme.colorTheme);
     } else {
-      // No project override - apply global theme
       applyTheme(getStoredThemeId());
     }
   }, [projectTheme.colorTheme]);

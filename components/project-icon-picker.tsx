@@ -131,6 +131,7 @@ export function ProjectIcon({
   strokeWidth,
   scale,
   className = "",
+  style = {},
 }: {
   hexcode: string;
   size?: number;
@@ -138,6 +139,7 @@ export function ProjectIcon({
   strokeWidth?: number;
   scale?: number; // > 1 crops padding to make icon fill more space
   className?: string;
+  style?: React.CSSProperties;
 }) {
   // Use provided color, or default based on theme
   const effectiveColor = color || "#000";
@@ -147,7 +149,7 @@ export function ProjectIcon({
   );
 
   if (!dataUrl) {
-    return <div className={`bg-muted rounded ${className}`} style={{ width: size, height: size }} />;
+    return <div className={`bg-muted rounded ${className}`} style={{ width: size, height: size, ...style }} />;
   }
 
   return (
@@ -157,60 +159,40 @@ export function ProjectIcon({
       width={size}
       height={size}
       className={className}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, ...style }}
     />
   );
 }
 
-// Check if current theme needs white icons (non-light themes)
-function checkNeedsWhiteIcon(): boolean {
-  if (typeof document === "undefined") return false;
-  const root = document.documentElement;
-  // Use white icons for any non-light theme
-  return root.classList.contains("dark") ||
-    root.classList.contains("theme-dark") ||
-    root.classList.contains("theme-orange") ||
-    root.classList.contains("theme-green") ||
-    root.classList.contains("theme-blue");
-}
-
-// Icon component that auto-detects theme
+// Icon component that auto-detects theme using CSS custom property
+// Uses --icon-invert CSS variable which is set by theme classes (0 for light, 1 for dark)
+// This avoids race conditions because CSS variables inherit immediately when theme changes
 export function ThemedProjectIcon({
   hexcode,
   size = 24,
   strokeWidth,
   scale,
   className = "",
+  style = {},
 }: {
   hexcode: string;
   size?: number;
   strokeWidth?: number;
   scale?: number;
   className?: string;
+  style?: React.CSSProperties;
 }) {
-  // Initialize with current theme state to avoid flash
-  const [useWhite, setUseWhite] = useState(checkNeedsWhiteIcon);
-
-  React.useEffect(() => {
-    // Re-check on mount (in case SSR mismatch)
-    setUseWhite(checkNeedsWhiteIcon());
-
-    // Observe class changes for theme switches
-    const observer = new MutationObserver(() => {
-      setUseWhite(checkNeedsWhiteIcon());
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-
+  // Always render black icons, use CSS variable for filter
+  // The filter uses var(--icon-invert) which is 0 for light themes, 1 for dark themes
   return (
     <ProjectIcon
       hexcode={hexcode}
       size={size}
       strokeWidth={strokeWidth}
       scale={scale}
-      color={useWhite ? "#fff" : "#000"}
+      color="#000"
       className={className}
+      style={{ filter: "invert(var(--icon-invert))", ...style }}
     />
   );
 }
