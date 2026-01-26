@@ -1,33 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, Logout02Icon } from "@hugeicons/core-free-icons";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ThemePicker } from "./theme-picker";
 
 export function SettingsView() {
   const router = useRouter();
   const { logout } = usePrivy();
-  const [darkMode, setDarkMode] = useState(false);
-
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark");
-    setDarkMode(isDark);
-  }, []);
-
-  const handleDarkModeToggle = (checked: boolean) => {
-    setDarkMode(checked);
-    if (checked) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
 
   return (
     <div className="flex flex-1 flex-col p-8 pt-16 md:pt-8 bg-sidebar dark:bg-background border-l border-border dark:border-0">
@@ -36,20 +18,14 @@ export function SettingsView() {
 
         <div className="space-y-4">
           <div className="rounded-xl bg-white dark:bg-card p-1">
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="space-y-0.5">
-                <Label htmlFor="dark-mode" className="text-base">
-                  Dark mode
-                </Label>
+            <div className="px-4 py-3">
+              <div className="space-y-0.5 mb-3">
+                <Label className="text-base">Theme</Label>
                 <p className="text-sm text-muted-foreground">
-                  Toggle dark mode on or off
+                  Choose a background color for the app
                 </p>
               </div>
-              <Switch
-                id="dark-mode"
-                checked={darkMode}
-                onCheckedChange={handleDarkModeToggle}
-              />
+              <ThemePicker />
             </div>
             <button
               onClick={() => router.push("/settings/memories")}
