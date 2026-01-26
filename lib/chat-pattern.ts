@@ -56,10 +56,13 @@ export const ICON_THEMES = {
   },
 } as const;
 
-export type IconThemeId = keyof typeof ICON_THEMES;
+export type IconThemeId = keyof typeof ICON_THEMES | "none";
 
 // Filter metadata to get valid hexcodes (simple codes without modifiers)
 function getIconsForTheme(themeId: IconThemeId, limit: number = 20): string[] {
+  // Handle "none" theme - return empty array
+  if (themeId === "none") return [];
+
   const theme = ICON_THEMES[themeId];
   const themeSubgroups: readonly string[] | undefined =
     "subgroups" in theme ? theme.subgroups : undefined;
@@ -507,6 +510,11 @@ export function getChatPatternStyle(
   strokeColor: string,
   iconTheme: IconThemeId = "nature"
 ): React.CSSProperties {
+  // Return empty style for "none" theme
+  if (iconTheme === "none") {
+    return {};
+  }
+
   const dataUrl = generateChatPatternDataURL(strokeColor, iconTheme);
   return {
     backgroundImage: `url("${dataUrl}")`,
@@ -549,6 +557,7 @@ function getThemeFromClasses(): string {
 function getSavedIconTheme(): IconThemeId {
   if (typeof localStorage === "undefined") return "nature";
   const saved = localStorage.getItem(ICON_THEME_STORAGE_KEY);
+  if (saved === "none") return "none";
   if (saved && saved in ICON_THEMES) {
     return saved as IconThemeId;
   }
@@ -575,7 +584,7 @@ export function useChatPattern(): React.CSSProperties {
     // Listen for icon theme changes
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === ICON_THEME_STORAGE_KEY && e.newValue) {
-        if (e.newValue in ICON_THEMES) {
+        if (e.newValue === "none" || e.newValue in ICON_THEMES) {
           setIconTheme(e.newValue as IconThemeId);
         }
       }
@@ -647,7 +656,7 @@ export function useChatPatternWithProject(
     // Listen for icon theme changes
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === ICON_THEME_STORAGE_KEY && e.newValue) {
-        if (e.newValue in ICON_THEMES) {
+        if (e.newValue === "none" || e.newValue in ICON_THEMES) {
           setGlobalIconTheme(e.newValue as IconThemeId);
         }
       }
@@ -661,9 +670,11 @@ export function useChatPatternWithProject(
   }, []);
 
   // Use project theme if provided, otherwise fall back to global
+  // Special handling: projectIconTheme can be "none" to explicitly have no pattern
   const effectiveColorTheme = projectColorTheme || globalColorThemeId;
-  const effectiveIconTheme =
-    (projectIconTheme as IconThemeId) || globalIconTheme;
+  const effectiveIconTheme = projectIconTheme
+    ? (projectIconTheme as IconThemeId)
+    : globalIconTheme;
 
   const strokeColor = getPatternStrokeColor(effectiveColorTheme);
 

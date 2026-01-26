@@ -384,7 +384,13 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
                   <DropdownMenuItem onClick={() => updateIconTheme(undefined)}>
                     {!projectTheme.iconTheme && <CheckIcon className="size-4" />}
                     <span className={projectTheme.iconTheme ? "pl-6" : ""}>
-                      Inherit from settings
+                      Default
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateIconTheme("none")}>
+                    {projectTheme.iconTheme === "none" && <CheckIcon className="size-4" />}
+                    <span className={projectTheme.iconTheme !== "none" ? "pl-6" : ""}>
+                      None
                     </span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -414,7 +420,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
                   <DropdownMenuItem onClick={() => updateColorTheme(undefined)}>
                     {!projectTheme.colorTheme && <CheckIcon className="size-4" />}
                     <span className={projectTheme.colorTheme ? "pl-6" : ""}>
-                      Inherit from settings
+                      Default
                     </span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

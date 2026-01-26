@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ThemePicker } from "@/app/components/theme-picker";
-import { useIconTheme, useChatPattern, getPreviewIcons, getPatternStrokeColor, ICON_THEMES, type IconThemeId } from "@/lib/chat-pattern";
+import { useIconTheme, useChatPattern, getPreviewIcons, getPatternStrokeColor, ICON_THEMES } from "@/lib/chat-pattern";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +57,27 @@ export default function AppearancePage() {
                 </p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {(Object.entries(ICON_THEMES) as [IconThemeId, typeof ICON_THEMES[IconThemeId]][]).map(
+                {/* None option */}
+                <button
+                  onClick={() => setIconTheme("none")}
+                  className="group relative flex flex-col items-center gap-1.5 p-1 rounded-lg focus:outline-none cursor-pointer"
+                >
+                  <div className="w-full aspect-[4/3] rounded-md bg-background border border-gray-200 dark:border-transparent relative flex items-center justify-center">
+                    <span className="text-muted-foreground text-xs">No pattern</span>
+                  </div>
+                  <span
+                    className={cn(
+                      "text-xs font-medium px-2 py-0.5 rounded-full transition-colors",
+                      iconTheme === "none"
+                        ? "bg-foreground text-background"
+                        : "group-hover:ring-1"
+                    )}
+                    style={iconTheme !== "none" ? { '--tw-ring-color': previewStrokeColor } as React.CSSProperties : undefined}
+                  >
+                    None
+                  </span>
+                </button>
+                {(Object.entries(ICON_THEMES) as [keyof typeof ICON_THEMES, (typeof ICON_THEMES)[keyof typeof ICON_THEMES]][]).map(
                   ([id, theme]) => {
                     const isSelected = iconTheme === id;
                     const previewIcons = getPreviewIcons(id, previewStrokeColor);
