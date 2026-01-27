@@ -327,7 +327,14 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
               </div>
             ) : (
               <div className="p-3">
-                {messages.map((message: any) => (
+                {messages
+                  // Filter out internal tool execution messages (not meant for user display)
+                  .filter((message: any) => {
+                    if (message.role !== "user") return true;
+                    const text = message.parts?.find((p: any) => p.type === "text")?.text || "";
+                    return !text.startsWith("[Tool Execution Results]");
+                  })
+                  .map((message: any) => (
                   <div key={message.id} className="mb-3">
                     {message.parts.map((part: any, i: number) => {
                       if (part.type !== "text") return null;

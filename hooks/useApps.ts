@@ -93,7 +93,7 @@ export function useApps(
         icon: options?.icon,
       };
 
-      const updatedApps = [...apps, newApp];
+      const updatedApps = [newApp, ...apps];
       setApps(updatedApps);
       setStoredApps(updatedApps);
 
