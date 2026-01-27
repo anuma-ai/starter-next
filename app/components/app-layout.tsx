@@ -16,6 +16,7 @@ import { RightSidebarHandle } from "@/components/ui/right-sidebar";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
+import { getProjectTheme } from "@/lib/project-theme";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -121,7 +122,21 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const handleSelectProject = useCallback(
     (projectId: string) => {
-      router.push(`/projects/${projectId}`);
+      // Apply project theme immediately before navigation to prevent flash
+      const projectTheme = getProjectTheme(projectId);
+      if (projectTheme.colorTheme) {
+        applyTheme(projectTheme.colorTheme);
+      } else {
+        applyTheme(getStoredThemeId());
+      }
+
+      // Double rAF ensures we've gone through at least one paint cycle
+      // before navigation, so the theme is visually applied
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          router.push(`/projects/${projectId}`);
+        });
+      });
     },
     [router]
   );

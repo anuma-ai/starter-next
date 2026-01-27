@@ -164,6 +164,19 @@
   }
 }
 
+/* Delayed fade-in to mask theme transition flash */
+@keyframes fadeInDelayed {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .animate-pulse-dot {
   animation: pulse-dot 1.5s ease-in-out infinite;
   will-change: transform, opacity;
