@@ -311,7 +311,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   }
 
   return (
-    <div className="flex h-dvh max-h-dvh overflow-hidden">
+    <div className="flex h-dvh max-h-dvh overflow-hidden pl-3">
         {/* Left panel: Chat (25%) */}
         <div className="w-1/4 flex flex-col border-r min-w-0 overflow-hidden">
           {/* Chat messages area */}
