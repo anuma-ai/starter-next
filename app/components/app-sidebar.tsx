@@ -9,6 +9,9 @@ import {
   FolderLibraryIcon,
   ArrowRight01Icon,
   ArrowDown01Icon,
+  CodeIcon,
+  SourceCodeIcon,
+  FileScriptIcon,
 } from "@hugeicons/core-free-icons";
 import {
   DropdownMenu,
@@ -32,6 +35,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import type { StoredProject, StoredConversation, CreateProjectOptions, StoredMessage } from "@reverbia/sdk/react";
+import type { StoredApp, CreateAppOptions } from "@/types/app";
 import { ThemedProjectIcon } from "@/components/project-icon-picker";
 import { getProjectTheme } from "@/lib/project-theme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
@@ -66,8 +70,8 @@ type AppSidebarProps = {
   conversationId: string | null;
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
-  currentView: "chat" | "settings" | "conversations" | "files" | "projects";
-  onViewChange: (view: "chat" | "settings" | "conversations" | "files" | "projects") => void;
+  currentView: "chat" | "settings" | "conversations" | "files" | "projects" | "apps";
+  onViewChange: (view: "chat" | "settings" | "conversations" | "files" | "projects" | "apps") => void;
   // Projects
   projects: StoredProject[];
   projectsReady: boolean;
@@ -80,6 +84,12 @@ type AppSidebarProps = {
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
   getMessages: (conversationId: string) => Promise<StoredMessage[]>;
   updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
+  // Apps
+  apps: StoredApp[];
+  appsReady: boolean;
+  selectedAppId: string | null;
+  onSelectApp: (appId: string) => void;
+  onCreateApp: (opts?: CreateAppOptions) => Promise<StoredApp | null>;
 };
 
 // Sortable project item with drag-and-drop support
@@ -359,6 +369,11 @@ export function AppSidebar({
   getProjectConversations,
   getMessages,
   updateConversationProject,
+  apps,
+  appsReady,
+  selectedAppId,
+  onSelectApp,
+  onCreateApp,
 }: AppSidebarProps) {
   const { authenticated, login, ready } = usePrivy();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
@@ -890,6 +905,19 @@ export function AppSidebar({
                     <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
                     New project
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      // Create app with default empty name
+                      const app = await onCreateApp({ name: "" });
+                      if (app?.appId) {
+                        // Navigate to the app page
+                        onSelectApp(app.appId);
+                      }
+                    }}
+                  >
+                    <HugeiconsIcon icon={CodeIcon} size={16} />
+                    New app
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarMenuItem>
@@ -1033,6 +1061,28 @@ export function AppSidebar({
                       ) : null}
                     </DragOverlay>
                   </DndContext>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+
+          {/* Apps Section */}
+          {appsReady && apps.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {apps.map((app) => (
+                    <SidebarMenuItem key={app.appId}>
+                      <SidebarMenuButton
+                        isActive={currentView === "apps" && selectedAppId === app.appId}
+                        onClick={() => onSelectApp(app.appId)}
+                        className="cursor-pointer"
+                      >
+                        <HugeiconsIcon icon={CodeIcon} size={16} />
+                        <span className="truncate">{app.name || "Untitled App"}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

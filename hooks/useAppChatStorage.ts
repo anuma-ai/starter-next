@@ -56,6 +56,12 @@ type UseChatStorageProps = {
   walletAddress?: string;
 };
 
+type ToolCall = {
+  id: string;
+  name: string;
+  arguments: Record<string, any>;
+};
+
 type SendMessageOptions = {
   model?: string;
   temperature?: number;
@@ -73,6 +79,8 @@ type SendMessageOptions = {
   apiType?: "responses" | "completions";
   /** Explicitly specify the conversation ID to send this message to */
   conversationId?: string;
+  /** Callback when tool calls are received - used for client-side tool execution */
+  onToolCall?: (toolCall: ToolCall, clientTools: any[]) => Promise<any>;
 };
 
 // Memory context prefix used when injecting memories into messages
@@ -399,6 +407,7 @@ export function useAppChatStorage({
         toolChoice,
         apiType,
         conversationId: explicitConversationId,
+        onToolCall,
       } = options;
 
       let assistantMessageId: string;
@@ -501,6 +510,62 @@ export function useAppChatStorage({
           }
         },
       });
+
+      // Process tool calls if present and callback is provided
+      if (onToolCall && clientTools && clientTools.length > 0) {
+        console.log('[useAppChatStorage] Response received:', JSON.stringify(response, null, 2));
+
+        // Check for tool calls in the response - handle various API response formats
+        let toolCalls: any[] = [];
+
+        if (response) {
+          // Direct toolCalls array
+          if (response.toolCalls) {
+            toolCalls = response.toolCalls;
+          }
+          // OpenAI format: tool_calls
+          else if (response.tool_calls) {
+            toolCalls = response.tool_calls;
+          }
+          // SDK wrapped format: response.data.output with function_call items
+          else if (response.data?.output && Array.isArray(response.data.output)) {
+            toolCalls = response.data.output.filter((item: any) => item.type === 'function_call');
+          }
+          // Responses API format: output array with function_call items
+          else if (response.output && Array.isArray(response.output)) {
+            toolCalls = response.output.filter((item: any) => item.type === 'function_call');
+          }
+          // Check for choices array (chat completions format)
+          else if (response.choices && response.choices[0]?.message?.tool_calls) {
+            toolCalls = response.choices[0].message.tool_calls;
+          }
+        }
+
+        console.log('[useAppChatStorage] Detected tool calls:', toolCalls.length, toolCalls);
+
+        for (const call of toolCalls) {
+          try {
+            // Parse the tool call - handle various formats
+            const toolCall: ToolCall = {
+              id: call.id || call.call_id || `call_${Date.now()}`,
+              name: call.name || call.function?.name,
+              arguments: typeof call.arguments === 'string'
+                ? JSON.parse(call.arguments)
+                : (call.arguments || (typeof call.function?.arguments === 'string'
+                  ? JSON.parse(call.function.arguments)
+                  : call.function?.arguments) || {}),
+            };
+
+            console.log('[useAppChatStorage] Executing tool call:', toolCall);
+
+            // Execute the tool via callback
+            const result = await onToolCall(toolCall, clientTools);
+            console.log('[useAppChatStorage] Tool result:', result);
+          } catch (error) {
+            console.error('[useAppChatStorage] Error processing tool call:', error, call);
+          }
+        }
+      }
 
       // Sync final streamed text to React state after streaming completes
       const finalText = streamingTextRef.current;

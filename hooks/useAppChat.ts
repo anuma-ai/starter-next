@@ -124,6 +124,8 @@ export function useAppChat({
         apiType?: "responses" | "completions";
         /** Explicitly specify the conversation ID to send this message to */
         conversationId?: string;
+        /** Callback when tool calls are received - used for client-side tool execution */
+        onToolCall?: (toolCall: { id: string; name: string; arguments: Record<string, any> }, clientTools: any[]) => Promise<any>;
       }
     ) => {
       console.log("[APPCHAT sendMessage] START", {
@@ -186,6 +188,7 @@ export function useAppChat({
           ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
           ...(options?.apiType && { apiType: options.apiType }),
           ...(options?.conversationId && { conversationId: options.conversationId }),
+          ...(options?.onToolCall && { onToolCall: options.onToolCall }),
           onThinking,
         });
 

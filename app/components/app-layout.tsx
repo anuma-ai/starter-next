@@ -17,6 +17,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import { getProjectTheme } from "@/lib/project-theme";
+import { useApps } from "@/hooks/useApps";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -83,6 +84,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     updateConversationProject,
   } = chatState;
 
+  // Apps hook - needs createConversation to create associated conversations
+  const {
+    apps,
+    isReady: appsReady,
+    createApp,
+  } = useApps(createConversation);
+
   const handleNewConversation = useCallback(async () => {
     // Apply global theme immediately before navigation to prevent flash
     applyTheme(getStoredThemeId());
@@ -104,7 +112,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   );
 
   const handleViewChange = useCallback(
-    (view: "chat" | "settings" | "conversations" | "files" | "projects") => {
+    (view: "chat" | "settings" | "conversations" | "files" | "projects" | "apps") => {
       if (view === "settings") {
         router.push("/settings");
       } else if (view === "conversations") {
@@ -113,9 +121,18 @@ export function AppLayout({ children }: AppLayoutProps) {
         router.push("/files");
       } else if (view === "projects") {
         router.push("/projects");
+      } else if (view === "apps") {
+        router.push("/apps");
       } else {
         router.push("/");
       }
+    },
+    [router]
+  );
+
+  const handleSelectApp = useCallback(
+    (appId: string) => {
+      router.push(`/apps/${appId}`);
     },
     [router]
   );
@@ -149,6 +166,8 @@ export function AppLayout({ children }: AppLayoutProps) {
     ? "files"
     : pathname.startsWith("/projects")
     ? "projects"
+    : pathname.startsWith("/apps")
+    ? "apps"
     : "chat";
   const insetBackground = "bg-background";
 
@@ -158,6 +177,11 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Extract selected project ID from pathname (e.g., /projects/abc123)
   const selectedProjectId = pathname.startsWith("/projects/")
+    ? pathname.split("/")[2]
+    : null;
+
+  // Extract selected app ID from pathname (e.g., /apps/abc123)
+  const selectedAppId = pathname.startsWith("/apps/")
     ? pathname.split("/")[2]
     : null;
 
@@ -190,6 +214,11 @@ export function AppLayout({ children }: AppLayoutProps) {
           getProjectConversations={getProjectConversations}
           getMessages={getMessages}
           updateConversationProject={updateConversationProject}
+          apps={apps}
+          appsReady={appsReady}
+          selectedAppId={selectedAppId}
+          onSelectApp={handleSelectApp}
+          onCreateApp={createApp}
         />
         <SidebarHandle />
         <SidebarInset className={`min-h-dvh min-w-0 ${insetBackground}`}>
