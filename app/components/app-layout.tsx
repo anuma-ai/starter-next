@@ -89,6 +89,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     apps,
     isReady: appsReady,
     createApp,
+    deleteApp,
   } = useApps(createConversation);
 
   const handleNewConversation = useCallback(async () => {
@@ -135,6 +136,18 @@ export function AppLayout({ children }: AppLayoutProps) {
       router.push(`/apps/${appId}`);
     },
     [router]
+  );
+
+  const handleDeleteApp = useCallback(
+    async (appId: string) => {
+      const success = await deleteApp(appId);
+      // Navigate away if the deleted app is currently being viewed
+      if (success && pathname.startsWith("/apps/") && pathname.split("/")[2] === appId) {
+        router.push("/");
+      }
+      return success;
+    },
+    [deleteApp, pathname, router]
   );
 
   const handleSelectProject = useCallback(
@@ -214,11 +227,13 @@ export function AppLayout({ children }: AppLayoutProps) {
           getProjectConversations={getProjectConversations}
           getMessages={getMessages}
           updateConversationProject={updateConversationProject}
+          onDeleteConversation={deleteConversation}
           apps={apps}
           appsReady={appsReady}
           selectedAppId={selectedAppId}
           onSelectApp={handleSelectApp}
           onCreateApp={createApp}
+          onDeleteApp={handleDeleteApp}
         />
         <SidebarHandle />
         <SidebarInset className={`min-h-dvh min-w-0 ${insetBackground}`}>

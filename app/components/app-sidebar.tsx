@@ -12,6 +12,8 @@ import {
   CodeIcon,
   SourceCodeIcon,
   FileScriptIcon,
+  MoreVerticalIcon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons";
 import {
   DropdownMenu,
@@ -85,12 +87,14 @@ type AppSidebarProps = {
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
   getMessages: (conversationId: string) => Promise<StoredMessage[]>;
   updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
+  onDeleteConversation: (conversationId: string) => Promise<void>;
   // Apps
   apps: StoredApp[];
   appsReady: boolean;
   selectedAppId: string | null;
   onSelectApp: (appId: string) => void;
   onCreateApp: (opts?: CreateAppOptions) => Promise<StoredApp | null>;
+  onDeleteApp: (appId: string) => Promise<boolean>;
 };
 
 // Sortable project item with drag-and-drop support
@@ -234,15 +238,19 @@ function AppItem({
   isActive,
   onSelect,
   onToggleExpand,
+  onDelete,
 }: {
   app: StoredApp;
   isExpanded: boolean;
   isActive: boolean;
   onSelect: () => void;
   onToggleExpand: () => void;
+  onDelete: () => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
-  const showChevron = isHovered;
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const showChevron = isHovered && !isMenuOpen;
+  const showMenu = isHovered || isMenuOpen;
 
   return (
     <div className="mb-0.5">
@@ -278,6 +286,27 @@ function AppItem({
           </span>
           <span className="truncate">{app.name || "Untitled App"}</span>
         </SidebarMenuButton>
+        {showMenu && (
+          <DropdownMenu onOpenChange={setIsMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuAction className="cursor-pointer">
+                <HugeiconsIcon icon={MoreVerticalIcon} size={14} />
+              </SidebarMenuAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="right">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="text-destructive focus:text-destructive cursor-pointer"
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={16} className="text-destructive" />
+                Delete app
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </SidebarMenuItem>
       {/* Nested conversation when expanded */}
       <AnimatePresence initial={false}>
@@ -330,6 +359,7 @@ function SortableConversationItem({
   projectId,
   isActive,
   onSelect,
+  onDelete,
   isDropAnimating,
   isDragActive,
   skipAnimations,
@@ -338,10 +368,15 @@ function SortableConversationItem({
   projectId: string;
   isActive: boolean;
   onSelect: () => void;
+  onDelete: () => void;
   isDropAnimating?: boolean;
   isDragActive?: boolean;
   skipAnimations?: boolean;
 }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const showMenu = isHovered || isMenuOpen;
+
   const {
     attributes,
     listeners,
@@ -386,7 +421,10 @@ function SortableConversationItem({
       {...attributes}
       {...listeners}
     >
-      <SidebarMenuItem>
+      <SidebarMenuItem
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <SidebarMenuButton
           isActive={isActive}
           onClick={() => {
@@ -400,6 +438,27 @@ function SortableConversationItem({
             {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
           </span>
         </SidebarMenuButton>
+        {showMenu && (
+          <DropdownMenu onOpenChange={setIsMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuAction className="cursor-pointer">
+                <HugeiconsIcon icon={MoreVerticalIcon} size={14} />
+              </SidebarMenuAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="right">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="text-destructive focus:text-destructive cursor-pointer"
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={16} className="text-destructive" />
+                Delete chat
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </SidebarMenuItem>
     </motion.div>
   );
@@ -447,11 +506,13 @@ export function AppSidebar({
   getProjectConversations,
   getMessages,
   updateConversationProject,
+  onDeleteConversation,
   apps,
   appsReady,
   selectedAppId,
   onSelectApp,
   onCreateApp,
+  onDeleteApp,
 }: AppSidebarProps) {
   const { authenticated, login, ready } = usePrivy();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
@@ -597,6 +658,25 @@ export function AppSidebar({
       }
       return newExpanded;
     });
+  };
+
+  // Handle conversation deletion - remove from local state and call delete function
+  const handleDeleteConversation = async (conversationId: string) => {
+    // Optimistically remove from local state
+    setProjectConversations(prev => {
+      const updated = { ...prev };
+      for (const [projectId, convs] of Object.entries(updated)) {
+        const filteredConvs = convs.filter(c => c.conversationId !== conversationId);
+        if (filteredConvs.length !== convs.length) {
+          updated[projectId] = filteredConvs;
+          break;
+        }
+      }
+      return updated;
+    });
+
+    // Call the actual delete function
+    await onDeleteConversation(conversationId);
   };
 
   // Load project icons from project theme settings
@@ -1159,6 +1239,7 @@ export function AppSidebar({
                                           projectId={project.projectId}
                                           isActive={currentView === "chat" && conversationId === conv.conversationId}
                                           onSelect={() => onSelectConversation(conv.conversationId)}
+                                          onDelete={() => handleDeleteConversation(conv.conversationId)}
                                           isDropAnimating={dropAnimatingConvId === conv.conversationId}
                                           isDragActive={true}
                                           skipAnimations={skipInitialAnimations}
@@ -1185,6 +1266,7 @@ export function AppSidebar({
                                               projectId={project.projectId}
                                               isActive={currentView === "chat" && conversationId === conv.conversationId}
                                               onSelect={() => onSelectConversation(conv.conversationId)}
+                                              onDelete={() => handleDeleteConversation(conv.conversationId)}
                                               isDropAnimating={dropAnimatingConvId === conv.conversationId}
                                               isDragActive={false}
                                               skipAnimations={skipInitialAnimations}
@@ -1238,6 +1320,7 @@ export function AppSidebar({
                         isActive={isActive}
                         onSelect={() => onSelectApp(app.appId)}
                         onToggleExpand={() => toggleAppExpanded(app.appId)}
+                        onDelete={() => onDeleteApp(app.appId)}
                       />
                     );
                   })}
