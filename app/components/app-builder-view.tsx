@@ -473,7 +473,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                   language={selectedFile.language || "plaintext"}
                   value={selectedFile.content}
                   onChange={handleEditorChange}
-                  theme="vs-dark"
+                  theme="light"
                   options={{
                     minimap: { enabled: false },
                     fontSize: 13,

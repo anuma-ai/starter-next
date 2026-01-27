@@ -512,58 +512,132 @@ export function useAppChatStorage({
       });
 
       // Process tool calls if present and callback is provided
+      // This implements a multi-turn tool calling loop
       if (onToolCall && clientTools && clientTools.length > 0) {
-        console.log('[useAppChatStorage] Response received:', JSON.stringify(response, null, 2));
+        // Use 'any' type because response format varies across different API types
+        let currentResponse: any = response;
+        let maxIterations = 10; // Prevent infinite loops
+        let iteration = 0;
 
-        // Check for tool calls in the response - handle various API response formats
-        let toolCalls: any[] = [];
+        while (iteration < maxIterations) {
+          iteration++;
+          console.log(`[useAppChatStorage] Tool call iteration ${iteration}`);
 
-        if (response) {
-          // Direct toolCalls array
-          if (response.toolCalls) {
-            toolCalls = response.toolCalls;
+          // Check for tool calls in the response - handle various API response formats
+          let toolCalls: any[] = [];
+
+          if (currentResponse) {
+            // Direct toolCalls array
+            if (currentResponse.toolCalls) {
+              toolCalls = currentResponse.toolCalls;
+            }
+            // OpenAI format: tool_calls
+            else if (currentResponse.tool_calls) {
+              toolCalls = currentResponse.tool_calls;
+            }
+            // SDK wrapped format: response.data.output with function_call items
+            else if (currentResponse.data?.output && Array.isArray(currentResponse.data.output)) {
+              toolCalls = currentResponse.data.output.filter((item: any) => item.type === 'function_call');
+            }
+            // Responses API format: output array with function_call items
+            else if (currentResponse.output && Array.isArray(currentResponse.output)) {
+              toolCalls = currentResponse.output.filter((item: any) => item.type === 'function_call');
+            }
+            // Check for choices array (chat completions format)
+            else if (currentResponse.choices && currentResponse.choices[0]?.message?.tool_calls) {
+              toolCalls = currentResponse.choices[0].message.tool_calls;
+            }
           }
-          // OpenAI format: tool_calls
-          else if (response.tool_calls) {
-            toolCalls = response.tool_calls;
+
+          console.log('[useAppChatStorage] Detected tool calls:', toolCalls.length, toolCalls);
+
+          // No more tool calls, we're done
+          if (toolCalls.length === 0) {
+            break;
           }
-          // SDK wrapped format: response.data.output with function_call items
-          else if (response.data?.output && Array.isArray(response.data.output)) {
-            toolCalls = response.data.output.filter((item: any) => item.type === 'function_call');
+
+          // Execute all tool calls and collect results
+          const toolResults: Array<{ call_id: string; output: string }> = [];
+
+          for (const call of toolCalls) {
+            try {
+              // Parse the tool call - handle various formats
+              const toolCall: ToolCall = {
+                id: call.id || call.call_id || `call_${Date.now()}`,
+                name: call.name || call.function?.name,
+                arguments: typeof call.arguments === 'string'
+                  ? JSON.parse(call.arguments)
+                  : (call.arguments || (typeof call.function?.arguments === 'string'
+                    ? JSON.parse(call.function.arguments)
+                    : call.function?.arguments) || {}),
+              };
+
+              console.log('[useAppChatStorage] Executing tool call:', toolCall);
+
+              // Execute the tool via callback
+              const result = await onToolCall(toolCall, clientTools);
+              console.log('[useAppChatStorage] Tool result:', result);
+
+              // Collect result for sending back to AI
+              toolResults.push({
+                call_id: toolCall.id,
+                output: JSON.stringify(result),
+              });
+            } catch (error) {
+              console.error('[useAppChatStorage] Error processing tool call:', error, call);
+              toolResults.push({
+                call_id: call.id || call.call_id || `call_${Date.now()}`,
+                output: JSON.stringify({ error: String(error) }),
+              });
+            }
           }
-          // Responses API format: output array with function_call items
-          else if (response.output && Array.isArray(response.output)) {
-            toolCalls = response.output.filter((item: any) => item.type === 'function_call');
-          }
-          // Check for choices array (chat completions format)
-          else if (response.choices && response.choices[0]?.message?.tool_calls) {
-            toolCalls = response.choices[0].message.tool_calls;
+
+          console.log('[useAppChatStorage] Sending tool results back to AI:', toolResults);
+
+          // Format tool results as a context message for the AI
+          // Since the API is stateless, we send tool results through the SDK as a follow-up
+          const toolResultsSummary = toolResults.map((tr) => {
+            const toolName = toolCalls.find(c => (c.id || c.call_id) === tr.call_id)?.name || 'unknown';
+            return `Tool "${toolName}" returned: ${tr.output}`;
+          }).join('\n\n');
+
+          const continuationPrompt = `[Tool Execution Results]\nThe following tools were executed:\n\n${toolResultsSummary}\n\nBased on these results, continue with the task. If you need to call more tools (like read_file to see current content before updating, or update_file to make changes), do so now.`;
+
+          console.log('[useAppChatStorage] Sending continuation via SDK:', continuationPrompt.slice(0, 200) + '...');
+
+          try {
+            // Use SDK to send continuation - this maintains conversation context
+            currentResponse = await sendMessage({
+              messages: [{ role: 'user' as const, content: [{ type: 'text', text: continuationPrompt }] }],
+              model: model || 'openai/gpt-5.2-2025-12-11',
+              maxOutputTokens: maxOutputTokens || 16000,
+              includeHistory: true,
+              clientTools: clientTools?.map((t) => ({
+                type: t.type || 'function',
+                name: t.name,
+                description: t.description,
+                parameters: t.parameters,
+              })),
+              toolChoice: 'auto',
+              ...(apiType && { apiType }),
+              ...(explicitConversationId && { conversationId: explicitConversationId }),
+              onData: (chunk: string) => {
+                streamingTextRef.current += chunk;
+                if (onStreamingData) {
+                  onStreamingData(chunk, streamingTextRef.current);
+                }
+              },
+            });
+
+            console.log('[useAppChatStorage] SDK continuation response:', currentResponse);
+          } catch (error) {
+            console.error('[useAppChatStorage] Error sending tool results via SDK:', error);
+            break;
           }
         }
 
-        console.log('[useAppChatStorage] Detected tool calls:', toolCalls.length, toolCalls);
-
-        for (const call of toolCalls) {
-          try {
-            // Parse the tool call - handle various formats
-            const toolCall: ToolCall = {
-              id: call.id || call.call_id || `call_${Date.now()}`,
-              name: call.name || call.function?.name,
-              arguments: typeof call.arguments === 'string'
-                ? JSON.parse(call.arguments)
-                : (call.arguments || (typeof call.function?.arguments === 'string'
-                  ? JSON.parse(call.function.arguments)
-                  : call.function?.arguments) || {}),
-            };
-
-            console.log('[useAppChatStorage] Executing tool call:', toolCall);
-
-            // Execute the tool via callback
-            const result = await onToolCall(toolCall, clientTools);
-            console.log('[useAppChatStorage] Tool result:', result);
-          } catch (error) {
-            console.error('[useAppChatStorage] Error processing tool call:', error, call);
-          }
+        if (iteration >= maxIterations) {
+          console.warn('[useAppChatStorage] Max tool call iterations reached');
         }
       }
 
@@ -589,7 +663,7 @@ export function useAppChatStorage({
 
       return response;
     },
-    [sendMessage, onStreamingData]
+    [sendMessage, onStreamingData, getToken]
   );
   //#endregion handleSend
   //#endregion sendMessage
