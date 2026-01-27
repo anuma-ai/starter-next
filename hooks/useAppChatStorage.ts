@@ -675,15 +675,23 @@ export function useAppChatStorage({
 
           for (const call of toolCalls) {
             try {
+              // Helper to safely parse JSON arguments
+              const safeParseArgs = (args: unknown): Record<string, unknown> => {
+                if (typeof args === 'string' && args.trim()) {
+                  try {
+                    return JSON.parse(args);
+                  } catch {
+                    return {};
+                  }
+                }
+                return (args as Record<string, unknown>) || {};
+              };
+
               // Parse the tool call - handle various formats
               const toolCall: ToolCall = {
                 id: call.id || call.call_id || `call_${Date.now()}`,
                 name: call.name || call.function?.name,
-                arguments: typeof call.arguments === 'string'
-                  ? JSON.parse(call.arguments)
-                  : (call.arguments || (typeof call.function?.arguments === 'string'
-                    ? JSON.parse(call.function.arguments)
-                    : call.function?.arguments) || {}),
+                arguments: safeParseArgs(call.arguments) || safeParseArgs(call.function?.arguments) || {},
               };
 
               console.log('[useAppChatStorage] Executing tool call:', toolCall);
