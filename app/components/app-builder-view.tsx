@@ -670,11 +670,11 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                     }}
                   >
                     {/* Preview area - takes remaining space above console */}
-                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: showConsole ? 156 : 28 }}>
+                    <div className="overflow-hidden rounded-lg m-2" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: showConsole ? 156 : 28 }}>
                       <SandpackPreview
                         showOpenInCodeSandbox={false}
                         showRefreshButton={true}
-                        style={{ height: "100%", width: "100%" }}
+                        style={{ height: "100%", width: "100%", borderRadius: "0.5rem" }}
                       />
                     </div>
                     {/* Collapsible console - fixed at bottom */}
