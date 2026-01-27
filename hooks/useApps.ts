@@ -73,25 +73,17 @@ export function useApps(
   useEffect(() => {
     const handleTitleUpdate = (e: Event) => {
       const { conversationId, title: newTitle } = (e as CustomEvent).detail;
-      console.log('[useApps] Title event received:', { conversationId, newTitle });
       if (!conversationId || !newTitle) return;
 
       // Check if this conversation belongs to an app
       setApps((currentApps) => {
-        console.log('[useApps] Checking apps:', currentApps.map(a => ({ appId: a.appId, name: a.name, conversationId: a.conversationId })));
         const appIndex = currentApps.findIndex((a) => a.conversationId === conversationId);
-        console.log('[useApps] appIndex:', appIndex);
         if (appIndex === -1) return currentApps;
 
-        // Only update if the app doesn't have a name yet (still "Untitled App")
+        // Only update if the app doesn't have a name yet
         const app = currentApps[appIndex];
-        console.log('[useApps] Found app:', app.appId, 'current name:', JSON.stringify(app.name));
-        if (app.name && app.name.trim() !== "") {
-          console.log('[useApps] App already has name, skipping update');
-          return currentApps;
-        }
+        if (app.name && app.name.trim() !== "") return currentApps;
 
-        console.log('[useApps] Updating app name to:', newTitle);
         const updatedApp: StoredApp = {
           ...app,
           name: newTitle,

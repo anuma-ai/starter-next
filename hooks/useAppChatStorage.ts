@@ -523,7 +523,6 @@ export function useAppChatStorage({
       // Prefer explicit option (for cases where caller adds messages before calling)
       // Fall back to checking messagesRef if no option provided
       const isFirstMessage = isFirstMessageOption ?? messagesRef.current.filter((m) => m.role === "user").length === 0;
-      console.log('[Title Debug] isFirstMessage:', isFirstMessage, 'isFirstMessageOption:', isFirstMessageOption);
 
       let assistantMessageId: string;
 
@@ -773,8 +772,6 @@ export function useAppChatStorage({
 
       // Generate title for the first message only
       // Use isFirstMessage captured at the start of handleSendMessage
-      console.log('[Title Debug] isFirstMessage check:', isFirstMessage, 'currentConvId:', currentConversationIdRef.current);
-
       if (isFirstMessage) {
         const userText = textForStorage || text;
         const assistantText = finalText;
@@ -784,17 +781,13 @@ export function useAppChatStorage({
           { role: "assistant", text: assistantText.slice(0, 200) },
         ].filter((m) => m.text);
 
-        console.log('[Title Debug] Will generate title for:', messagesForTitle);
-
         // Delay slightly to ensure conversation ID is available
         setTimeout(() => {
           const currentConvId = currentConversationIdRef.current;
-          console.log('[Title Debug] In setTimeout, currentConvId:', currentConvId);
           if (!currentConvId) return;
 
           generateConversationTitle(messagesForTitle, getToken).then(
             (newTitle) => {
-              console.log('[Title Debug] Generated title:', newTitle, 'for convId:', currentConvId);
               if (newTitle) {
                 storeConversationTitle(currentConvId, newTitle);
                 setConversations((prevConversations) =>
