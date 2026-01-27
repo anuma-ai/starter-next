@@ -168,6 +168,7 @@ export function useAppFiles(appId: string | null) {
 
   /**
    * Create a new file or directory
+   * Reads from localStorage directly to avoid stale closure issues in async contexts
    */
   const createFile = useCallback(
     async (options: CreateAppFileOptions): Promise<StoredAppFile | null> => {
@@ -176,8 +177,11 @@ export function useAppFiles(appId: string | null) {
         return null;
       }
 
+      // Read directly from localStorage to get the latest state
+      const currentFiles = getStoredFiles(appId);
+
       const normalized = normalizePath(options.path);
-      const existingFile = files.find((f) => f.path === normalized);
+      const existingFile = currentFiles.find((f) => f.path === normalized);
 
       // If file exists, update it instead (upsert behavior)
       if (existingFile) {
@@ -192,7 +196,7 @@ export function useAppFiles(appId: string | null) {
           content: options.content || "",
           updatedAt: Date.now(),
         };
-        const updatedFiles = files.map((f) =>
+        const updatedFiles = currentFiles.map((f) =>
           f.path === normalized ? updatedFile : f
         );
         setFiles(updatedFiles);
@@ -201,7 +205,7 @@ export function useAppFiles(appId: string | null) {
       }
 
       // Ensure parent directories exist
-      const parentDirs = ensureParentDirectories(normalized, files);
+      const parentDirs = ensureParentDirectories(normalized, currentFiles);
 
       const now = Date.now();
       const newFile: StoredAppFile = {
@@ -219,17 +223,18 @@ export function useAppFiles(appId: string | null) {
           : detectLanguage(getFileName(normalized)),
       };
 
-      const updatedFiles = [...files, ...parentDirs, newFile];
+      const updatedFiles = [...currentFiles, ...parentDirs, newFile];
       setFiles(updatedFiles);
       setStoredFiles(appId, updatedFiles);
 
       return newFile;
     },
-    [appId, files, ensureParentDirectories]
+    [appId, ensureParentDirectories]
   );
 
   /**
    * Update an existing file's content
+   * Reads from localStorage directly to avoid stale closure issues in async contexts
    */
   const updateFile = useCallback(
     async (
@@ -241,8 +246,11 @@ export function useAppFiles(appId: string | null) {
         return null;
       }
 
+      // Read directly from localStorage to get the latest state
+      const currentFiles = getStoredFiles(appId);
+
       // Find file by ID or path
-      const fileIndex = files.findIndex(
+      const fileIndex = currentFiles.findIndex(
         (f) => f.fileId === fileIdOrPath || f.path === fileIdOrPath
       );
 
@@ -251,7 +259,7 @@ export function useAppFiles(appId: string | null) {
         return null;
       }
 
-      const file = files[fileIndex];
+      const file = currentFiles[fileIndex];
       if (file.isDirectory) {
         console.error("[useAppFiles] Cannot update directory content");
         return null;
@@ -263,7 +271,7 @@ export function useAppFiles(appId: string | null) {
         updatedAt: Date.now(),
       };
 
-      const updatedFiles = [...files];
+      const updatedFiles = [...currentFiles];
       updatedFiles[fileIndex] = updatedFile;
 
       setFiles(updatedFiles);
@@ -271,11 +279,12 @@ export function useAppFiles(appId: string | null) {
 
       return updatedFile;
     },
-    [appId, files]
+    [appId]
   );
 
   /**
    * Delete a file or directory (and all children if directory)
+   * Reads from localStorage directly to avoid stale closure issues in async contexts
    */
   const deleteFile = useCallback(
     async (fileIdOrPath: string): Promise<boolean> => {
@@ -284,8 +293,11 @@ export function useAppFiles(appId: string | null) {
         return false;
       }
 
+      // Read directly from localStorage to get the latest state
+      const currentFiles = getStoredFiles(appId);
+
       // Find file by ID or path
-      const file = files.find(
+      const file = currentFiles.find(
         (f) => f.fileId === fileIdOrPath || f.path === fileIdOrPath
       );
 
@@ -297,11 +309,11 @@ export function useAppFiles(appId: string | null) {
       // If directory, also delete all children
       let updatedFiles: StoredAppFile[];
       if (file.isDirectory) {
-        updatedFiles = files.filter(
+        updatedFiles = currentFiles.filter(
           (f) => f.path !== file.path && !f.path.startsWith(file.path + "/")
         );
       } else {
-        updatedFiles = files.filter((f) => f.fileId !== file.fileId);
+        updatedFiles = currentFiles.filter((f) => f.fileId !== file.fileId);
       }
 
       setFiles(updatedFiles);
@@ -309,11 +321,12 @@ export function useAppFiles(appId: string | null) {
 
       return true;
     },
-    [appId, files]
+    [appId]
   );
 
   /**
    * Rename a file or directory
+   * Reads from localStorage directly to avoid stale closure issues in async contexts
    */
   const renameFile = useCallback(
     async (fileIdOrPath: string, newName: string): Promise<StoredAppFile | null> => {
@@ -322,7 +335,10 @@ export function useAppFiles(appId: string | null) {
         return null;
       }
 
-      const file = files.find(
+      // Read directly from localStorage to get the latest state
+      const currentFiles = getStoredFiles(appId);
+
+      const file = currentFiles.find(
         (f) => f.fileId === fileIdOrPath || f.path === fileIdOrPath
       );
 
@@ -337,13 +353,13 @@ export function useAppFiles(appId: string | null) {
         : newName;
 
       // Check if new path already exists
-      if (files.some((f) => f.path === newPath && f.fileId !== file.fileId)) {
+      if (currentFiles.some((f) => f.path === newPath && f.fileId !== file.fileId)) {
         console.error("[useAppFiles] Path already exists:", newPath);
         return null;
       }
 
       const now = Date.now();
-      let updatedFiles = files.map((f) => {
+      let updatedFiles = currentFiles.map((f) => {
         if (f.fileId === file.fileId) {
           // Update the file itself
           return {
@@ -378,34 +394,42 @@ export function useAppFiles(appId: string | null) {
 
       return updatedFiles.find((f) => f.path === newPath) || null;
     },
-    [appId, files]
+    [appId]
   );
 
   /**
    * Get a specific file by ID or path
+   * Reads from localStorage directly to avoid stale closure issues in async contexts
    */
   const getFile = useCallback(
     (fileIdOrPath: string): StoredAppFile | null => {
+      // Read directly from localStorage to get the latest state
+      // This is important for tool calls where React state may not have updated yet
+      const currentFiles = appId ? getStoredFiles(appId) : files;
       return (
-        files.find(
+        currentFiles.find(
           (f) => f.fileId === fileIdOrPath || f.path === fileIdOrPath
         ) || null
       );
     },
-    [files]
+    [appId, files]
   );
 
   /**
    * List all files (optionally filtered by directory)
+   * Reads from localStorage directly to avoid stale closure issues in async contexts
    */
   const listFiles = useCallback(
     (parentPath?: string | null): StoredAppFile[] => {
+      // Read directly from localStorage to get the latest state
+      // This is important for tool calls where React state may not have updated yet
+      const currentFiles = appId ? getStoredFiles(appId) : files;
       if (parentPath === undefined) {
-        return files;
+        return currentFiles;
       }
-      return files.filter((f) => f.parentPath === parentPath);
+      return currentFiles.filter((f) => f.parentPath === parentPath);
     },
-    [files]
+    [appId, files]
   );
 
   /**
