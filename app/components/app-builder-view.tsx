@@ -593,7 +593,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setCenterTab("code")}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                   centerTab === "code"
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -607,7 +607,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                   refreshFiles(); // Ensure we have latest files from localStorage
                   setCenterTab("preview");
                 }}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                   centerTab === "preview"
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
