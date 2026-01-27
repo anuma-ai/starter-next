@@ -259,6 +259,24 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
         sandpackFiles["/App.js"] = sandpackFiles["/src/App.tsx"];
       }
 
+      // Also alias CSS files from src/ to root so imports work correctly
+      // When App.js imports "./styles.css", it looks for /styles.css
+      if (sandpackFiles["/src/styles.css"] && !sandpackFiles["/styles.css"]) {
+        sandpackFiles["/styles.css"] = sandpackFiles["/src/styles.css"];
+      }
+
+      // Auto-inject CSS import into App.js if styles.css exists but isn't imported
+      const hasStyles = sandpackFiles["/styles.css"] || sandpackFiles["/src/styles.css"];
+      if (hasStyles && sandpackFiles["/App.js"]) {
+        const appCode = sandpackFiles["/App.js"].code;
+        if (!appCode.includes("styles.css")) {
+          // Add CSS import at the top of the file
+          sandpackFiles["/App.js"] = {
+            code: `import "./styles.css";\n${appCode}`
+          };
+        }
+      }
+
       // Ensure package.json has react deps
       if (!hasPackageJson || !sandpackFiles["/package.json"]) {
         sandpackFiles["/package.json"] = {

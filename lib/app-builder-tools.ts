@@ -200,6 +200,16 @@ Available tools:
 - list_files: List all files
 - create_directory: Create a directory
 
+STYLING REQUIREMENTS (IMPORTANT):
+For React apps:
+- ALWAYS import CSS at the top of App.jsx: import "./styles.css";
+- Create src/styles.css with your styles
+- Use standard CSS (not Tailwind)
+
+For HTML apps:
+- Include <link rel="stylesheet" href="styles.css"> in the <head>
+- Or use inline <style> tags
+
 RESPONSE FORMAT:
 After using tools, give a brief summary like:
 - "Created index.html with the basic structure"
