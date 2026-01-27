@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { MenuSquareIcon } from "hugeicons-react";
+import { MenuSquareIcon, Cancel01Icon } from "hugeicons-react";
 import { ImageIcon, CheckIcon, CpuIcon, AlertCircleIcon, CodeIcon, PlayIcon, TerminalIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import {
   SandpackProvider,
@@ -619,15 +619,12 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
               </button>
             </div>
             {centerTab === "code" && selectedFile && (
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground truncate max-w-[200px]">{selectedFile.path}</span>
-                <button
-                  onClick={() => setSelectedFilePath(null)}
-                  className="text-muted-foreground hover:text-foreground text-xs cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
+              <button
+                onClick={() => setSelectedFilePath(null)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <Cancel01Icon size={14} />
+              </button>
             )}
           </div>
 
