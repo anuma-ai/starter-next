@@ -37,6 +37,7 @@ import {
 import type { StoredProject, StoredConversation, CreateProjectOptions, StoredMessage } from "@reverbia/sdk/react";
 import type { StoredApp, CreateAppOptions } from "@/types/app";
 import { ThemedProjectIcon } from "@/components/project-icon-picker";
+import { getStoredConversationTitle } from "@/hooks/useAppChatStorage";
 import { getProjectTheme } from "@/lib/project-theme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import {
@@ -622,6 +623,30 @@ export function AppSidebar({
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
+  // Listen for AI-generated title updates and refresh conversation titles
+  useEffect(() => {
+    const handleTitleUpdate = (e: Event) => {
+      const { conversationId, title: newTitle } = (e as CustomEvent).detail;
+      if (!conversationId || !newTitle) return;
+
+      setProjectConversations(prev => {
+        const updated = { ...prev };
+        for (const [projectId, convs] of Object.entries(updated)) {
+          const convIndex = convs.findIndex(c => c.conversationId === conversationId);
+          if (convIndex !== -1) {
+            updated[projectId] = convs.map((c, i) =>
+              i === convIndex ? { ...c, displayTitle: newTitle } : c
+            );
+            break;
+          }
+        }
+        return updated;
+      });
+    };
+    window.addEventListener("conversation-title-updated", handleTitleUpdate);
+    return () => window.removeEventListener("conversation-title-updated", handleTitleUpdate);
+  }, []);
+
   // Compute ordered projects based on orderedProjectIds
   const orderedProjects = useMemo(() => {
     const projectMap = new Map(projects.map(p => [p.projectId, p]));
@@ -643,10 +668,17 @@ export function AppSidebar({
     })
   );
 
-  // Helper to enrich conversations with titles from first message
+  // Helper to enrich conversations with titles from first message or AI-generated title
   const enrichConversationsWithTitles = async (convs: StoredConversation[]): Promise<ConversationWithTitle[]> => {
     return Promise.all(
       convs.map(async (conv) => {
+        // First check for AI-generated title in localStorage
+        const storedTitle = getStoredConversationTitle(conv.conversationId);
+        if (storedTitle) {
+          return { ...conv, displayTitle: storedTitle };
+        }
+
+        // Fall back to extracting title from first message
         try {
           const msgs = await getMessages(conv.conversationId);
           const firstUserMessage = msgs.find((m) => m.role === "user");

@@ -375,6 +375,10 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
     async (message: PromptInputMessage) => {
       setIsSubmitting(true);
 
+      // Check if this is the first message BEFORE adding messages optimistically
+      // This is used for title generation
+      const isFirstMessage = messages.length === 0;
+
       // Inject app builder context into the message for the AI
       const appContext = getAppBuilderSystemPrompt(app?.name || "Untitled App");
       const enhancedText = `${appContext}\n\nUser request: ${message.text}`;
@@ -396,6 +400,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
           maxOutputTokens: 32000,
           toolChoice: "required",
           skipOptimisticUpdate: true,
+          isFirstMessage, // Pass to enable title generation for first message
           clientTools: appBuilderTools,
           // Handle tool calls by executing the matching client tool
           onToolCall: async (toolCall: { id: string; name: string; arguments: Record<string, any> }, tools: any[]) => {
@@ -421,7 +426,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
         } as any // Use 'as any' since clientTools and onToolCall are handled by sendMessage but not typed in handleSubmit
       );
     },
-    [handleSubmit, addMessageOptimistically, setInput, selectedModel, app?.name, appBuilderTools]
+    [handleSubmit, addMessageOptimistically, setInput, selectedModel, app?.name, appBuilderTools, messages.length]
   );
 
   if (!app) {

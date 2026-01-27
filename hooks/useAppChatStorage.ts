@@ -81,6 +81,8 @@ type SendMessageOptions = {
   conversationId?: string;
   /** Callback when tool calls are received - used for client-side tool execution */
   onToolCall?: (toolCall: ToolCall, clientTools: any[]) => Promise<any>;
+  /** Flag to indicate this is the first message - used for title generation */
+  isFirstMessage?: boolean;
 };
 
 // Memory context prefix used when injecting memories into messages
@@ -103,6 +105,98 @@ function stripMemoryContext(content: string): string {
   return content;
 }
 
+// Storage key prefix for AI-generated conversation titles
+const TITLE_STORAGE_PREFIX = "conv_title_";
+
+/**
+ * Get a stored AI-generated title for a conversation
+ */
+export function getStoredConversationTitle(conversationId: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(`${TITLE_STORAGE_PREFIX}${conversationId}`);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Store an AI-generated title for a conversation
+ */
+function storeConversationTitle(conversationId: string, title: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(`${TITLE_STORAGE_PREFIX}${conversationId}`, title);
+    // Dispatch custom event so other components can react (same-window communication)
+    // Using CustomEvent because StorageEvent doesn't reliably fire in the same window
+    window.dispatchEvent(new CustomEvent("conversation-title-updated", {
+      detail: { conversationId, title },
+    }));
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+/**
+ * Generate a conversation title based on the messages
+ */
+async function generateConversationTitle(
+  messages: Array<{ role: string; text: string }>,
+  getToken: () => Promise<string | null>
+): Promise<string | null> {
+  try {
+    const token = await getToken();
+    if (!token) return null;
+
+    // Take up to the first 3 message exchanges for context
+    const contextMessages = messages.slice(0, 6);
+    const conversationContext = contextMessages
+      .map((m) => `${m.role}: ${m.text.slice(0, 200)}`)
+      .join("\n");
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/responses`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-4o-mini",
+          input: `Generate a short, descriptive title (3-6 words) for this conversation. Return ONLY the title, nothing else.\n\nConversation:\n${conversationContext}`,
+          max_output_tokens: 50,
+        }),
+      }
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+
+    // Extract text from response - handle various formats
+    let title =
+      data.output?.[0]?.content?.[0]?.text ||
+      data.output?.[0]?.content ||
+      data.choices?.[0]?.message?.content ||
+      data.text ||
+      null;
+
+    if (title) {
+      // Clean up the title - remove quotes, trim whitespace
+      title = title.replace(/^["']|["']$/g, "").trim();
+      // Limit to reasonable length
+      if (title.length > 50) {
+        title = title.slice(0, 47) + "...";
+      }
+    }
+
+    return title;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * useAppChatStorage Hook Example
  */
@@ -118,6 +212,10 @@ export function useAppChatStorage({
   const loadedConversationIdRef = useRef<string | null>(null);
   // Track if we're actively sending a message to prevent DB reload from overwriting
   const isSendingMessageRef = useRef<boolean>(false);
+  // Track current conversation ID for title generation (avoids stale closure issues)
+  const currentConversationIdRef = useRef<string | null>(null);
+  // Track current messages for title generation (avoids stale closure issues)
+  const messagesRef = useRef<Message[]>([]);
 
   //#region hookInit
   const {
@@ -180,6 +278,16 @@ export function useAppChatStorage({
   useEffect(() => {
     refreshConversations();
   }, [refreshConversations, conversationId]);
+
+  // Keep ref in sync with conversationId for use in callbacks
+  useEffect(() => {
+    currentConversationIdRef.current = conversationId;
+  }, [conversationId]);
+
+  // Keep ref in sync with messages for use in callbacks (avoids stale closure)
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Add newly created conversations to sidebar when conversationId changes
   useEffect(() => {
@@ -408,7 +516,14 @@ export function useAppChatStorage({
         apiType,
         conversationId: explicitConversationId,
         onToolCall,
+        isFirstMessage: isFirstMessageOption,
       } = options;
+
+      // Determine if this is the first message for title generation
+      // Prefer explicit option (for cases where caller adds messages before calling)
+      // Fall back to checking messagesRef if no option provided
+      const isFirstMessage = isFirstMessageOption ?? messagesRef.current.filter((m) => m.role === "user").length === 0;
+      console.log('[Title Debug] isFirstMessage:', isFirstMessage, 'isFirstMessageOption:', isFirstMessageOption);
 
       let assistantMessageId: string;
 
@@ -643,6 +758,7 @@ export function useAppChatStorage({
 
       // Sync final streamed text to React state after streaming completes
       const finalText = streamingTextRef.current;
+
       setMessages((prev) =>
         prev.map((msg) => {
           if (msg.id === assistantMessageId) {
@@ -654,6 +770,46 @@ export function useAppChatStorage({
           return msg;
         })
       );
+
+      // Generate title for the first message only
+      // Use isFirstMessage captured at the start of handleSendMessage
+      console.log('[Title Debug] isFirstMessage check:', isFirstMessage, 'currentConvId:', currentConversationIdRef.current);
+
+      if (isFirstMessage) {
+        const userText = textForStorage || text;
+        const assistantText = finalText;
+
+        const messagesForTitle = [
+          { role: "user", text: userText.slice(0, 200) },
+          { role: "assistant", text: assistantText.slice(0, 200) },
+        ].filter((m) => m.text);
+
+        console.log('[Title Debug] Will generate title for:', messagesForTitle);
+
+        // Delay slightly to ensure conversation ID is available
+        setTimeout(() => {
+          const currentConvId = currentConversationIdRef.current;
+          console.log('[Title Debug] In setTimeout, currentConvId:', currentConvId);
+          if (!currentConvId) return;
+
+          generateConversationTitle(messagesForTitle, getToken).then(
+            (newTitle) => {
+              console.log('[Title Debug] Generated title:', newTitle, 'for convId:', currentConvId);
+              if (newTitle) {
+                storeConversationTitle(currentConvId, newTitle);
+                setConversations((prevConversations) =>
+                  prevConversations.map((conv) =>
+                    conv.id === currentConvId ||
+                    conv.conversationId === currentConvId
+                      ? { ...conv, title: newTitle }
+                      : conv
+                  )
+                );
+              }
+            }
+          );
+        }, 500);
+      }
 
       // Now that messages are in state, allow future reloads
       // Use setTimeout to ensure this happens after the conversationId might have changed
@@ -688,6 +844,10 @@ export function useAppChatStorage({
 
   const handleSwitchConversation = useCallback(
     async (id: string) => {
+      // Update currentConversationIdRef immediately so title generation has the correct ID
+      // This avoids waiting for the SDK state update cycle
+      currentConversationIdRef.current = id;
+
       // If we're actively sending a message, don't overwrite optimistic messages
       // Just update the conversation ID in the SDK
       if (isSendingMessageRef.current) {
