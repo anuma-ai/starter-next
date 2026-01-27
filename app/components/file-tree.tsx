@@ -68,7 +68,7 @@ function FileTreeItem({
       <button
         onClick={handleClick}
         className={cn(
-          "w-full flex items-center gap-1.5 py-1 px-2 text-sm rounded-md hover:bg-muted/50 transition-colors text-left",
+          "w-full flex items-center gap-1.5 py-1 px-2 text-sm hover:bg-muted/50 transition-colors text-left",
           isSelected && "bg-muted"
         )}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}

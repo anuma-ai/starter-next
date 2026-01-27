@@ -435,7 +435,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   return (
     <div className="flex h-dvh max-h-dvh overflow-hidden pl-3">
         {/* Left panel: Chat (25%) */}
-        <div className="w-1/4 flex flex-col border-r border-input min-w-0 overflow-hidden">
+        <div className="w-1/4 flex flex-col min-w-0 overflow-hidden">
           {/* Chat messages area */}
           <div className="flex-1 overflow-y-auto min-h-0">
             {messages.length === 0 ? (
@@ -707,7 +707,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
         </div>
 
         {/* Right panel: File Browser (15%) */}
-        <div className="w-[15%] min-w-[140px] border-l border-input bg-muted/30 overflow-y-auto">
+        <div className="w-[15%] min-w-[140px] bg-sidebar overflow-y-auto">
           <div className="p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Files
           </div>
