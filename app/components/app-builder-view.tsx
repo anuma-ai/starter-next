@@ -3,7 +3,13 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { MenuSquareIcon } from "hugeicons-react";
-import { ImageIcon, CheckIcon, CpuIcon, AlertCircleIcon } from "lucide-react";
+import { ImageIcon, CheckIcon, CpuIcon, AlertCircleIcon, CodeIcon, PlayIcon, TerminalIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import {
+  SandpackProvider,
+  SandpackPreview,
+  SandpackConsole,
+} from "@codesandbox/sandpack-react";
+import type { SandpackFiles } from "@codesandbox/sandpack-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -145,6 +151,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
     createFile,
     deleteFile,
     listFiles,
+    refreshFiles,
   } = useAppFiles(appId);
 
   const app = getApp(appId);
@@ -176,6 +183,102 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const [thinkingDuration, setThinkingDuration] = useState<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const thinkingStartTimeRef = useRef<number | null>(null);
+  const [centerTab, setCenterTab] = useState<"code" | "preview">("code");
+  const [showConsole, setShowConsole] = useState(false);
+
+  // Convert files to Sandpack format and detect template
+  // Use listFiles() which reads directly from localStorage to ensure we get latest files
+  const sandpackConfig = useMemo(() => {
+    const sandpackFiles: SandpackFiles = {};
+    let template: "react" | "vanilla" | "vue" | "static" = "static";
+    let hasPackageJson = false;
+    let hasIndexHtml = false;
+    let hasReactFiles = false;
+    let contentHash = "";
+
+    // Read files directly from localStorage via listFiles() to avoid stale React state
+    const currentFiles = listFiles();
+
+    // First pass: collect all files and detect project type
+    for (const file of currentFiles) {
+      if (file.isDirectory) continue;
+
+      // Build a simple hash from file contents for cache busting
+      contentHash += `${file.path}:${file.updatedAt || 0};`;
+
+      // Sandpack expects paths starting with /
+      const filePath = file.path.startsWith("/") ? file.path : `/${file.path}`;
+
+      // Skip vite config files - Sandpack doesn't need them
+      if (filePath.includes("vite.config")) continue;
+
+      sandpackFiles[filePath] = { code: file.content || "" };
+
+      // Check for React files (.jsx, .tsx)
+      if (filePath.endsWith(".jsx") || filePath.endsWith(".tsx")) {
+        hasReactFiles = true;
+      }
+
+      if (file.path === "package.json" || file.path === "/package.json") {
+        hasPackageJson = true;
+        try {
+          const pkg = JSON.parse(file.content || "{}");
+          if (pkg.dependencies?.react || pkg.devDependencies?.react) {
+            template = "react";
+          } else if (pkg.dependencies?.vue || pkg.devDependencies?.vue) {
+            template = "vue";
+          }
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+
+      if (file.path === "index.html" || file.path === "/index.html") {
+        hasIndexHtml = true;
+      }
+    }
+
+    // If we have React files but no React in package.json, set template to react
+    if (hasReactFiles && template === "static") {
+      template = "react";
+    }
+
+    // Detect vanilla JS if no framework but has index.html
+    if (template === "static" && hasIndexHtml && !hasPackageJson) {
+      template = "vanilla";
+    }
+
+    // For React projects, ensure we have proper entry points
+    if (template === "react") {
+      // Sandpack react template expects /App.js as main component
+      // If we have src/App.jsx, create an alias at /App.js
+      if (sandpackFiles["/src/App.jsx"] && !sandpackFiles["/App.js"]) {
+        sandpackFiles["/App.js"] = sandpackFiles["/src/App.jsx"];
+      }
+      if (sandpackFiles["/src/App.tsx"] && !sandpackFiles["/App.js"]) {
+        sandpackFiles["/App.js"] = sandpackFiles["/src/App.tsx"];
+      }
+
+      // Ensure package.json has react deps
+      if (!hasPackageJson || !sandpackFiles["/package.json"]) {
+        sandpackFiles["/package.json"] = {
+          code: JSON.stringify({
+            dependencies: {
+              react: "^18.2.0",
+              "react-dom": "^18.2.0"
+            }
+          }, null, 2)
+        };
+      }
+    }
+
+    // Create a version key for forcing Sandpack re-mount
+    const version = contentHash.length > 0 ? contentHash.slice(0, 100) : "empty";
+
+    console.log('[Sandpack] Files:', Object.keys(sandpackFiles), 'Template:', template, 'Version:', version.slice(0, 30));
+
+    return { files: sandpackFiles, template, version };
+  }, [files, listFiles]);
 
   // Selected file
   const selectedFile = selectedFilePath ? getFile(selectedFilePath) : null;
@@ -459,22 +562,55 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
           </div>
         </div>
 
-        {/* Center panel: Monaco Editor (60%) */}
+        {/* Center panel: Code/Preview */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {selectedFile && !selectedFile.isDirectory ? (
-            <>
-              {/* File tab header */}
-              <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-1.5 text-sm shrink-0">
-                <span className="font-medium truncate">{selectedFile.path}</span>
+          {/* Tab header */}
+          <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-1.5 text-sm shrink-0">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCenterTab("code")}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  centerTab === "code"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <CodeIcon className="size-3.5" />
+                Code
+              </button>
+              <button
+                onClick={() => {
+                  refreshFiles(); // Ensure we have latest files from localStorage
+                  setCenterTab("preview");
+                }}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  centerTab === "preview"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <PlayIcon className="size-3.5" />
+                Preview
+              </button>
+            </div>
+            {centerTab === "code" && selectedFile && (
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground truncate max-w-[200px]">{selectedFile.path}</span>
                 <button
                   onClick={() => setSelectedFilePath(null)}
-                  className="text-muted-foreground hover:text-foreground text-xs ml-2"
+                  className="text-muted-foreground hover:text-foreground text-xs"
                 >
                   Close
                 </button>
               </div>
-              {/* Monaco Editor - full remaining height */}
-              <div className="flex-1 min-h-0 overflow-hidden">
+            )}
+          </div>
+
+          {/* Content area */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {centerTab === "code" ? (
+              // Code tab - Monaco Editor
+              selectedFile && !selectedFile.isDirectory ? (
                 <MonacoEditor
                   height="100%"
                   language={selectedFile.language || "plaintext"}
@@ -490,15 +626,65 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                     automaticLayout: true,
                   }}
                 />
-              </div>
-            </>
-          ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground bg-muted/10">
-              <div className="text-center">
-                <p className="text-sm">Select a file to edit</p>
-              </div>
-            </div>
-          )}
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground bg-muted/10">
+                  <p className="text-sm">Select a file to edit</p>
+                </div>
+              )
+            ) : (
+              // Preview tab - Sandpack
+              Object.keys(sandpackConfig.files).length > 0 ? (
+                <div className="relative h-full">
+                  <SandpackProvider
+                    key={sandpackConfig.version}
+                    template={sandpackConfig.template}
+                    files={sandpackConfig.files}
+                    theme="light"
+                    options={{
+                      recompileMode: "delayed",
+                      recompileDelay: 500,
+                    }}
+                  >
+                    {/* Preview area - takes remaining space above console */}
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: showConsole ? 160 : 32 }}>
+                      <SandpackPreview
+                        showOpenInCodeSandbox={false}
+                        showRefreshButton={true}
+                        style={{ height: "100%", width: "100%" }}
+                      />
+                    </div>
+                    {/* Collapsible console - fixed at bottom */}
+                    <div
+                      className="border-t bg-zinc-900"
+                      style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+                    >
+                      <button
+                        onClick={() => setShowConsole(!showConsole)}
+                        className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+                      >
+                        <TerminalIcon className="size-3.5" />
+                        <span>Console</span>
+                        {showConsole ? <ChevronDownIcon className="size-3.5 ml-auto" /> : <ChevronUpIcon className="size-3.5 ml-auto" />}
+                      </button>
+                      {showConsole && (
+                        <div className="h-32">
+                          <SandpackConsole style={{ height: "100%" }} />
+                        </div>
+                      )}
+                    </div>
+                  </SandpackProvider>
+                </div>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground bg-muted/10">
+                  <div className="text-center">
+                    <PlayIcon className="size-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No files to preview</p>
+                    <p className="text-xs mt-1">Create some files first, then preview your app here</p>
+                  </div>
+                </div>
+              )
+            )}
+          </div>
         </div>
 
         {/* Right panel: File Browser (15%) */}
