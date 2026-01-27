@@ -268,7 +268,8 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
       // Auto-inject CSS import into App.js if styles.css exists but isn't imported
       const hasStyles = sandpackFiles["/styles.css"] || sandpackFiles["/src/styles.css"];
       if (hasStyles && sandpackFiles["/App.js"]) {
-        const appCode = sandpackFiles["/App.js"].code;
+        const appFile = sandpackFiles["/App.js"];
+        const appCode = typeof appFile === "string" ? appFile : appFile.code;
         if (!appCode.includes("styles.css")) {
           // Add CSS import at the top of the file
           sandpackFiles["/App.js"] = {
@@ -664,7 +665,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                     }}
                   >
                     {/* Preview area - takes remaining space above console */}
-                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: showConsole ? 160 : 32 }}>
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: showConsole ? 156 : 28 }}>
                       <SandpackPreview
                         showOpenInCodeSandbox={false}
                         showRefreshButton={true}
@@ -673,12 +674,12 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                     </div>
                     {/* Collapsible console - fixed at bottom */}
                     <div
-                      className="border-t bg-zinc-900"
+                      className="border-t bg-muted"
                       style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
                     >
                       <button
                         onClick={() => setShowConsole(!showConsole)}
-                        className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+                        className="flex items-center gap-2 w-full px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
                       >
                         <TerminalIcon className="size-3.5" />
                         <span>Console</span>
