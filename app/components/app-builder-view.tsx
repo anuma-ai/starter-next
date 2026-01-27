@@ -360,6 +360,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
 
   const handleSelectFile = useCallback((path: string) => {
     setSelectedFilePath(path);
+    setCenterTab("code"); // Switch to code tab when selecting a file
   }, []);
 
   const handleEditorChange = useCallback(
@@ -593,10 +594,10 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setCenterTab("code")}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer border ${
                   centerTab === "code"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "border-border text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <CodeIcon className="size-3.5" />
@@ -607,10 +608,10 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                   refreshFiles(); // Ensure we have latest files from localStorage
                   setCenterTab("preview");
                 }}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer border ${
                   centerTab === "preview"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "border-border text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <PlayIcon className="size-3.5" />
@@ -622,7 +623,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                 <span className="text-muted-foreground truncate max-w-[200px]">{selectedFile.path}</span>
                 <button
                   onClick={() => setSelectedFilePath(null)}
-                  className="text-muted-foreground hover:text-foreground text-xs"
+                  className="text-muted-foreground hover:text-foreground text-xs cursor-pointer"
                 >
                   Close
                 </button>
@@ -711,8 +712,8 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
           </div>
         </div>
 
-        {/* Right panel: File Browser (15%) */}
-        <div className="w-[15%] min-w-[140px] bg-sidebar overflow-y-auto">
+        {/* Right panel: File Browser (18%) */}
+        <div className="w-[18%] min-w-[180px] bg-sidebar overflow-y-auto">
           <div className="p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Files
           </div>
