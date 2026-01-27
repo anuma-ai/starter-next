@@ -9,6 +9,7 @@ import {
   SandpackPreview,
   SandpackConsole,
 } from "@codesandbox/sandpack-react";
+import { useSidebar } from "@/components/ui/sidebar";
 import type { SandpackFiles } from "@codesandbox/sandpack-react";
 import {
   DropdownMenu,
@@ -125,6 +126,7 @@ type AppBuilderViewProps = {
 export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const thinkingPanel = useThinkingPanel();
   const chatState = useChatContext();
+  const { state: sidebarState } = useSidebar();
 
   const {
     messages,
@@ -439,7 +441,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   }
 
   return (
-    <div className="flex h-dvh max-h-dvh overflow-hidden pl-3">
+    <div className={`flex h-dvh max-h-dvh overflow-hidden transition-[padding] duration-200 ${sidebarState === "collapsed" ? "pl-10" : "pl-3"}`}>
         {/* Left panel: Chat (25%) */}
         <div className="w-1/4 flex flex-col min-w-0 overflow-hidden">
           {/* Chat messages area */}
