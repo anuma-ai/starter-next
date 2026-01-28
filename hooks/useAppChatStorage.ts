@@ -87,26 +87,6 @@ type SendMessageOptions = {
   isFirstMessage?: boolean;
 };
 
-// Memory context prefix used when injecting memories into messages
-const MEMORY_CONTEXT_PREFIX = "[Context from user's previous conversations";
-const USER_MESSAGE_MARKER = "User message: ";
-
-/**
- * Strips memory context prefix from message content if present
- * Returns the original user message without the injected context
- */
-function stripMemoryContext(content: string): string {
-  if (!content || !content.startsWith(MEMORY_CONTEXT_PREFIX)) {
-    return content;
-  }
-  // Find "User message: " and extract everything after it
-  const markerIndex = content.indexOf(USER_MESSAGE_MARKER);
-  if (markerIndex !== -1) {
-    return content.slice(markerIndex + USER_MESSAGE_MARKER.length);
-  }
-  return content;
-}
-
 // Storage key prefix for AI-generated conversation titles
 const TITLE_STORAGE_PREFIX = "conv_title_";
 
@@ -256,10 +236,7 @@ export function useAppChatStorage({
           if (!msgs || msgs.length === 0) return null;
 
           const firstUserMessage = msgs.find((m: any) => m.role === "user");
-          // Strip memory context prefix from title
-          const messageText = stripMemoryContext(
-            firstUserMessage?.content || ""
-          );
+          const messageText = firstUserMessage?.content || "";
           const title = messageText?.slice(0, 30) || null;
 
           return {
@@ -374,10 +351,9 @@ export function useAppChatStorage({
               parts.push({ type: "reasoning" as const, text: msg.thinking });
             }
 
-            // Add text content - strip memory context prefix if present
             // For assistant messages, SDK resolves image placeholders to markdown in content
             // (e.g., __SDKFILE__{fileId}__ becomes ![image-{fileId}](blob:...))
-            const textContent = stripMemoryContext(msg.content);
+            const textContent = msg.content;
             if (textContent) {
               parts.push({ type: "text" as const, text: textContent });
             }
@@ -883,9 +859,8 @@ export function useAppChatStorage({
             parts.push({ type: "reasoning" as const, text: msg.thinking });
           }
 
-          // Add text content - strip memory context prefix if present
           // For assistant messages, SDK resolves image placeholders to markdown in content
-          const textContent = stripMemoryContext(msg.content);
+          const textContent = msg.content;
           if (textContent) {
             parts.push({ type: "text" as const, text: textContent });
           }
