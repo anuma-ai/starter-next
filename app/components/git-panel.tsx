@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { Undo2Icon, MoreVerticalIcon, SparklesIcon } from "lucide-react";
+import { Undo2Icon, MoreVerticalIcon, SparklesIcon, Loader2Icon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GitStatus, GitFileStatus } from "@/hooks/useAppGit";
 import {
@@ -111,7 +111,11 @@ export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscar
               className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted disabled:opacity-50 cursor-pointer"
               title="Generate commit message"
             >
-              <SparklesIcon size={14} className={cn("text-muted-foreground", isGenerating && "animate-pulse")} />
+              {isGenerating ? (
+                <Loader2Icon size={14} className="text-muted-foreground animate-spin" />
+              ) : (
+                <SparklesIcon size={14} className="text-muted-foreground" />
+              )}
             </button>
           )}
         </div>
