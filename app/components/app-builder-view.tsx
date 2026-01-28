@@ -43,6 +43,7 @@ import { useApps } from "@/hooks/useApps";
 import { useAppFiles } from "@/hooks/useAppFiles";
 import { useAppGit } from "@/hooks/useAppGit";
 import { FileTree, type FileChanges } from "./file-tree";
+import { GitCommits } from "./git-commits";
 import { createAppBuilderTools, getAppBuilderSystemPrompt } from "@/lib/app-builder-tools";
 
 // Dynamically import Monaco to reduce initial bundle size
@@ -165,9 +166,13 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
     isReady: gitReady,
     status: gitStatus,
     commit: gitCommit,
+    getLog: gitGetLog,
     refreshStatus: refreshGitStatus,
     syncFiles: syncFilesToGit,
   } = useAppGit(appId);
+
+  // Git commits state
+  const [gitCommits, setGitCommits] = useState<Array<{ oid: string; message: string; timestamp: number }>>([]);
 
   // Create app builder tools for AI file operations
   const appBuilderTools = useMemo(() => {
@@ -228,6 +233,13 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
       });
     }
   }, [gitReady, filesReady, files, listFiles, syncFilesToGit, refreshGitStatus]);
+
+  // Fetch git commits when ready
+  useEffect(() => {
+    if (gitReady) {
+      gitGetLog().then(setGitCommits);
+    }
+  }, [gitReady, gitGetLog, gitStatus]);
 
   // Convert files to Sandpack format and detect template
   // Use listFiles() which reads directly from localStorage to ensure we get latest files
@@ -797,6 +809,9 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
               onSelectFile={handleSelectFile}
               fileChanges={fileChanges}
             />
+          )}
+          {gitReady && gitCommits.length > 0 && (
+            <GitCommits commits={gitCommits} />
           )}
         </div>
       </div>
