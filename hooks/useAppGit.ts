@@ -30,6 +30,12 @@ export type GitStatus = {
   hasChanges: boolean;
 };
 
+type RevertedFile = {
+  path: string;
+  content: string;
+  isDirectory: boolean;
+};
+
 type UseAppGitReturn = {
   isReady: boolean;
   status: GitStatus;
@@ -38,6 +44,7 @@ type UseAppGitReturn = {
   refreshStatus: () => Promise<void>;
   syncFiles: (files: StoredAppFile[]) => Promise<void>;
   discardChanges: () => Promise<void>;
+  revertToCommit: (oid: string) => Promise<RevertedFile[] | null>;
 };
 
 // Simple line-based diff calculation
@@ -410,6 +417,114 @@ export function useAppGit(appId: string): UseAppGitReturn {
     }
   }, [isReady, refreshStatus]);
 
+  // Revert to a specific commit and return files
+  const revertToCommit = useCallback(async (oid: string): Promise<RevertedFile[] | null> => {
+    if (!fsRef.current || !git || !isReady) return null;
+
+    const fs = fsRef.current;
+    const dir = dirRef.current;
+    const gitModule = git;
+
+    try {
+      // Recursively get all files from the tree
+      const files: RevertedFile[] = [];
+
+      const readTreeRecursive = async (treeOid: string, basePath: string = "") => {
+        const { tree: entries } = await gitModule.readTree({ fs, dir, oid: treeOid });
+
+        for (const entry of entries) {
+          const fullPath = basePath ? `${basePath}/${entry.path}` : entry.path;
+
+          if (entry.type === "blob") {
+            // Read file content
+            const { blob } = await gitModule.readBlob({ fs, dir, oid: entry.oid });
+            const content = new TextDecoder().decode(blob);
+            files.push({
+              path: `/${fullPath}`,
+              content,
+              isDirectory: false,
+            });
+          } else if (entry.type === "tree") {
+            // Recurse into subdirectory
+            await readTreeRecursive(entry.oid, fullPath);
+          }
+        }
+      };
+
+      // Get the commit object to find its tree
+      const commitObj = await gitModule.readCommit({ fs, dir, oid });
+      await readTreeRecursive(commitObj.commit.tree);
+
+      // Now checkout to this commit to update working directory
+      // First, clean up working directory
+      const walkDir = async (path: string) => {
+        try {
+          const entries = await fs.promises.readdir(path);
+          for (const entry of entries) {
+            if (entry === ".git") continue;
+            const fullPath = `${path}/${entry}`;
+            const stat = await fs.promises.stat(fullPath);
+            if ((stat as any).isDirectory()) {
+              await walkDir(fullPath);
+              try {
+                await fs.promises.rmdir(fullPath);
+              } catch {
+                // Directory not empty or doesn't exist
+              }
+            } else {
+              await fs.promises.unlink(fullPath);
+            }
+          }
+        } catch {
+          // Directory doesn't exist
+        }
+      };
+      await walkDir(dir);
+
+      // Write all files from the commit
+      for (const file of files) {
+        const filePath = file.path.startsWith("/") ? file.path.slice(1) : file.path;
+
+        // Ensure parent directories exist
+        const parts = filePath.split("/");
+        let currentDir = dir;
+        for (let i = 0; i < parts.length - 1; i++) {
+          currentDir = `${currentDir}/${parts[i]}`;
+          try {
+            await fs.promises.mkdir(currentDir);
+          } catch {
+            // Directory exists
+          }
+        }
+
+        await fs.promises.writeFile(`${dir}/${filePath}`, file.content || "");
+      }
+
+      // Reset HEAD to the target commit
+      await git.writeRef({ fs, dir, ref: "HEAD", value: oid, force: true });
+
+      // Update the branch to point to this commit
+      try {
+        const currentBranch = await git.currentBranch({ fs, dir });
+        if (currentBranch) {
+          await git.writeRef({ fs, dir, ref: `refs/heads/${currentBranch}`, value: oid, force: true });
+        }
+      } catch {
+        // No branch, just update HEAD
+      }
+
+      // Refresh status
+      await refreshStatus();
+
+      console.log("[useAppGit] Reverted to commit:", oid, "Files:", files.length);
+
+      return files;
+    } catch (error) {
+      console.error("[useAppGit] Revert error:", error);
+      return null;
+    }
+  }, [isReady, refreshStatus]);
+
   return {
     isReady,
     status,
@@ -418,5 +533,6 @@ export function useAppGit(appId: string): UseAppGitReturn {
     refreshStatus,
     syncFiles,
     discardChanges,
+    revertToCommit,
   };
 }

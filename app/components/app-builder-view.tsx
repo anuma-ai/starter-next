@@ -171,6 +171,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
     refreshStatus: refreshGitStatus,
     syncFiles: syncFilesToGit,
     discardChanges: gitDiscardChanges,
+    revertToCommit: gitRevertToCommit,
   } = useAppGit(appId);
 
   // Git commits state
@@ -420,6 +421,40 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
     setSelectedFilePath(path);
     setCenterTab("code"); // Switch to code tab when selecting a file
   }, []);
+
+  // Handle reverting to a specific commit
+  const handleRevertToCommit = useCallback(async (oid: string) => {
+    const revertedFiles = await gitRevertToCommit(oid);
+    if (!revertedFiles) return;
+
+    // Get current files to find what needs to be deleted
+    const currentFiles = listFiles();
+    const revertedPaths = new Set(revertedFiles.map(f => f.path));
+
+    // Delete files that don't exist in the reverted state
+    for (const file of currentFiles) {
+      if (!file.isDirectory && !revertedPaths.has(file.path)) {
+        await deleteFile(file.path);
+      }
+    }
+
+    // Create/update files from the reverted state
+    for (const file of revertedFiles) {
+      if (!file.isDirectory) {
+        const existing = getFile(file.path);
+        if (existing) {
+          await updateFile(file.path, file.content || "");
+        } else {
+          await createFile({ path: file.path, content: file.content || "", isDirectory: false });
+        }
+      }
+    }
+
+    // Refresh everything
+    refreshFiles();
+    await refreshGitStatus();
+    await gitGetLog().then(setGitCommits);
+  }, [gitRevertToCommit, listFiles, deleteFile, getFile, updateFile, createFile, refreshFiles, refreshGitStatus, gitGetLog]);
 
   // Debounced git sync for editor changes
   const gitSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -824,6 +859,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                 commits={gitCommits}
                 onCommit={gitCommit}
                 onDiscard={gitDiscardChanges}
+                onRevertToCommit={handleRevertToCommit}
               />
             )}
           </div>

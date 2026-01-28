@@ -18,6 +18,7 @@ type GitPanelProps = {
   commits: Commit[];
   onCommit: (message: string) => Promise<string | null>;
   onDiscard?: () => Promise<void>;
+  onRevertToCommit?: (oid: string) => Promise<void>;
   className?: string;
 };
 
@@ -51,7 +52,7 @@ function getStatusLabel(status: GitFileStatus["status"]): { label: string; color
   }
 }
 
-export function GitPanel({ status, commits, onCommit, onDiscard, className }: GitPanelProps) {
+export function GitPanel({ status, commits, onCommit, onDiscard, onRevertToCommit, className }: GitPanelProps) {
   const [changesExpanded, setChangesExpanded] = useState(true);
   const [commitsExpanded, setCommitsExpanded] = useState(true);
   const [commitMessage, setCommitMessage] = useState("");
@@ -175,9 +176,11 @@ export function GitPanel({ status, commits, onCommit, onDiscard, className }: Gi
               </div>
             ) : (
               commits.map((commit) => (
-                <div
+                <button
                   key={commit.oid}
-                  className="flex items-start gap-2 px-3 py-1.5 text-sm hover:bg-muted/50 transition-colors"
+                  onClick={() => onRevertToCommit?.(commit.oid)}
+                  className="w-full flex items-start gap-2 px-3 py-1.5 text-sm hover:bg-muted/50 transition-colors text-left cursor-pointer"
+                  title="Click to revert to this commit"
                 >
                   <span className="shrink-0 w-2 h-2 rounded-full bg-muted-foreground/50 mt-1.5" />
                   <div className="flex-1 min-w-0">
@@ -188,7 +191,7 @@ export function GitPanel({ status, commits, onCommit, onDiscard, className }: Gi
                       {formatRelativeTime(commit.timestamp)}
                     </div>
                   </div>
-                </div>
+                </button>
               ))
             )}
           </div>
