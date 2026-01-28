@@ -677,6 +677,9 @@ export function useAppChatStorage({
             try {
               // Helper to safely parse JSON arguments
               const safeParseArgs = (args: unknown): Record<string, unknown> => {
+                if (args === undefined || args === null) {
+                  return {};
+                }
                 if (typeof args === 'string' && args.trim()) {
                   try {
                     return JSON.parse(args);
@@ -688,10 +691,12 @@ export function useAppChatStorage({
               };
 
               // Parse the tool call - handle various formats
+              // Check for arguments in order: direct (Responses API) -> function.arguments (Chat Completions API)
+              const rawArgs = call.arguments !== undefined ? call.arguments : call.function?.arguments;
               const toolCall: ToolCall = {
                 id: call.id || call.call_id || `call_${Date.now()}`,
                 name: call.name || call.function?.name,
-                arguments: safeParseArgs(call.arguments) || safeParseArgs(call.function?.arguments) || {},
+                arguments: safeParseArgs(rawArgs),
               };
 
               console.log('[useAppChatStorage] Executing tool call:', toolCall);
