@@ -538,6 +538,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [baseChatState]
   );
 
+  // Wrap deleteConversation to trigger sidebar refresh after deletion
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      await baseChatState.deleteConversation(id);
+      // Trigger sidebar refresh so deleted conversations disappear
+      triggerProjectConversationsRefresh();
+    },
+    [baseChatState, triggerProjectConversationsRefresh]
+  );
+
   // Check for pending message after OAuth return and auto-retry
   // Store the pending message in a ref so we don't lose it if conditions aren't met yet
   const pendingMessageRef = useRef<string | null>(null);
@@ -601,6 +611,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ...baseChatState,
       handleSubmit,
+      deleteConversation,
       // Projects
       projects,
       projectsLoading,
@@ -621,6 +632,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [
       baseChatState,
       handleSubmit,
+      deleteConversation,
       projects,
       projectsLoading,
       projectsReady,
