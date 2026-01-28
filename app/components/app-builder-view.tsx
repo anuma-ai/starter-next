@@ -3,13 +3,14 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { MenuSquareIcon, Cancel01Icon } from "hugeicons-react";
-import { ImageIcon, CheckIcon, CpuIcon, AlertCircleIcon, CodeIcon, PlayIcon, TerminalIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { ImageIcon, CheckIcon, CpuIcon, AlertCircleIcon, CodeIcon, PlayIcon, TerminalIcon, ChevronDownIcon, ChevronUpIcon, FolderIcon, GitBranchIcon } from "lucide-react";
 import {
   SandpackProvider,
   SandpackPreview,
   SandpackConsole,
 } from "@codesandbox/sandpack-react";
 import { useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import type { SandpackFiles } from "@codesandbox/sandpack-react";
 import {
   DropdownMenu,
@@ -43,7 +44,7 @@ import { useApps } from "@/hooks/useApps";
 import { useAppFiles } from "@/hooks/useAppFiles";
 import { useAppGit } from "@/hooks/useAppGit";
 import { FileTree, type FileChanges } from "./file-tree";
-import { GitCommits } from "./git-commits";
+import { GitPanel } from "./git-panel";
 import { createAppBuilderTools, getAppBuilderSystemPrompt } from "@/lib/app-builder-tools";
 
 // Dynamically import Monaco to reduce initial bundle size
@@ -202,6 +203,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const thinkingStartTimeRef = useRef<number | null>(null);
   const [centerTab, setCenterTab] = useState<"code" | "preview">("code");
   const [showConsole, setShowConsole] = useState(false);
+  const [rightSidebarView, setRightSidebarView] = useState<"files" | "git">("files");
 
   // Derive fileChanges from git status
   const fileChanges = useMemo<FileChanges>(() => {
@@ -797,22 +799,60 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
           </div>
         </div>
 
-        {/* Right panel: File Browser (18%) */}
-        <div className="w-[18%] min-w-[180px] bg-sidebar overflow-y-auto">
-          <div className="p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Files
+        {/* Right panel: File Browser / Git (18%) */}
+        <div className="w-[18%] min-w-[180px] flex">
+          {/* Content area */}
+          <div className="flex-1 bg-sidebar overflow-y-auto">
+            {rightSidebarView === "files" && (
+              <>
+                <div className="p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Files
+                </div>
+                {filesReady && (
+                  <FileTree
+                    tree={fileTree}
+                    selectedPath={selectedFilePath}
+                    onSelectFile={handleSelectFile}
+                    fileChanges={fileChanges}
+                  />
+                )}
+              </>
+            )}
+            {rightSidebarView === "git" && gitReady && (
+              <GitPanel
+                status={gitStatus}
+                commits={gitCommits}
+                onCommit={gitCommit}
+              />
+            )}
           </div>
-          {filesReady && (
-            <FileTree
-              tree={fileTree}
-              selectedPath={selectedFilePath}
-              onSelectFile={handleSelectFile}
-              fileChanges={fileChanges}
-            />
-          )}
-          {gitReady && gitCommits.length > 0 && (
-            <GitCommits commits={gitCommits} />
-          )}
+
+          {/* Icon bar */}
+          <div className="w-10 bg-sidebar border-l border-border flex flex-col items-center py-2 gap-1">
+            <button
+              onClick={() => setRightSidebarView("files")}
+              className={cn(
+                "w-8 h-8 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer",
+                rightSidebarView === "files" && "bg-muted"
+              )}
+              title="Files"
+            >
+              <FolderIcon size={18} className="text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setRightSidebarView("git")}
+              className={cn(
+                "w-8 h-8 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer relative",
+                rightSidebarView === "git" && "bg-muted"
+              )}
+              title="Source Control"
+            >
+              <GitBranchIcon size={18} className="text-muted-foreground" />
+              {gitStatus.hasChanges && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
   );
