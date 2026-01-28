@@ -12,11 +12,21 @@ import {
 import type { FileTreeNode } from "@/hooks/useAppFiles";
 import { cn } from "@/lib/utils";
 
+// Track file changes for visual feedback
+export type FileChange = {
+  type: "created" | "modified";
+  linesAdded?: number;
+  linesRemoved?: number;
+};
+
+export type FileChanges = Record<string, FileChange>;
+
 type FileTreeItemProps = {
   node: FileTreeNode;
   depth: number;
   selectedPath: string | null;
   expandedPaths: Set<string>;
+  fileChanges?: FileChanges;
   onSelectFile: (path: string) => void;
   onToggleExpand: (path: string) => void;
 };
@@ -26,6 +36,7 @@ function FileTreeItem({
   depth,
   selectedPath,
   expandedPaths,
+  fileChanges,
   onSelectFile,
   onToggleExpand,
 }: FileTreeItemProps) {
@@ -33,6 +44,7 @@ function FileTreeItem({
   const isExpanded = expandedPaths.has(file.path);
   const isSelected = selectedPath === file.path;
   const hasChildren = children.length > 0;
+  const change = fileChanges?.[file.path];
 
   // Determine icon based on file type
   const getIcon = () => {
@@ -100,7 +112,34 @@ function FileTreeItem({
         />
 
         {/* File name */}
-        <span className="truncate">{file.name}</span>
+        <span className="truncate flex-1">{file.name}</span>
+
+        {/* Change badge */}
+        {change && (
+          <span className="flex items-center gap-1 shrink-0 ml-auto">
+            <span
+              className={cn(
+                "text-[10px] font-medium px-1 rounded",
+                change.type === "created"
+                  ? "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30"
+                  : "text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30"
+              )}
+            >
+              {change.type === "created" ? "U" : "M"}
+            </span>
+            {(change.linesAdded !== undefined || change.linesRemoved !== undefined) && (
+              <span className="text-[10px] text-muted-foreground">
+                {change.linesAdded !== undefined && (
+                  <span className="text-green-600 dark:text-green-400">+{change.linesAdded}</span>
+                )}
+                {change.linesAdded !== undefined && change.linesRemoved !== undefined && " / "}
+                {change.linesRemoved !== undefined && (
+                  <span className="text-red-600 dark:text-red-400">-{change.linesRemoved}</span>
+                )}
+              </span>
+            )}
+          </span>
+        )}
       </button>
 
       {/* Render children if expanded */}
@@ -113,6 +152,7 @@ function FileTreeItem({
               depth={depth + 1}
               selectedPath={selectedPath}
               expandedPaths={expandedPaths}
+              fileChanges={fileChanges}
               onSelectFile={onSelectFile}
               onToggleExpand={onToggleExpand}
             />
@@ -127,6 +167,7 @@ type FileTreeProps = {
   tree: FileTreeNode[];
   selectedPath: string | null;
   onSelectFile: (path: string) => void;
+  fileChanges?: FileChanges;
   className?: string;
 };
 
@@ -134,6 +175,7 @@ export function FileTree({
   tree,
   selectedPath,
   onSelectFile,
+  fileChanges,
   className,
 }: FileTreeProps) {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
@@ -176,6 +218,7 @@ export function FileTree({
           depth={0}
           selectedPath={selectedPath}
           expandedPaths={expandedPaths}
+          fileChanges={fileChanges}
           onSelectFile={onSelectFile}
           onToggleExpand={handleToggleExpand}
         />

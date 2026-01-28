@@ -41,7 +41,8 @@ import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
 import { useApps } from "@/hooks/useApps";
 import { useAppFiles } from "@/hooks/useAppFiles";
-import { FileTree } from "./file-tree";
+import { useAppGit } from "@/hooks/useAppGit";
+import { FileTree, type FileChanges } from "./file-tree";
 import { createAppBuilderTools, getAppBuilderSystemPrompt } from "@/lib/app-builder-tools";
 
 // Dynamically import Monaco to reduce initial bundle size
@@ -159,6 +160,15 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const app = getApp(appId);
   const fileTree = getFileTree();
 
+  // Git integration for version control
+  const {
+    isReady: gitReady,
+    status: gitStatus,
+    commit: gitCommit,
+    refreshStatus: refreshGitStatus,
+    syncFiles: syncFilesToGit,
+  } = useAppGit(appId);
+
   // Create app builder tools for AI file operations
   const appBuilderTools = useMemo(() => {
     if (!app) return [];
@@ -187,6 +197,37 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const thinkingStartTimeRef = useRef<number | null>(null);
   const [centerTab, setCenterTab] = useState<"code" | "preview">("code");
   const [showConsole, setShowConsole] = useState(false);
+
+  // Derive fileChanges from git status
+  const fileChanges = useMemo<FileChanges>(() => {
+    const changes: FileChanges = {};
+    for (const file of gitStatus.files) {
+      // Git paths don't have leading slash, file tree paths might or might not
+      // Try both variants for matching
+      const pathWithSlash = file.path.startsWith("/") ? file.path : `/${file.path}`;
+      const pathWithoutSlash = file.path.startsWith("/") ? file.path.slice(1) : file.path;
+
+      const change = {
+        type: file.status === "untracked" || file.status === "added" ? "created" as const : "modified" as const,
+        linesAdded: file.linesAdded,
+        linesRemoved: file.linesRemoved,
+      };
+
+      changes[pathWithSlash] = change;
+      changes[pathWithoutSlash] = change;
+    }
+    return changes;
+  }, [gitStatus]);
+
+  // Sync files to git when they change
+  useEffect(() => {
+    if (gitReady && filesReady) {
+      const currentFiles = listFiles();
+      syncFilesToGit(currentFiles).then(() => {
+        refreshGitStatus();
+      });
+    }
+  }, [gitReady, filesReady, files, listFiles, syncFilesToGit, refreshGitStatus]);
 
   // Convert files to Sandpack format and detect template
   // Use listFiles() which reads directly from localStorage to ensure we get latest files
@@ -365,18 +406,38 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
     setCenterTab("code"); // Switch to code tab when selecting a file
   }, []);
 
+  // Debounced git sync for editor changes
+  const gitSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleEditorChange = useCallback(
     async (value: string | undefined) => {
       if (selectedFilePath && value !== undefined) {
         await updateFile(selectedFilePath, value);
+
+        // Debounce git sync for manual edits (500ms after last change)
+        if (gitReady) {
+          if (gitSyncTimeoutRef.current) {
+            clearTimeout(gitSyncTimeoutRef.current);
+          }
+          gitSyncTimeoutRef.current = setTimeout(async () => {
+            const currentFiles = listFiles();
+            await syncFilesToGit(currentFiles);
+            await refreshGitStatus();
+          }, 500);
+        }
       }
     },
-    [selectedFilePath, updateFile]
+    [selectedFilePath, updateFile, gitReady, listFiles, syncFilesToGit, refreshGitStatus]
   );
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
       setIsSubmitting(true);
+
+      // Commit any uncommitted changes before starting new message
+      if (gitReady && gitStatus.hasChanges) {
+        await gitCommit("Auto-commit before new message");
+      }
 
       // Check if this is the first message BEFORE adding messages optimistically
       // This is used for title generation
@@ -420,6 +481,14 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
               // Execute the tool
               const result = await tool.execute(toolCall.arguments);
               console.log('[AppBuilder] Tool result:', result);
+
+              // Sync files to git and refresh status after file operations
+              if (["create_file", "update_file", "delete_file"].includes(toolCall.name)) {
+                const currentFiles = listFiles();
+                await syncFilesToGit(currentFiles);
+                await refreshGitStatus();
+              }
+
               return result;
             } catch (error) {
               console.error('[AppBuilder] Tool execution error:', error);
@@ -428,8 +497,13 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
           },
         } as any // Use 'as any' since clientTools and onToolCall are handled by sendMessage but not typed in handleSubmit
       );
+
+      // After AI completes, sync final state and refresh git status
+      const currentFiles = listFiles();
+      await syncFilesToGit(currentFiles);
+      await refreshGitStatus();
     },
-    [handleSubmit, addMessageOptimistically, setInput, selectedModel, app?.name, appBuilderTools, messages.length]
+    [handleSubmit, addMessageOptimistically, setInput, selectedModel, app?.name, appBuilderTools, messages.length, gitReady, gitStatus.hasChanges, gitCommit, listFiles, syncFilesToGit, refreshGitStatus]
   );
 
   if (!app) {
@@ -721,6 +795,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
               tree={fileTree}
               selectedPath={selectedFilePath}
               onSelectFile={handleSelectFile}
+              fileChanges={fileChanges}
             />
           )}
         </div>
