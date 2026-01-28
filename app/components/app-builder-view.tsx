@@ -166,6 +166,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const {
     isReady: gitReady,
     status: gitStatus,
+    currentCommitOid: gitCurrentCommitOid,
     commit: gitCommit,
     getLog: gitGetLog,
     refreshStatus: refreshGitStatus,
@@ -238,10 +239,21 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
     }
   }, [gitReady, filesReady, files, listFiles, syncFilesToGit, refreshGitStatus]);
 
-  // Fetch git commits when ready
+  // Fetch git commits when ready - merge with existing to keep all commits visible
   useEffect(() => {
     if (gitReady) {
-      gitGetLog().then(setGitCommits);
+      gitGetLog().then((newCommits) => {
+        setGitCommits((prev) => {
+          // Merge commits, keeping all unique ones sorted by timestamp (newest first)
+          const allCommits = [...prev];
+          for (const commit of newCommits) {
+            if (!allCommits.some((c) => c.oid === commit.oid)) {
+              allCommits.push(commit);
+            }
+          }
+          return allCommits.sort((a, b) => b.timestamp - a.timestamp);
+        });
+      });
     }
   }, [gitReady, gitGetLog, gitStatus]);
 
@@ -453,7 +465,17 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
     // Refresh everything
     refreshFiles();
     await refreshGitStatus();
-    await gitGetLog().then(setGitCommits);
+    // Merge commits to keep all visible
+    const newCommits = await gitGetLog();
+    setGitCommits((prev) => {
+      const allCommits = [...prev];
+      for (const commit of newCommits) {
+        if (!allCommits.some((c) => c.oid === commit.oid)) {
+          allCommits.push(commit);
+        }
+      }
+      return allCommits.sort((a, b) => b.timestamp - a.timestamp);
+    });
   }, [gitRevertToCommit, listFiles, deleteFile, getFile, updateFile, createFile, refreshFiles, refreshGitStatus, gitGetLog]);
 
   // Debounced git sync for editor changes
@@ -857,6 +879,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
               <GitPanel
                 status={gitStatus}
                 commits={gitCommits}
+                currentCommitOid={gitCurrentCommitOid}
                 onCommit={gitCommit}
                 onDiscard={gitDiscardChanges}
                 onRevertToCommit={handleRevertToCommit}

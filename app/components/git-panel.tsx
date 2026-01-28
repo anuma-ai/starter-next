@@ -3,9 +3,15 @@
 import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { Undo2Icon } from "lucide-react";
+import { Undo2Icon, MoreVerticalIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GitStatus, GitFileStatus } from "@/hooks/useAppGit";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Commit = {
   oid: string;
@@ -16,6 +22,7 @@ type Commit = {
 type GitPanelProps = {
   status: GitStatus;
   commits: Commit[];
+  currentCommitOid?: string | null;
   onCommit: (message: string) => Promise<string | null>;
   onDiscard?: () => Promise<void>;
   onRevertToCommit?: (oid: string) => Promise<void>;
@@ -52,7 +59,7 @@ function getStatusLabel(status: GitFileStatus["status"]): { label: string; color
   }
 }
 
-export function GitPanel({ status, commits, onCommit, onDiscard, onRevertToCommit, className }: GitPanelProps) {
+export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscard, onRevertToCommit, className }: GitPanelProps) {
   const [changesExpanded, setChangesExpanded] = useState(true);
   const [commitsExpanded, setCommitsExpanded] = useState(true);
   const [commitMessage, setCommitMessage] = useState("");
@@ -175,24 +182,52 @@ export function GitPanel({ status, commits, onCommit, onDiscard, onRevertToCommi
                 No commits yet
               </div>
             ) : (
-              commits.map((commit) => (
-                <button
-                  key={commit.oid}
-                  onClick={() => onRevertToCommit?.(commit.oid)}
-                  className="w-full flex items-start gap-2 px-3 py-1.5 text-sm hover:bg-muted/50 transition-colors text-left cursor-pointer"
-                  title="Click to revert to this commit"
-                >
-                  <span className="shrink-0 w-2 h-2 rounded-full bg-muted-foreground/50 mt-1.5" />
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate text-foreground">
-                      {commit.message.split("\n")[0]}
+              commits.map((commit) => {
+                const isCurrent = commit.oid === currentCommitOid;
+
+                return (
+                  <div
+                    key={commit.oid}
+                    className="group/commit flex items-start gap-2 px-3 py-1.5 text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <span
+                      className={cn(
+                        "shrink-0 w-2.5 h-2.5 rounded-full mt-1",
+                        isCurrent ? "bg-foreground" : "bg-muted-foreground/50"
+                      )}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className={cn(
+                        "truncate",
+                        isCurrent ? "text-foreground font-medium" : "text-foreground"
+                      )}>
+                        {commit.message.split("\n")[0]}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatRelativeTime(commit.timestamp)}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatRelativeTime(commit.timestamp)}
-                    </div>
+
+                    {!isCurrent && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="shrink-0 p-0.5 rounded hover:bg-muted opacity-0 group-hover/commit:opacity-100 transition-opacity cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVerticalIcon size={14} className="text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onRevertToCommit?.(commit.oid)}>
+                            Revert to this commit
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
-                </button>
-              ))
+                );
+              })
             )}
           </div>
         )}

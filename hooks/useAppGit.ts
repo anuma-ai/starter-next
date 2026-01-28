@@ -39,12 +39,14 @@ type RevertedFile = {
 type UseAppGitReturn = {
   isReady: boolean;
   status: GitStatus;
+  currentCommitOid: string | null;
   commit: (message: string) => Promise<string | null>;
   getLog: () => Promise<Array<{ oid: string; message: string; timestamp: number }>>;
   refreshStatus: () => Promise<void>;
   syncFiles: (files: StoredAppFile[]) => Promise<void>;
   discardChanges: () => Promise<void>;
   revertToCommit: (oid: string) => Promise<RevertedFile[] | null>;
+  getHeadOid: () => Promise<string | null>;
 };
 
 // Simple line-based diff calculation
@@ -72,6 +74,7 @@ function calculateLineDiff(oldContent: string, newContent: string): { added: num
 export function useAppGit(appId: string): UseAppGitReturn {
   const [isReady, setIsReady] = useState(false);
   const [status, setStatus] = useState<GitStatus>({ files: [], hasChanges: false });
+  const [currentCommitOid, setCurrentCommitOid] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fsRef = useRef<any>(null);
   const dirRef = useRef<string>(`/app-${appId}`);
@@ -353,6 +356,9 @@ export function useAppGit(appId: string): UseAppGitReturn {
         },
       });
 
+      // Update current commit oid
+      setCurrentCommitOid(sha);
+
       // Refresh status after commit
       await refreshStatus();
 
@@ -513,6 +519,9 @@ export function useAppGit(appId: string): UseAppGitReturn {
         // No branch, just update HEAD
       }
 
+      // Update current commit oid
+      setCurrentCommitOid(oid);
+
       // Refresh status
       await refreshStatus();
 
@@ -525,14 +534,39 @@ export function useAppGit(appId: string): UseAppGitReturn {
     }
   }, [isReady, refreshStatus]);
 
+  // Get current HEAD oid
+  const getHeadOid = useCallback(async (): Promise<string | null> => {
+    if (!fsRef.current || !git || !isReady) return null;
+
+    const fs = fsRef.current;
+    const dir = dirRef.current;
+
+    try {
+      const oid = await git.resolveRef({ fs, dir, ref: "HEAD" });
+      setCurrentCommitOid(oid);
+      return oid;
+    } catch {
+      return null;
+    }
+  }, [isReady]);
+
+  // Update current commit oid when ready
+  useEffect(() => {
+    if (isReady) {
+      getHeadOid();
+    }
+  }, [isReady, getHeadOid]);
+
   return {
     isReady,
     status,
+    currentCommitOid,
     commit,
     getLog,
     refreshStatus,
     syncFiles,
     discardChanges,
     revertToCommit,
+    getHeadOid,
   };
 }
