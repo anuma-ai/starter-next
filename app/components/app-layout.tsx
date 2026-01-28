@@ -85,12 +85,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   } = chatState;
 
   // Apps hook - needs createConversation to create associated conversations
+  // and deleteConversation to clean up when apps are deleted
   const {
     apps,
     isReady: appsReady,
     createApp,
     deleteApp,
-  } = useApps(createConversation);
+  } = useApps(createConversation, deleteConversation);
 
   const handleNewConversation = useCallback(async () => {
     // Apply global theme immediately before navigation to prevent flash

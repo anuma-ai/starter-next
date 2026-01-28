@@ -36,10 +36,12 @@ function setStoredApps(apps: StoredApp[]): void {
  * Apps are "vibe coding" projects where users build apps via AI prompts.
  *
  * @param createConversation - Function to create a new conversation (from SDK)
+ * @param deleteConversation - Function to delete a conversation (from SDK)
  * @returns Apps state and CRUD functions
  */
 export function useApps(
-  createConversation: (opts?: { createImmediately?: boolean }) => Promise<{ conversationId: string } | null>
+  createConversation: (opts?: { createImmediately?: boolean }) => Promise<{ conversationId: string } | null>,
+  deleteConversation?: (conversationId: string) => Promise<void>
 ) {
   const [apps, setApps] = useState<StoredApp[]>([]);
   const [isReady, setIsReady] = useState(false);
@@ -178,7 +180,7 @@ export function useApps(
   );
 
   /**
-   * Delete an app and its files
+   * Delete an app, its files, and its associated conversation
    */
   const deleteApp = useCallback(
     async (appId: string): Promise<boolean> => {
@@ -188,11 +190,23 @@ export function useApps(
         return false;
       }
 
+      const app = apps[appIndex];
+
       // Delete app files from localStorage
       try {
         localStorage.removeItem(`vibe_app_files_${appId}`);
       } catch {
         // Ignore errors
+      }
+
+      // Delete the associated conversation
+      if (app.conversationId && deleteConversation) {
+        try {
+          await deleteConversation(app.conversationId);
+        } catch (error) {
+          console.error("[useApps] Failed to delete conversation:", error);
+          // Continue with app deletion even if conversation deletion fails
+        }
       }
 
       const updatedApps = apps.filter((a) => a.appId !== appId);
@@ -201,7 +215,7 @@ export function useApps(
 
       return true;
     },
-    [apps]
+    [apps, deleteConversation]
   );
 
   /**
