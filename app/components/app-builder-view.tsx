@@ -677,7 +677,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
           </div>
         </div>
 
-        {/* Center panel: Code/Preview */}
+        {/* Center panel: Code/Preview (55%) */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Tab header */}
           <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-1.5 text-sm shrink-0">
@@ -799,8 +799,8 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
           </div>
         </div>
 
-        {/* Right panel: File Browser / Git (18%) */}
-        <div className="w-[18%] min-w-[180px] flex">
+        {/* Right panel: File Browser / Git (20%) */}
+        <div className="w-[20%] min-w-[200px] flex">
           {/* Content area */}
           <div className="flex-1 bg-sidebar overflow-y-auto">
             {rightSidebarView === "files" && (
@@ -828,26 +828,26 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
           </div>
 
           {/* Icon bar */}
-          <div className="w-10 bg-sidebar border-l border-border flex flex-col items-center py-2 gap-1">
+          <div className="w-12 bg-sidebar border-l border-border flex flex-col items-center py-2 gap-1">
             <button
               onClick={() => setRightSidebarView("files")}
               className={cn(
-                "w-8 h-8 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer",
+                "w-9 h-9 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer",
                 rightSidebarView === "files" && "bg-muted"
               )}
               title="Files"
             >
-              <FolderIcon size={18} className="text-muted-foreground" />
+              <FolderIcon size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => setRightSidebarView("git")}
               className={cn(
-                "w-8 h-8 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer relative",
+                "w-9 h-9 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer relative",
                 rightSidebarView === "git" && "bg-muted"
               )}
               title="Source Control"
             >
-              <GitBranchIcon size={18} className="text-muted-foreground" />
+              <GitBranchIcon size={20} className="text-muted-foreground" />
               {gitStatus.hasChanges && (
                 <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
               )}
