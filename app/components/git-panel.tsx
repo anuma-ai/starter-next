@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { Undo2Icon, MoreVerticalIcon, SparklesIcon, Loader2Icon } from "lucide-react";
+import { Undo2Icon, MoreVerticalIcon, SparklesIcon, Loader2Icon, DownloadIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GitStatus, GitFileStatus } from "@/hooks/useAppGit";
 import {
@@ -27,6 +27,7 @@ type GitPanelProps = {
   onDiscard?: () => Promise<void>;
   onRevertToCommit?: (oid: string) => Promise<void>;
   onGenerateCommitMessage?: () => Promise<string | null>;
+  onDownloadZip?: () => Promise<void>;
   className?: string;
 };
 
@@ -60,12 +61,23 @@ function getStatusLabel(status: GitFileStatus["status"]): { label: string; color
   }
 }
 
-export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscard, onRevertToCommit, onGenerateCommitMessage, className }: GitPanelProps) {
+export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscard, onRevertToCommit, onGenerateCommitMessage, onDownloadZip, className }: GitPanelProps) {
   const [changesExpanded, setChangesExpanded] = useState(true);
   const [commitsExpanded, setCommitsExpanded] = useState(true);
   const [commitMessage, setCommitMessage] = useState("");
   const [isCommitting, setIsCommitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!onDownloadZip || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      await onDownloadZip();
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const handleCommit = async () => {
     if (!commitMessage.trim() || isCommitting) return;
@@ -263,6 +275,24 @@ export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscar
           </div>
         )}
       </div>
+
+      {/* Download section */}
+      {onDownloadZip && (
+        <div className="border-t border-border p-2">
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="w-full flex items-center justify-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {isDownloading ? (
+              <Loader2Icon size={14} className="animate-spin" />
+            ) : (
+              <DownloadIcon size={14} />
+            )}
+            <span>{isDownloading ? "Downloading..." : "Download Source"}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

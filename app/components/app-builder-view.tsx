@@ -47,6 +47,7 @@ import { useAppGit } from "@/hooks/useAppGit";
 import { FileTree, type FileChanges } from "./file-tree";
 import { GitPanel } from "./git-panel";
 import { createAppBuilderTools, getAppBuilderSystemPrompt } from "@/lib/app-builder-tools";
+import JSZip from "jszip";
 
 // Dynamically import Monaco to reduce initial bundle size
 const MonacoEditor = dynamic(
@@ -542,6 +543,34 @@ ${diffSummary}`;
     }
   }, [gitStatus.files, getFile, identityToken]);
 
+  // Download project as ZIP
+  const handleDownloadZip = useCallback(async () => {
+    const currentFiles = listFiles();
+    if (currentFiles.length === 0) return;
+
+    const zip = new JSZip();
+    const appName = app?.name?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "project";
+
+    // Add each file to the zip
+    for (const file of currentFiles) {
+      if (file.isDirectory) continue;
+      // Remove leading slash for zip path
+      const filePath = file.path.startsWith("/") ? file.path.slice(1) : file.path;
+      zip.file(filePath, file.content || "");
+    }
+
+    // Generate and download
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${appName}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [listFiles, app?.name]);
+
   // Debounced git sync for editor changes
   const gitSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -948,6 +977,7 @@ ${diffSummary}`;
                 onDiscard={gitDiscardChanges}
                 onRevertToCommit={handleRevertToCommit}
                 onGenerateCommitMessage={handleGenerateCommitMessage}
+                onDownloadZip={handleDownloadZip}
               />
             )}
           </div>
