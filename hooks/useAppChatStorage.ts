@@ -54,10 +54,6 @@ type UseChatStorageProps = {
   onStreamingData?: (chunk: string, accumulated: string) => void;
   /** Wallet address to enable encrypted file storage in OPFS */
   walletAddress?: string;
-  /** Sign message function for encrypted memories */
-  signMessage?: (message: string) => Promise<string>;
-  /** Embedded wallet signer for encrypted memories */
-  embeddedWalletSigner?: (message: string) => Promise<string>;
   /** System prompt for the AI (added as system role message) */
   systemPrompt?: string;
 };
@@ -211,8 +207,6 @@ export function useAppChatStorage({
   getToken,
   onStreamingData,
   walletAddress,
-  signMessage,
-  embeddedWalletSigner,
   systemPrompt,
 }: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -246,8 +240,6 @@ export function useAppChatStorage({
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
     // Enable encrypted file storage in OPFS when wallet is connected
     walletAddress,
-    signMessage,
-    embeddedWalletSigner,
   });
   //#endregion hookInit
 

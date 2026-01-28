@@ -4,10 +4,6 @@ import { useCallback, useState, useRef } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
-import type {
-  SignMessageFn,
-  EmbeddedWalletSignerFn,
-} from "@reverbia/sdk/react";
 
 /**
  * useAppChat Hook Example
@@ -24,10 +20,8 @@ type UseAppChatProps = {
   temperature?: number;
   maxOutputTokens?: number;
   store?: boolean;
-  // Encryption props for encrypted memories
+  // Wallet address for encrypted file storage
   walletAddress?: string;
-  signMessage?: SignMessageFn;
-  embeddedWalletSigner?: EmbeddedWalletSignerFn;
   // Server-side tools (tool names from /api/v1/tools)
   serverTools?: string[];
   // Client-side tools (with local executors)
@@ -48,8 +42,6 @@ export function useAppChat({
   temperature,
   maxOutputTokens,
   walletAddress,
-  signMessage,
-  embeddedWalletSigner,
   serverTools,
   clientTools,
   toolChoice,
@@ -98,8 +90,6 @@ export function useAppChat({
     onStreamingData: handleStreamingData,
     // Enable encrypted file storage in OPFS when wallet is connected
     walletAddress,
-    signMessage,
-    embeddedWalletSigner,
     // System prompt with memory retrieval instructions
     systemPrompt: systemPrompt || DEFAULT_SYSTEM_PROMPT,
   });
