@@ -68,6 +68,25 @@ export function GitPanel({ status, commits, onCommit, className }: GitPanelProps
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
+      {/* Commit input */}
+      <div className="px-2 py-2 space-y-2 border-b border-border">
+        <input
+          type="text"
+          value={commitMessage}
+          onChange={(e) => setCommitMessage(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleCommit()}
+          placeholder="Commit message"
+          className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        <button
+          onClick={handleCommit}
+          disabled={!commitMessage.trim() || isCommitting || status.files.length === 0}
+          className="w-full px-2 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isCommitting ? "Committing..." : "Commit"}
+        </button>
+      </div>
+
       {/* Changes section */}
       <div className="border-b border-border">
         <button
@@ -89,55 +108,33 @@ export function GitPanel({ status, commits, onCommit, className }: GitPanelProps
                 No changes
               </div>
             ) : (
-              <>
-                {/* Changed files list */}
-                <div className="max-h-[200px] overflow-y-auto">
-                  {status.files.map((file) => {
-                    const { label, color } = getStatusLabel(file.status);
-                    return (
-                      <div
-                        key={file.path}
-                        className="flex items-center gap-2 px-3 py-1 text-sm hover:bg-muted/50 transition-colors"
-                      >
-                        <span className={cn("text-[10px] font-medium px-1 rounded shrink-0", color)}>
-                          {label}
+              <div className="max-h-[200px] overflow-y-auto">
+                {status.files.map((file) => {
+                  const { label, color } = getStatusLabel(file.status);
+                  return (
+                    <div
+                      key={file.path}
+                      className="flex items-center gap-2 px-3 py-1 text-sm hover:bg-muted/50 transition-colors"
+                    >
+                      <span className={cn("text-[10px] font-medium px-1 rounded shrink-0", color)}>
+                        {label}
+                      </span>
+                      <span className="truncate flex-1 text-foreground">{file.path}</span>
+                      {(file.linesAdded !== undefined || file.linesRemoved !== undefined) && (
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {file.linesAdded !== undefined && (
+                            <span className="text-green-600 dark:text-green-400">+{file.linesAdded}</span>
+                          )}
+                          {file.linesAdded !== undefined && file.linesRemoved !== undefined && " "}
+                          {file.linesRemoved !== undefined && (
+                            <span className="text-red-600 dark:text-red-400">-{file.linesRemoved}</span>
+                          )}
                         </span>
-                        <span className="truncate flex-1 text-foreground">{file.path}</span>
-                        {(file.linesAdded !== undefined || file.linesRemoved !== undefined) && (
-                          <span className="text-[10px] text-muted-foreground shrink-0">
-                            {file.linesAdded !== undefined && (
-                              <span className="text-green-600 dark:text-green-400">+{file.linesAdded}</span>
-                            )}
-                            {file.linesAdded !== undefined && file.linesRemoved !== undefined && " "}
-                            {file.linesRemoved !== undefined && (
-                              <span className="text-red-600 dark:text-red-400">-{file.linesRemoved}</span>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Commit input */}
-                <div className="px-2 pt-2 space-y-2">
-                  <input
-                    type="text"
-                    value={commitMessage}
-                    onChange={(e) => setCommitMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleCommit()}
-                    placeholder="Commit message"
-                    className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                  <button
-                    onClick={handleCommit}
-                    disabled={!commitMessage.trim() || isCommitting}
-                    className="w-full px-2 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isCommitting ? "Committing..." : "Commit"}
-                  </button>
-                </div>
-              </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

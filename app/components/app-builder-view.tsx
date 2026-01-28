@@ -203,7 +203,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const thinkingStartTimeRef = useRef<number | null>(null);
   const [centerTab, setCenterTab] = useState<"code" | "preview">("code");
   const [showConsole, setShowConsole] = useState(false);
-  const [rightSidebarView, setRightSidebarView] = useState<"files" | "git">("files");
+  const [rightSidebarView, setRightSidebarView] = useState<"files" | "git" | null>("files");
 
   // Derive fileChanges from git status
   const fileChanges = useMemo<FileChanges>(() => {
@@ -799,10 +799,9 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
           </div>
         </div>
 
-        {/* Right panel: File Browser / Git (20%) */}
-        <div className="w-[20%] min-w-[200px] flex">
-          {/* Content area */}
-          <div className="flex-1 bg-sidebar overflow-y-auto">
+        {/* Right sidebar content area */}
+        {rightSidebarView && (
+          <div className="w-[200px] bg-sidebar overflow-y-auto">
             {rightSidebarView === "files" && (
               <>
                 <div className="p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -826,33 +825,33 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
               />
             )}
           </div>
+        )}
 
-          {/* Icon bar */}
-          <div className="w-12 bg-sidebar border-l border-border flex flex-col items-center py-2 gap-1">
-            <button
-              onClick={() => setRightSidebarView("files")}
-              className={cn(
-                "w-9 h-9 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer",
-                rightSidebarView === "files" && "bg-muted"
-              )}
-              title="Files"
-            >
-              <FolderIcon size={20} className="text-muted-foreground" />
-            </button>
-            <button
-              onClick={() => setRightSidebarView("git")}
-              className={cn(
-                "w-9 h-9 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer relative",
-                rightSidebarView === "git" && "bg-muted"
-              )}
-              title="Source Control"
-            >
-              <GitBranchIcon size={20} className="text-muted-foreground" />
-              {gitStatus.hasChanges && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
-              )}
-            </button>
-          </div>
+        {/* Right icon bar (always visible) */}
+        <div className="w-12 shrink-0 bg-sidebar border-l border-border flex flex-col items-center py-2 gap-1">
+          <button
+            onClick={() => setRightSidebarView(rightSidebarView === "files" ? null : "files")}
+            className={cn(
+              "w-9 h-9 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer",
+              rightSidebarView === "files" && "bg-muted"
+            )}
+            title="Files"
+          >
+            <FolderIcon size={20} className="text-muted-foreground" />
+          </button>
+          <button
+            onClick={() => setRightSidebarView(rightSidebarView === "git" ? null : "git")}
+            className={cn(
+              "w-9 h-9 flex items-center justify-center rounded hover:bg-muted/50 transition-colors cursor-pointer relative",
+              rightSidebarView === "git" && "bg-muted"
+            )}
+            title="Source Control"
+          >
+            <GitBranchIcon size={20} className="text-muted-foreground" />
+            {gitStatus.hasChanges && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
+            )}
+          </button>
         </div>
       </div>
   );
