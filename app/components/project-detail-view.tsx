@@ -123,11 +123,15 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   // Apply theme SYNCHRONOUSLY at start of render to prevent flash
   // This must happen before any hooks or rendering to ensure CSS variables are set
   if (typeof window !== "undefined") {
-    const stored = localStorage.getItem(`project_theme_${projectId}`);
-    const settings = stored ? JSON.parse(stored) : {};
-    if (settings.colorTheme) {
-      applyTheme(settings.colorTheme);
-    } else {
+    try {
+      const stored = localStorage.getItem(`project_theme_${projectId}`);
+      const settings = stored ? JSON.parse(stored) : {};
+      if (settings.colorTheme) {
+        applyTheme(settings.colorTheme);
+      } else {
+        applyTheme(getStoredThemeId());
+      }
+    } catch {
       applyTheme(getStoredThemeId());
     }
   }
@@ -186,11 +190,15 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     confirmedProjectIdRef.current = null;
 
     // Read theme directly from localStorage to avoid stale hook data during navigation
-    const stored = localStorage.getItem(`project_theme_${projectId}`);
-    const settings = stored ? JSON.parse(stored) : {};
-    if (settings.colorTheme) {
-      applyTheme(settings.colorTheme);
-    } else {
+    try {
+      const stored = localStorage.getItem(`project_theme_${projectId}`);
+      const settings = stored ? JSON.parse(stored) : {};
+      if (settings.colorTheme) {
+        applyTheme(settings.colorTheme);
+      } else {
+        applyTheme(getStoredThemeId());
+      }
+    } catch {
       applyTheme(getStoredThemeId());
     }
 

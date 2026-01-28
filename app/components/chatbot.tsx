@@ -164,11 +164,15 @@ const ChatBotDemo = () => {
       const cachedProjectId = getCachedProjectId(currentConversationId);
       if (cachedProjectId) {
         // Apply project theme synchronously from cache
-        const stored = localStorage.getItem(`project_theme_${cachedProjectId}`);
-        const settings = stored ? JSON.parse(stored) : {};
-        if (settings.colorTheme) {
-          applyTheme(settings.colorTheme);
-        } else {
+        try {
+          const stored = localStorage.getItem(`project_theme_${cachedProjectId}`);
+          const settings = stored ? JSON.parse(stored) : {};
+          if (settings.colorTheme) {
+            applyTheme(settings.colorTheme);
+          } else {
+            applyTheme(getStoredThemeId());
+          }
+        } catch {
           applyTheme(getStoredThemeId());
         }
       }
