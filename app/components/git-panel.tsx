@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { Undo2Icon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GitStatus, GitFileStatus } from "@/hooks/useAppGit";
 
@@ -16,6 +17,7 @@ type GitPanelProps = {
   status: GitStatus;
   commits: Commit[];
   onCommit: (message: string) => Promise<string | null>;
+  onDiscard?: () => Promise<void>;
   className?: string;
 };
 
@@ -49,7 +51,7 @@ function getStatusLabel(status: GitFileStatus["status"]): { label: string; color
   }
 }
 
-export function GitPanel({ status, commits, onCommit, className }: GitPanelProps) {
+export function GitPanel({ status, commits, onCommit, onDiscard, className }: GitPanelProps) {
   const [changesExpanded, setChangesExpanded] = useState(true);
   const [commitsExpanded, setCommitsExpanded] = useState(true);
   const [commitMessage, setCommitMessage] = useState("");
@@ -89,17 +91,28 @@ export function GitPanel({ status, commits, onCommit, className }: GitPanelProps
 
       {/* Changes section */}
       <div className="border-b border-border">
-        <button
-          onClick={() => setChangesExpanded(!changesExpanded)}
-          className="w-full flex items-center gap-1.5 p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted/50 transition-colors cursor-pointer"
-        >
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            size={12}
-            className={cn("transition-transform", changesExpanded && "rotate-90")}
-          />
-          <span>Changes ({status.files.length})</span>
-        </button>
+        <div className="group/changes flex items-center">
+          <button
+            onClick={() => setChangesExpanded(!changesExpanded)}
+            className="flex-1 flex items-center gap-1.5 p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted/50 transition-colors cursor-pointer"
+          >
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              size={12}
+              className={cn("transition-transform", changesExpanded && "rotate-90")}
+            />
+            <span>Changes ({status.files.length})</span>
+          </button>
+          {status.files.length > 0 && (
+            <button
+              onClick={() => onDiscard?.()}
+              className="p-2 hover:bg-muted/50 transition-opacity opacity-0 group-hover/changes:opacity-100 cursor-pointer"
+              title="Discard all changes"
+            >
+              <Undo2Icon size={14} className="text-muted-foreground" />
+            </button>
+          )}
+        </div>
 
         {changesExpanded && (
           <div className="pb-2">

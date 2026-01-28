@@ -37,6 +37,7 @@ type UseAppGitReturn = {
   getLog: () => Promise<Array<{ oid: string; message: string; timestamp: number }>>;
   refreshStatus: () => Promise<void>;
   syncFiles: (files: StoredAppFile[]) => Promise<void>;
+  discardChanges: () => Promise<void>;
 };
 
 // Simple line-based diff calculation
@@ -374,6 +375,41 @@ export function useAppGit(appId: string): UseAppGitReturn {
     }
   }, [isReady]);
 
+  // Discard all changes (restore to HEAD)
+  const discardChanges = useCallback(async (): Promise<void> => {
+    if (!fsRef.current || !git || !isReady) return;
+
+    const fs = fsRef.current;
+    const dir = dirRef.current;
+
+    try {
+      // Get all changed files
+      const statusMatrix = await git.statusMatrix({ fs, dir });
+
+      for (const [filepath, head, workdir] of statusMatrix) {
+        if (head === 1 && workdir === 2) {
+          // Modified file - checkout from HEAD
+          await git.checkout({ fs, dir, ref: "HEAD", filepaths: [filepath], force: true });
+        } else if (head === 0 && workdir === 2) {
+          // Untracked file - delete it
+          try {
+            await fs.promises.unlink(`${dir}/${filepath}`);
+          } catch {
+            // File might already be deleted
+          }
+        } else if (head === 1 && workdir === 0) {
+          // Deleted file - restore from HEAD
+          await git.checkout({ fs, dir, ref: "HEAD", filepaths: [filepath], force: true });
+        }
+      }
+
+      // Refresh status after discard
+      await refreshStatus();
+    } catch (error) {
+      console.error("[useAppGit] Discard error:", error);
+    }
+  }, [isReady, refreshStatus]);
+
   return {
     isReady,
     status,
@@ -381,5 +417,6 @@ export function useAppGit(appId: string): UseAppGitReturn {
     getLog,
     refreshStatus,
     syncFiles,
+    discardChanges,
   };
 }

@@ -170,6 +170,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
     getLog: gitGetLog,
     refreshStatus: refreshGitStatus,
     syncFiles: syncFilesToGit,
+    discardChanges: gitDiscardChanges,
   } = useAppGit(appId);
 
   // Git commits state
@@ -822,6 +823,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                 status={gitStatus}
                 commits={gitCommits}
                 onCommit={gitCommit}
+                onDiscard={gitDiscardChanges}
               />
             )}
           </div>
