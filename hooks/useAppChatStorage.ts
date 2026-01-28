@@ -54,6 +54,12 @@ type UseChatStorageProps = {
   onStreamingData?: (chunk: string, accumulated: string) => void;
   /** Wallet address to enable encrypted file storage in OPFS */
   walletAddress?: string;
+  /** Sign message function for encrypted memories */
+  signMessage?: (message: string) => Promise<string>;
+  /** Embedded wallet signer for encrypted memories */
+  embeddedWalletSigner?: (message: string) => Promise<string>;
+  /** System prompt for the AI (added as system role message) */
+  systemPrompt?: string;
 };
 
 type ToolCall = {
@@ -205,6 +211,9 @@ export function useAppChatStorage({
   getToken,
   onStreamingData,
   walletAddress,
+  signMessage,
+  embeddedWalletSigner,
+  systemPrompt,
 }: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
@@ -229,6 +238,7 @@ export function useAppChatStorage({
     setConversationId,
     deleteConversation,
     getAllFiles,
+    createMemoryRetrievalTool,
   } = useChatStorage({
     database,
     getToken,
@@ -236,6 +246,8 @@ export function useAppChatStorage({
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
     // Enable encrypted file storage in OPFS when wallet is connected
     walletAddress,
+    signMessage,
+    embeddedWalletSigner,
   });
   //#endregion hookInit
 
@@ -597,8 +609,15 @@ export function useAppChatStorage({
       // If we have OCR/memory context that differs from displayText, pass it via memoryContext
       const memoryContext = displayText && text !== displayText ? text : undefined;
 
+      // Build messages array with optional system prompt
+      const messagesArray: Array<{ role: "system" | "user"; content: typeof contentParts }> = [];
+      if (systemPrompt) {
+        messagesArray.push({ role: "system" as const, content: [{ type: "text", text: systemPrompt }] });
+      }
+      messagesArray.push({ role: "user" as const, content: contentParts });
+
       const response = await sendMessage({
-        messages: [{ role: "user" as const, content: contentParts }],
+        messages: messagesArray,
         model,
         includeHistory: true,
         ...(temperature !== undefined && { temperature }),
@@ -963,5 +982,6 @@ export function useAppChatStorage({
     getAllFiles,
     getMessages,
     getConversation,
+    createMemoryRetrievalTool,
   };
 }
