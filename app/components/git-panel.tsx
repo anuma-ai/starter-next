@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { Undo2Icon, MoreVerticalIcon } from "lucide-react";
+import { Undo2Icon, MoreVerticalIcon, SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GitStatus, GitFileStatus } from "@/hooks/useAppGit";
 import {
@@ -26,6 +26,7 @@ type GitPanelProps = {
   onCommit: (message: string) => Promise<string | null>;
   onDiscard?: () => Promise<void>;
   onRevertToCommit?: (oid: string) => Promise<void>;
+  onGenerateCommitMessage?: () => Promise<string | null>;
   className?: string;
 };
 
@@ -59,11 +60,12 @@ function getStatusLabel(status: GitFileStatus["status"]): { label: string; color
   }
 }
 
-export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscard, onRevertToCommit, className }: GitPanelProps) {
+export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscard, onRevertToCommit, onGenerateCommitMessage, className }: GitPanelProps) {
   const [changesExpanded, setChangesExpanded] = useState(true);
   const [commitsExpanded, setCommitsExpanded] = useState(true);
   const [commitMessage, setCommitMessage] = useState("");
   const [isCommitting, setIsCommitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleCommit = async () => {
     if (!commitMessage.trim() || isCommitting) return;
@@ -76,18 +78,43 @@ export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscar
     }
   };
 
+  const handleGenerateMessage = async () => {
+    if (!onGenerateCommitMessage || isGenerating || status.files.length === 0) return;
+    setIsGenerating(true);
+    try {
+      const message = await onGenerateCommitMessage();
+      if (message) {
+        setCommitMessage(message);
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* Commit input */}
       <div className="px-2 py-2 space-y-2 border-b border-border">
-        <input
-          type="text"
-          value={commitMessage}
-          onChange={(e) => setCommitMessage(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleCommit()}
-          placeholder="Commit message"
-          className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-ring"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            value={commitMessage}
+            onChange={(e) => setCommitMessage(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCommit()}
+            placeholder="Commit message"
+            className="w-full px-2 py-1.5 pr-8 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          {onGenerateCommitMessage && status.files.length > 0 && (
+            <button
+              onClick={handleGenerateMessage}
+              disabled={isGenerating}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted disabled:opacity-50 cursor-pointer"
+              title="Generate commit message"
+            >
+              <SparklesIcon size={14} className={cn("text-muted-foreground", isGenerating && "animate-pulse")} />
+            </button>
+          )}
+        </div>
         <button
           onClick={handleCommit}
           disabled={!commitMessage.trim() || isCommitting || status.files.length === 0}

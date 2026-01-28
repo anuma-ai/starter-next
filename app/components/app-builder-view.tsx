@@ -38,6 +38,7 @@ import {
   type PromptInputMessage,
 } from "@/components/chat/prompt-input";
 import { Reasoning } from "@/components/chat/reasoning";
+import { useIdentityToken } from "@privy-io/react-auth";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
 import { useApps } from "@/hooks/useApps";
@@ -130,6 +131,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const thinkingPanel = useThinkingPanel();
   const chatState = useChatContext();
   const { state: sidebarState } = useSidebar();
+  const { identityToken } = useIdentityToken();
 
   const {
     messages,
@@ -477,6 +479,68 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
       return allCommits.sort((a, b) => b.timestamp - a.timestamp);
     });
   }, [gitRevertToCommit, listFiles, deleteFile, getFile, updateFile, createFile, refreshFiles, refreshGitStatus, gitGetLog]);
+
+  // Generate commit message from diff using LLM
+  const handleGenerateCommitMessage = useCallback(async (): Promise<string | null> => {
+    if (gitStatus.files.length === 0) return null;
+
+    // Build diff summary
+    const diffSummary = gitStatus.files.map((file) => {
+      // Try both with and without leading slash for file lookup
+      const pathWithSlash = file.path.startsWith("/") ? file.path : `/${file.path}`;
+      const pathWithoutSlash = file.path.startsWith("/") ? file.path.slice(1) : file.path;
+      const content = getFile(pathWithSlash)?.content || getFile(pathWithoutSlash)?.content || "";
+      const preview = content.slice(0, 500); // First 500 chars
+      return `${file.status.toUpperCase()}: ${file.path}${file.linesAdded ? ` (+${file.linesAdded})` : ""}${file.linesRemoved ? ` (-${file.linesRemoved})` : ""}\n${preview}${content.length > 500 ? "..." : ""}`;
+    }).join("\n\n");
+
+    const prompt = `Generate a one-line semantic commit message for these changes. Use conventional commit format (feat:, fix:, refactor:, style:, docs:, chore:, etc). Be concise and descriptive. Only respond with the commit message, nothing else.
+
+Changes:
+${diffSummary}`;
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+      const response = await fetch(`${apiUrl}/api/v1/responses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(identityToken && { Authorization: `Bearer ${identityToken}` }),
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-4o-mini",
+          input: prompt,
+          max_output_tokens: 100,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("[AppBuilder] Failed to generate commit message:", response.status, data);
+        return null;
+      }
+
+      // Extract text from response - handle various formats (same as generateConversationTitle)
+      let message =
+        data.output?.[0]?.content?.[0]?.text ||
+        data.output?.[0]?.content ||
+        data.choices?.[0]?.message?.content ||
+        data.text ||
+        null;
+
+      if (message) {
+        // Clean up the message - remove quotes, trim whitespace
+        message = message.replace(/^["']|["']$/g, "").trim();
+      }
+
+      return message || null;
+    } catch (error) {
+      console.error("[AppBuilder] Error generating commit message:", error);
+      return null;
+    }
+  }, [gitStatus.files, getFile, identityToken]);
 
   // Debounced git sync for editor changes
   const gitSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -883,6 +947,7 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
                 onCommit={gitCommit}
                 onDiscard={gitDiscardChanges}
                 onRevertToCommit={handleRevertToCommit}
+                onGenerateCommitMessage={handleGenerateCommitMessage}
               />
             )}
           </div>
