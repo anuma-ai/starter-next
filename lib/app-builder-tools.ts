@@ -52,7 +52,10 @@ export function createAppBuilderTools(
         required: ["path", "content"],
       },
       execute: async ({ path, content }: { path: string; content: string }) => {
-        const file = await fileOps.createFile(path, content);
+        if (!path) {
+          return { success: false, error: "Path is required" };
+        }
+        const file = await fileOps.createFile(path, content ?? "");
         if (file) {
           return { success: true, fileId: file.fileId, path: file.path };
         }
@@ -78,7 +81,10 @@ export function createAppBuilderTools(
         required: ["path", "content"],
       },
       execute: async ({ path, content }: { path: string; content: string }) => {
-        const file = await fileOps.updateFile(path, content);
+        if (!path) {
+          return { success: false, error: "Path is required" };
+        }
+        const file = await fileOps.updateFile(path, content ?? "");
         if (file) {
           return { success: true, fileId: file.fileId, path: file.path };
         }
@@ -101,6 +107,9 @@ export function createAppBuilderTools(
         required: ["path"],
       },
       execute: async ({ path }: { path: string }) => {
+        if (!path) {
+          return { success: false, error: "Path is required" };
+        }
         const success = await fileOps.deleteFile(path);
         return { success, path };
       },
@@ -120,6 +129,9 @@ export function createAppBuilderTools(
         required: ["path"],
       },
       execute: async ({ path }: { path: string }) => {
+        if (!path) {
+          return { success: false, error: "Path is required" };
+        }
         const file = fileOps.getFile(path);
         if (!file) {
           return { success: false, error: `File not found: ${path}` };
@@ -168,6 +180,9 @@ export function createAppBuilderTools(
         required: ["path"],
       },
       execute: async ({ path }: { path: string }) => {
+        if (!path) {
+          return { success: false, error: "Path is required" };
+        }
         const dir = await fileOps.createFile(path, "", true);
         if (dir) {
           return { success: true, path: dir.path };
