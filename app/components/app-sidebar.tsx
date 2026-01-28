@@ -9,6 +9,11 @@ import {
   FolderLibraryIcon,
   ArrowRight01Icon,
   ArrowDown01Icon,
+  CodeIcon,
+  SourceCodeIcon,
+  FileScriptIcon,
+  MoreVerticalIcon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons";
 import {
   DropdownMenu,
@@ -32,8 +37,11 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import type { StoredProject, StoredConversation, CreateProjectOptions, StoredMessage } from "@reverbia/sdk/react";
+import type { StoredApp, CreateAppOptions } from "@/types/app";
 import { ThemedProjectIcon } from "@/components/project-icon-picker";
+import { getStoredConversationTitle } from "@/hooks/useAppChatStorage";
 import { getProjectTheme } from "@/lib/project-theme";
+import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import {
   DndContext,
   closestCenter,
@@ -65,8 +73,8 @@ type AppSidebarProps = {
   conversationId: string | null;
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
-  currentView: "chat" | "settings" | "conversations" | "files" | "projects";
-  onViewChange: (view: "chat" | "settings" | "conversations" | "files" | "projects") => void;
+  currentView: "chat" | "settings" | "conversations" | "files" | "projects" | "apps";
+  onViewChange: (view: "chat" | "settings" | "conversations" | "files" | "projects" | "apps") => void;
   // Projects
   projects: StoredProject[];
   projectsReady: boolean;
@@ -79,6 +87,14 @@ type AppSidebarProps = {
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
   getMessages: (conversationId: string) => Promise<StoredMessage[]>;
   updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
+  onDeleteConversation: (conversationId: string) => Promise<void>;
+  // Apps
+  apps: StoredApp[];
+  appsReady: boolean;
+  selectedAppId: string | null;
+  onSelectApp: (appId: string) => void;
+  onCreateApp: (opts?: CreateAppOptions) => Promise<StoredApp | null>;
+  onDeleteApp: (appId: string) => Promise<boolean>;
 };
 
 // Sortable project item with drag-and-drop support
@@ -215,6 +231,127 @@ function ProjectItemOverlay({
   );
 }
 
+// App item component - similar to SortableProjectItem but without drag-and-drop
+function AppItem({
+  app,
+  isExpanded,
+  isActive,
+  onSelect,
+  onToggleExpand,
+  onDelete,
+}: {
+  app: StoredApp;
+  isExpanded: boolean;
+  isActive: boolean;
+  onSelect: () => void;
+  onToggleExpand: () => void;
+  onDelete: () => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const showChevron = isHovered && !isMenuOpen;
+  const showMenu = isHovered || isMenuOpen;
+
+  return (
+    <div className="mb-0.5">
+      <SidebarMenuItem
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <SidebarMenuButton
+          isActive={isActive}
+          onClick={onSelect}
+          className="cursor-pointer"
+        >
+          <span
+            onClick={(e) => {
+              if (showChevron) {
+                e.stopPropagation();
+                onToggleExpand();
+              }
+            }}
+            className={`relative shrink-0 w-4 h-4 flex items-center justify-center ${showChevron ? 'cursor-pointer' : ''}`}
+            role={showChevron ? "button" : undefined}
+          >
+            <HugeiconsIcon
+              icon={CodeIcon}
+              size={16}
+              className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
+            />
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              size={16}
+              className={`absolute ${showChevron ? 'opacity-100' : 'opacity-0'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            />
+          </span>
+          <span className="truncate">{app.name || "Untitled App"}</span>
+        </SidebarMenuButton>
+        {showMenu && (
+          <DropdownMenu onOpenChange={setIsMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuAction className="cursor-pointer">
+                <HugeiconsIcon icon={MoreVerticalIcon} size={14} />
+              </SidebarMenuAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="right">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="text-destructive focus:text-destructive cursor-pointer"
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={16} className="text-destructive" />
+                Delete app
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </SidebarMenuItem>
+      {/* Nested conversation when expanded */}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="ml-6 mt-0.5 overflow-hidden"
+          >
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isActive}
+                onClick={onSelect}
+                className="cursor-pointer text-sm"
+              >
+                <span className="truncate">Chat</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Apply project theme and cache conversation -> projectId mapping
+// This must happen BEFORE navigation to prevent flash
+function applyProjectThemeAndCache(conversationId: string, projectId: string) {
+  try {
+    // Cache for future visits
+    localStorage.setItem(`conv_project_${conversationId}`, projectId);
+
+    // Apply theme immediately (before navigation)
+    const projectTheme = getProjectTheme(projectId);
+    if (projectTheme.colorTheme) {
+      applyTheme(projectTheme.colorTheme);
+    } else {
+      applyTheme(getStoredThemeId());
+    }
+  } catch {
+    // Ignore errors
+  }
+}
 
 // Sortable conversation item - can be reordered within and across projects
 function SortableConversationItem({
@@ -222,6 +359,7 @@ function SortableConversationItem({
   projectId,
   isActive,
   onSelect,
+  onDelete,
   isDropAnimating,
   isDragActive,
   skipAnimations,
@@ -230,10 +368,15 @@ function SortableConversationItem({
   projectId: string;
   isActive: boolean;
   onSelect: () => void;
+  onDelete: () => void;
   isDropAnimating?: boolean;
   isDragActive?: boolean;
   skipAnimations?: boolean;
 }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const showMenu = isHovered || isMenuOpen;
+
   const {
     attributes,
     listeners,
@@ -278,16 +421,44 @@ function SortableConversationItem({
       {...attributes}
       {...listeners}
     >
-      <SidebarMenuItem>
+      <SidebarMenuItem
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <SidebarMenuButton
           isActive={isActive}
-          onClick={onSelect}
+          onClick={() => {
+            // Apply theme immediately before navigation to prevent flash
+            applyProjectThemeAndCache(conversation.conversationId, projectId);
+            onSelect();
+          }}
           className="text-sm cursor-grab"
         >
           <span className="truncate">
             {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
           </span>
         </SidebarMenuButton>
+        {showMenu && (
+          <DropdownMenu onOpenChange={setIsMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuAction className="cursor-pointer">
+                <HugeiconsIcon icon={MoreVerticalIcon} size={14} />
+              </SidebarMenuAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="right">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="text-destructive focus:text-destructive cursor-pointer"
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={16} className="text-destructive" />
+                Delete chat
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </SidebarMenuItem>
     </motion.div>
   );
@@ -335,6 +506,13 @@ export function AppSidebar({
   getProjectConversations,
   getMessages,
   updateConversationProject,
+  onDeleteConversation,
+  apps,
+  appsReady,
+  selectedAppId,
+  onSelectApp,
+  onCreateApp,
+  onDeleteApp,
 }: AppSidebarProps) {
   const { authenticated, login, ready } = usePrivy();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
@@ -342,6 +520,23 @@ export function AppSidebar({
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("sidebar-expanded-projects");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return new Set(parsed);
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+    return new Set();
+  });
+  const [expandedApps, setExpandedApps] = useState<Set<string>>(() => {
+    // Initialize from localStorage
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("sidebar-expanded-apps");
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
@@ -437,6 +632,53 @@ export function AppSidebar({
     }
   }, [expandedProjects]);
 
+  // Save expanded apps to localStorage when it changes (only after initial load)
+  useEffect(() => {
+    if (!hasLoadedFromStorage.current) return;
+    try {
+      localStorage.setItem("sidebar-expanded-apps", JSON.stringify([...expandedApps]));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [expandedApps]);
+
+  // Create a Set of app conversationIds to filter them from project conversations
+  const appConversationIds = useMemo(() => {
+    return new Set(apps.map(app => app.conversationId));
+  }, [apps]);
+
+  // Toggle app expansion
+  const toggleAppExpanded = (appId: string) => {
+    setExpandedApps(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(appId)) {
+        newExpanded.delete(appId);
+      } else {
+        newExpanded.add(appId);
+      }
+      return newExpanded;
+    });
+  };
+
+  // Handle conversation deletion - remove from local state and call delete function
+  const handleDeleteConversation = async (conversationId: string) => {
+    // Optimistically remove from local state
+    setProjectConversations(prev => {
+      const updated = { ...prev };
+      for (const [projectId, convs] of Object.entries(updated)) {
+        const filteredConvs = convs.filter(c => c.conversationId !== conversationId);
+        if (filteredConvs.length !== convs.length) {
+          updated[projectId] = filteredConvs;
+          break;
+        }
+      }
+      return updated;
+    });
+
+    // Call the actual delete function
+    await onDeleteConversation(conversationId);
+  };
+
   // Load project icons from project theme settings
   useEffect(() => {
     const icons: Record<string, string | undefined> = {};
@@ -461,6 +703,30 @@ export function AppSidebar({
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
+  // Listen for AI-generated title updates and refresh conversation titles
+  useEffect(() => {
+    const handleTitleUpdate = (e: Event) => {
+      const { conversationId, title: newTitle } = (e as CustomEvent).detail;
+      if (!conversationId || !newTitle) return;
+
+      setProjectConversations(prev => {
+        const updated = { ...prev };
+        for (const [projectId, convs] of Object.entries(updated)) {
+          const convIndex = convs.findIndex(c => c.conversationId === conversationId);
+          if (convIndex !== -1) {
+            updated[projectId] = convs.map((c, i) =>
+              i === convIndex ? { ...c, displayTitle: newTitle } : c
+            );
+            break;
+          }
+        }
+        return updated;
+      });
+    };
+    window.addEventListener("conversation-title-updated", handleTitleUpdate);
+    return () => window.removeEventListener("conversation-title-updated", handleTitleUpdate);
+  }, []);
+
   // Compute ordered projects based on orderedProjectIds
   const orderedProjects = useMemo(() => {
     const projectMap = new Map(projects.map(p => [p.projectId, p]));
@@ -482,10 +748,17 @@ export function AppSidebar({
     })
   );
 
-  // Helper to enrich conversations with titles from first message
+  // Helper to enrich conversations with titles from first message or AI-generated title
   const enrichConversationsWithTitles = async (convs: StoredConversation[]): Promise<ConversationWithTitle[]> => {
     return Promise.all(
       convs.map(async (conv) => {
+        // First check for AI-generated title in localStorage
+        const storedTitle = getStoredConversationTitle(conv.conversationId);
+        if (storedTitle) {
+          return { ...conv, displayTitle: storedTitle };
+        }
+
+        // Fall back to extracting title from first message
         try {
           const msgs = await getMessages(conv.conversationId);
           const firstUserMessage = msgs.find((m) => m.role === "user");
@@ -866,6 +1139,19 @@ export function AppSidebar({
                     <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
                     New project
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      // Create app with default empty name
+                      const app = await onCreateApp({ name: "" });
+                      if (app?.appId) {
+                        // Navigate to the app page
+                        onSelectApp(app.appId);
+                      }
+                    }}
+                  >
+                    <HugeiconsIcon icon={CodeIcon} size={16} />
+                    New app
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarMenuItem>
@@ -925,7 +1211,9 @@ export function AppSidebar({
                         >
                           {orderedProjects.map((project) => {
                             const isExpanded = expandedProjects.has(project.projectId);
-                            const conversations = projectConversations[project.projectId] || [];
+                            // Filter out app conversations - they should only appear under their parent app
+                            const conversations = (projectConversations[project.projectId] || [])
+                              .filter(conv => !appConversationIds.has(conv.conversationId));
                             return (
                               <SortableProjectItem
                                 key={project.projectId}
@@ -951,6 +1239,7 @@ export function AppSidebar({
                                           projectId={project.projectId}
                                           isActive={currentView === "chat" && conversationId === conv.conversationId}
                                           onSelect={() => onSelectConversation(conv.conversationId)}
+                                          onDelete={() => handleDeleteConversation(conv.conversationId)}
                                           isDropAnimating={dropAnimatingConvId === conv.conversationId}
                                           isDragActive={true}
                                           skipAnimations={skipInitialAnimations}
@@ -977,6 +1266,7 @@ export function AppSidebar({
                                               projectId={project.projectId}
                                               isActive={currentView === "chat" && conversationId === conv.conversationId}
                                               onSelect={() => onSelectConversation(conv.conversationId)}
+                                              onDelete={() => handleDeleteConversation(conv.conversationId)}
                                               isDropAnimating={dropAnimatingConvId === conv.conversationId}
                                               isDragActive={false}
                                               skipAnimations={skipInitialAnimations}
@@ -1009,6 +1299,31 @@ export function AppSidebar({
                       ) : null}
                     </DragOverlay>
                   </DndContext>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+
+          {/* Apps Section */}
+          {appsReady && apps.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {apps.map((app) => {
+                    const isExpanded = expandedApps.has(app.appId);
+                    const isActive = currentView === "apps" && selectedAppId === app.appId;
+                    return (
+                      <AppItem
+                        key={app.appId}
+                        app={app}
+                        isExpanded={isExpanded}
+                        isActive={isActive}
+                        onSelect={() => onSelectApp(app.appId)}
+                        onToggleExpand={() => toggleAppExpanded(app.appId)}
+                        onDelete={() => onDeleteApp(app.appId)}
+                      />
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

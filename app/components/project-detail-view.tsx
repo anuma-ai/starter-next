@@ -123,11 +123,15 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   // Apply theme SYNCHRONOUSLY at start of render to prevent flash
   // This must happen before any hooks or rendering to ensure CSS variables are set
   if (typeof window !== "undefined") {
-    const stored = localStorage.getItem(`project_theme_${projectId}`);
-    const settings = stored ? JSON.parse(stored) : {};
-    if (settings.colorTheme) {
-      applyTheme(settings.colorTheme);
-    } else {
+    try {
+      const stored = localStorage.getItem(`project_theme_${projectId}`);
+      const settings = stored ? JSON.parse(stored) : {};
+      if (settings.colorTheme) {
+        applyTheme(settings.colorTheme);
+      } else {
+        applyTheme(getStoredThemeId());
+      }
+    } catch {
       applyTheme(getStoredThemeId());
     }
   }
@@ -169,20 +173,76 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   // Icon picker dialog state
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
+  // Track which projectId has confirmed theme (prevents flash by not rendering input until theme is applied)
+  // Using a ref + render counter instead of state so we can compute themeReady synchronously
+  const confirmedProjectIdRef = useRef<string | null>(null);
+  const [, forceRender] = useState(0);
+
+  // themeReady is true only if current projectId matches the confirmed one
+  // This is computed synchronously during render, so when projectId changes, themeReady is immediately false
+  const themeReady = confirmedProjectIdRef.current === projectId;
+
   // Theme is applied synchronously at the top of this component
-  // Re-apply if colorTheme changes via the settings UI
+  // Re-apply if colorTheme changes via the settings UI or projectId changes
+  // Mark theme as ready after first paint
   useLayoutEffect(() => {
-    if (projectTheme.colorTheme) {
-      applyTheme(projectTheme.colorTheme);
-    } else {
+    // Reset confirmed projectId - this will make themeReady false on next render
+    confirmedProjectIdRef.current = null;
+
+    // Read theme directly from localStorage to avoid stale hook data during navigation
+    try {
+      const stored = localStorage.getItem(`project_theme_${projectId}`);
+      const settings = stored ? JSON.parse(stored) : {};
+      if (settings.colorTheme) {
+        applyTheme(settings.colorTheme);
+      } else {
+        applyTheme(getStoredThemeId());
+      }
+    } catch {
       applyTheme(getStoredThemeId());
     }
-  }, [projectTheme.colorTheme]);
 
-  // Get pattern style with project overrides
+    // Use double rAF to ensure paint has occurred before showing input
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        confirmedProjectIdRef.current = projectId;
+        forceRender(n => n + 1); // Trigger re-render to show input
+      });
+    });
+  }, [projectId, projectTheme.colorTheme]);
+
+  // Read theme settings directly from localStorage to avoid stale hook data
+  // This ensures pattern matches the theme we applied synchronously
+  // IMPORTANT: If project has no override, explicitly pass global theme (not stale hook data)
+  const freshColorTheme = typeof window !== "undefined"
+    ? (() => {
+        try {
+          const stored = localStorage.getItem(`project_theme_${projectId}`);
+          const settings = stored ? JSON.parse(stored) : {};
+          // If project has no override, use global theme
+          return settings.colorTheme || getStoredThemeId();
+        } catch {
+          return getStoredThemeId();
+        }
+      })()
+    : undefined;
+
+  const freshIconTheme = typeof window !== "undefined"
+    ? (() => {
+        try {
+          const stored = localStorage.getItem(`project_theme_${projectId}`);
+          const settings = stored ? JSON.parse(stored) : {};
+          return settings.iconTheme;
+        } catch {
+          return undefined;
+        }
+      })()
+    : undefined;
+
+  // Get pattern style with explicit theme values (never relying on hook's stale fallbacks)
   const patternStyle = useChatPatternWithProject(
-    projectTheme.colorTheme,
-    projectTheme.iconTheme
+    freshColorTheme,
+    freshIconTheme
   );
 
   // Load saved model preference from localStorage after mount
@@ -280,6 +340,13 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
 
       const convId = conv.conversationId;
 
+      // Pre-cache projectId for synchronous theme application in chatbot
+      try {
+        localStorage.setItem(`conv_project_${convId}`, projectId);
+      } catch {
+        // Ignore storage errors
+      }
+
       // Add message optimistically to UI
       addMessageOptimistically(messageText, message.files, messageText);
 
@@ -318,6 +385,12 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   );
 
   const handleSelectConversation = (conversationId: string) => {
+    // Pre-cache projectId for synchronous theme application in chatbot
+    try {
+      localStorage.setItem(`conv_project_${conversationId}`, projectId);
+    } catch {
+      // Ignore storage errors
+    }
     setConversationId(conversationId);
     router.push(`/c/${conversationId}`);
   };
@@ -333,7 +406,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   return (
     <div
       className="flex flex-1 flex-col p-8 bg-background border-l border-border dark:border-l-0"
-      style={patternStyle}
+      style={themeReady ? patternStyle : undefined}
     >
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-6 flex items-center gap-2">
@@ -462,47 +535,49 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
           </DropdownMenu>
         </div>
 
-        <div className="mb-6">
-          <PromptInput
-            accept="image/*,application/pdf,.xlsx,.xls,.docx,.zip,application/zip"
-            multiple
-            onSubmit={handlePromptSubmit}
-            className="[&_[data-slot=input-group]]:bg-white [&_[data-slot=input-group]]:dark:bg-input/30"
-          >
-            <div
-              data-align="block-end"
-              className="order-first w-full min-w-0 max-w-full overflow-hidden"
+        <div className="mb-6 min-h-[52px]">
+          {themeReady && (
+            <PromptInput
+              accept="image/*,application/pdf,.xlsx,.xls,.docx,.zip,application/zip"
+              multiple
+              onSubmit={handlePromptSubmit}
+              className="[&_[data-slot=input-group]]:bg-card"
             >
-              <PromptInputAttachments>
-                {(attachment) => (
-                  <PromptInputAttachment
-                    key={attachment.id}
-                    data={attachment}
-                  />
-                )}
-              </PromptInputAttachments>
-            </div>
-            <div className="flex w-full min-w-0 items-center gap-1 px-3 py-2">
-              <PromptMenu
-                selectedModel={selectedModel}
-                onSelectModel={handleSelectModel}
-              />
-              <PromptInputTextarea
-                disabled={!authenticated}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={
-                  authenticated
-                    ? CHAT_INPUT_PLACEHOLDER
-                    : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
-                }
-                value={input}
-                className="flex-1 px-2"
-              />
-              <PromptInputSubmit
-                disabled={!input || !authenticated}
-              />
-            </div>
-          </PromptInput>
+              <div
+                data-align="block-end"
+                className="order-first w-full min-w-0 max-w-full overflow-hidden"
+              >
+                <PromptInputAttachments>
+                  {(attachment) => (
+                    <PromptInputAttachment
+                      key={attachment.id}
+                      data={attachment}
+                    />
+                  )}
+                </PromptInputAttachments>
+              </div>
+              <div className="flex w-full min-w-0 items-center gap-1 px-3 py-2">
+                <PromptMenu
+                  selectedModel={selectedModel}
+                  onSelectModel={handleSelectModel}
+                />
+                <PromptInputTextarea
+                  disabled={!authenticated}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={
+                    authenticated
+                      ? CHAT_INPUT_PLACEHOLDER
+                      : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
+                  }
+                  value={input}
+                  className="flex-1 px-2"
+                />
+                <PromptInputSubmit
+                  disabled={!input || !authenticated}
+                />
+              </div>
+            </PromptInput>
+          )}
         </div>
 
         <div className="rounded-xl bg-white dark:bg-card p-1 mb-6 border border-input dark:border-transparent">

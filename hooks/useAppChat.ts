@@ -124,6 +124,10 @@ export function useAppChat({
         apiType?: "responses" | "completions";
         /** Explicitly specify the conversation ID to send this message to */
         conversationId?: string;
+        /** Callback when tool calls are received - used for client-side tool execution */
+        onToolCall?: (toolCall: { id: string; name: string; arguments: Record<string, any> }, clientTools: any[]) => Promise<any>;
+        /** Flag to indicate this is the first message - used for title generation */
+        isFirstMessage?: boolean;
       }
     ) => {
       console.log("[APPCHAT sendMessage] START", {
@@ -186,6 +190,8 @@ export function useAppChat({
           ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
           ...(options?.apiType && { apiType: options.apiType }),
           ...(options?.conversationId && { conversationId: options.conversationId }),
+          ...(options?.onToolCall && { onToolCall: options.onToolCall }),
+          ...(options?.isFirstMessage !== undefined && { isFirstMessage: options.isFirstMessage }),
           onThinking,
         });
 
@@ -232,6 +238,8 @@ export function useAppChat({
         apiType?: "responses" | "completions";
         /** Explicitly specify the conversation ID to send this message to */
         conversationId?: string;
+        /** Flag to indicate this is the first message - used for title generation */
+        isFirstMessage?: boolean;
       }
     ) => {
       console.log("[APPCHAT handleSubmit] START", {
@@ -255,6 +263,7 @@ export function useAppChat({
         displayText: message.displayText,
         skipOptimisticUpdate: options?.skipOptimisticUpdate,
         conversationId: options?.conversationId,
+        isFirstMessage: options?.isFirstMessage,
       });
       console.log("[APPCHAT handleSubmit] sendMessage completed");
     },

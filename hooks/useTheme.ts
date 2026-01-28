@@ -36,6 +36,10 @@ export function applyTheme(themeId: string): void {
   if (themeId !== "light") {
     root.classList.add(`theme-${themeId}`);
   }
+
+  // Force reflow to ensure CSS variables are applied before navigation
+  // Reading offsetHeight triggers synchronous style recalculation
+  void root.offsetHeight;
 }
 
 export function useTheme() {
