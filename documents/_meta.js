@@ -1,8 +1,8 @@
 export default {
   start: "Getting Started",
   intro: "Introduction",
-  useChatStorage: "Chat",
-  useMemoryStorage: "Memory",
-  useModels: "Models",
-  useOCR: "OCR",
+  useChatStorage: "Sending Messages",
+  useMemoryStorage: "Storing Memories",
+  useModels: "Fetching Models",
+  useOCR: "Extracting Text from Images",
 };
