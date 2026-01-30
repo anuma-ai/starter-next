@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
@@ -49,9 +49,48 @@ export function useAppChat({
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [memoryLimit, setMemoryLimit] = useState(5);
+  const [memoryThreshold, setMemoryThreshold] = useState(0.2);
   const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingTextRef = useRef<string>("");
+
+  // Load memory settings from localStorage
+  useEffect(() => {
+    const savedLimit = localStorage.getItem("chat_memoryLimit");
+    if (savedLimit) {
+      const limit = parseInt(savedLimit, 10);
+      if (!isNaN(limit) && limit > 0) {
+        setMemoryLimit(limit);
+      }
+    }
+
+    const savedThreshold = localStorage.getItem("chat_memoryThreshold");
+    if (savedThreshold) {
+      const threshold = parseFloat(savedThreshold);
+      if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
+        setMemoryThreshold(threshold);
+      }
+    }
+
+    // Listen for changes from settings page
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "chat_memoryLimit" && e.newValue) {
+        const limit = parseInt(e.newValue, 10);
+        if (!isNaN(limit) && limit > 0) {
+          setMemoryLimit(limit);
+        }
+      }
+      if (e.key === "chat_memoryThreshold" && e.newValue) {
+        const threshold = parseFloat(e.newValue);
+        if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
+          setMemoryThreshold(threshold);
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   // Callback to handle streaming data from chat storage
   const handleStreamingData = useCallback(
@@ -95,7 +134,10 @@ export function useAppChat({
   });
 
   // Create a memory retrieval tool that fetches memories on-demand
-  const memoryTool = createMemoryRetrievalTool({ limit: 5 });
+  const memoryTool = createMemoryRetrievalTool({
+    limit: memoryLimit,
+    minSimilarity: memoryThreshold,
+  });
   //#endregion hookInit
 
   //#region sendMessage

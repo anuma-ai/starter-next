@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 
 const DEFAULT_TEMPERATURE = 1.0;
 const DEFAULT_MAX_OUTPUT_TOKENS = 4096;
+const DEFAULT_MEMORY_LIMIT = 5;
+const DEFAULT_MEMORY_THRESHOLD = 0.2;
 
 export default function PersonalizationPage() {
   const router = useRouter();
@@ -17,6 +19,8 @@ export default function PersonalizationPage() {
   const [maxOutputTokens, setMaxOutputTokens] = useState(
     DEFAULT_MAX_OUTPUT_TOKENS
   );
+  const [memoryLimit, setMemoryLimit] = useState(DEFAULT_MEMORY_LIMIT);
+  const [memoryThreshold, setMemoryThreshold] = useState(DEFAULT_MEMORY_THRESHOLD);
 
   useEffect(() => {
     const savedTemp = localStorage.getItem("chat_temperature");
@@ -24,6 +28,12 @@ export default function PersonalizationPage() {
 
     const savedMaxTokens = localStorage.getItem("chat_maxOutputTokens");
     if (savedMaxTokens) setMaxOutputTokens(parseInt(savedMaxTokens, 10));
+
+    const savedMemoryLimit = localStorage.getItem("chat_memoryLimit");
+    if (savedMemoryLimit) setMemoryLimit(parseInt(savedMemoryLimit, 10));
+
+    const savedMemoryThreshold = localStorage.getItem("chat_memoryThreshold");
+    if (savedMemoryThreshold) setMemoryThreshold(parseFloat(savedMemoryThreshold));
   }, []);
 
   const handleTemperatureChange = (value: number[]) => {
@@ -38,6 +48,18 @@ export default function PersonalizationPage() {
       setMaxOutputTokens(tokens);
       localStorage.setItem("chat_maxOutputTokens", tokens.toString());
     }
+  };
+
+  const handleMemoryLimitChange = (value: number[]) => {
+    const limit = value[0];
+    setMemoryLimit(limit);
+    localStorage.setItem("chat_memoryLimit", limit.toString());
+  };
+
+  const handleMemoryThresholdChange = (value: number[]) => {
+    const threshold = value[0];
+    setMemoryThreshold(threshold);
+    localStorage.setItem("chat_memoryThreshold", threshold.toString());
   };
 
   return (
@@ -110,6 +132,68 @@ export default function PersonalizationPage() {
                   onChange={(e) => handleMaxOutputTokensChange(e.target.value)}
                   className="w-32"
                 />
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-border">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="memoryLimit" className="text-base">
+                      Memory retrieval limit
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {memoryLimit} messages
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Number of past messages to retrieve for context. Higher
+                    values provide more context but use more tokens.
+                  </p>
+                  <Slider
+                    id="memoryLimit"
+                    min={1}
+                    max={20}
+                    step={1}
+                    value={[memoryLimit]}
+                    onValueChange={handleMemoryLimitChange}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>Less context</span>
+                    <span>More context</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-border">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="memoryThreshold" className="text-base">
+                      Memory similarity threshold
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {(memoryThreshold * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Minimum similarity score for memories to be included. Lower
+                    values include more matches, higher values are more strict.
+                  </p>
+                  <Slider
+                    id="memoryThreshold"
+                    min={0}
+                    max={0.8}
+                    step={0.05}
+                    value={[memoryThreshold]}
+                    onValueChange={handleMemoryThresholdChange}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>More matches</span>
+                    <span>Stricter</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
