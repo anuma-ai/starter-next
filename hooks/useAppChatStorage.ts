@@ -536,7 +536,7 @@ export function useAppChatStorage({
         contentParts.push({ type: "text", text: textForStorage });
       }
 
-      //#region fileProcessing
+      //#region imageContentParts
       // Process files: create stable IDs, add to contentParts, and prepare for SDK
       const fileEntries = files || [];
       const enrichedFiles = fileEntries.map((file) => ({
@@ -563,7 +563,9 @@ export function useAppChatStorage({
           });
         }
       });
+      //#endregion imageContentParts
 
+      //#region fileStorage
       // Create SDK files - SDK handles encrypted storage automatically
       const sdkFiles = enrichedFiles.map((file) => ({
         id: file.stableId,
@@ -572,7 +574,7 @@ export function useAppChatStorage({
         size: 0,
         url: file.url, // SDK will encrypt and store in OPFS
       }));
-      //#endregion fileProcessing
+      //#endregion fileStorage
 
       // If we have OCR/memory context that differs from displayText, pass it via memoryContext
       const memoryContext = displayText && text !== displayText ? text : undefined;

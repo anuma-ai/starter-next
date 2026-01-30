@@ -10,7 +10,7 @@
     "docs": "rimraf docs && typedoc",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "p laywright test --headed",
+    "test:e2e:headed": "playwright test --headed",
     "seed": "open http://localhost:3000/dev/seed"
   },
   "dependencies": {
@@ -53,7 +53,7 @@
     "marked": "^17.0.1",
     "motion": "^12.23.24",
     "nanoid": "^5.1.6",
-    "next": "16.0.10",
+    "next": "16.1.5",
     "openmoji": "^16.0.0",
     "pdfjs-dist": "^5.4.449",
     "react": "^19.2.1",
