@@ -113,22 +113,6 @@ export function SettingsView() {
               />
             </button>
             <button
-              onClick={() => router.push("/settings/memories")}
-              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
-            >
-              <div className="space-y-0.5 text-left">
-                <span className="text-base">Memories</span>
-                <p className="text-sm text-muted-foreground">
-                  Test memory retrieval with semantic search
-                </p>
-              </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
-            </button>
-            <button
               onClick={() => router.push("/settings/seed")}
               className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
             >
