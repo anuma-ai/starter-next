@@ -176,24 +176,25 @@ export async function seedLongMemEval(
 
     onProgress?.({ phase: "Creating conversations", current: 0, total: conversations.length });
 
-    // Find or create Inbox project
-    let inboxProjectId: string | null = null;
+    // Find or create Sample Conversations project
+    let sampleProjectId: string | null = null;
     const projectsCollection = database.get("projects");
     const existingProjects = await projectsCollection.query().fetch();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const inboxProject = existingProjects.find((p: any) => p._getRaw("name") === "Inbox");
+    const sampleProject = existingProjects.find((p: any) => p._getRaw("name") === "Sample Conversations");
 
-    if (inboxProject) {
+    if (sampleProject) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      inboxProjectId = (inboxProject as any)._getRaw("project_id") as string;
+      sampleProjectId = (sampleProject as any)._getRaw("project_id") as string;
     } else {
-      // Create Inbox project
+      // Create Sample Conversations project
       await database.write(async () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await projectsCollection.create((record: any) => {
-          inboxProjectId = `proj_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-          record._setRaw("project_id", inboxProjectId);
-          record._setRaw("name", "Inbox");
+          sampleProjectId = `proj_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+          record._setRaw("project_id", sampleProjectId);
+          record._setRaw("name", "Sample Conversations");
+          record._setRaw("is_deleted", false);
         });
       });
     }
@@ -206,14 +207,14 @@ export async function seedLongMemEval(
       for (let i = 0; i < conversations.length; i++) {
         const conv = conversations[i];
 
-        // Create conversation with inbox project
+        // Create conversation in Sample Conversations project
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await conversationsCollection.create((record: any) => {
           record._setRaw("conversation_id", conv.conversationId);
           record._setRaw("title", `LongMemEval ${conv.conversationId.slice(-8)}`);
           record._setRaw("is_deleted", false);
-          if (inboxProjectId) {
-            record._setRaw("project_id", inboxProjectId);
+          if (sampleProjectId) {
+            record._setRaw("project_id", sampleProjectId);
           }
         });
         conversationsCreated++;
