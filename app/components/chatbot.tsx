@@ -8,10 +8,8 @@ import { Zip02Icon } from "@hugeicons/core-free-icons";
 import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon, BrainIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 
-import {
-  CHAT_INPUT_PLACEHOLDER,
-  CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED,
-} from "@/lib/constants";
+import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
+import { MODELS, getModelConfig } from "@/lib/models";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,53 +42,6 @@ import { useThinkingPanel } from "./thinking-panel-provider";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
-
-type ModelVariant = {
-  modelId: string;
-  apiType: "completions" | "responses" | "messages";
-  useReasoning?: boolean;
-};
-
-type ModelConfig = {
-  id: string;
-  name: string;
-  fast: ModelVariant;
-  thinking: ModelVariant;
-};
-
-const MODELS: ModelConfig[] = [
-  {
-    id: "anuma",
-    name: "Anuma Private",
-    fast: { modelId: "cerebras/qwen-3-235b-a22b-instruct-2507", apiType: "completions" },
-    thinking: { modelId: "fireworks/accounts/fireworks/models/qwen3-235b-a22b-thinking-2507", apiType: "completions" },
-  },
-  {
-    id: "gpt",
-    name: "GPT 5.2",
-    fast: { modelId: "openai/gpt-5.2", apiType: "responses" },
-    thinking: { modelId: "openai/gpt-5.2", apiType: "responses", useReasoning: true },
-  },
-  {
-    id: "claude",
-    name: "Claude Opus 4.5",
-    fast: { modelId: "anthropic/claude-opus-4-5-20251101", apiType: "messages" },
-    thinking: { modelId: "anthropic/claude-opus-4-5-20251101", apiType: "messages", useReasoning: true },
-  },
-  {
-    id: "grok",
-    name: "Grok 4.1",
-    fast: { modelId: "grok/grok-4-1-fast-non-reasoning", apiType: "completions" },
-    thinking: { modelId: "grok/grok-4-1-fast-reasoning", apiType: "completions" },
-  },
-];
-
-// Helper to get the resolved model config based on thinking toggle
-function getModelConfig(modelId: string, thinkingEnabled: boolean): ModelVariant | null {
-  const model = MODELS.find((m) => m.id === modelId);
-  if (!model) return null;
-  return thinkingEnabled ? model.thinking : model.fast;
-}
 
 type PromptMenuProps = {
   selectedModel: string;
@@ -323,7 +274,7 @@ const ChatBotDemo = () => {
     undefined
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [thinkingEnabled, setThinkingEnabled] = useState(true);
+  const [thinkingEnabled, setThinkingEnabled] = useState(false);
   const thinkingStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -424,15 +375,13 @@ const ChatBotDemo = () => {
 
   return (
     <div
-      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${
-        messages.length === 0 ? "justify-center" : ""
-      }`}
+      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${messages.length === 0 ? "justify-center" : ""
+        }`}
       style={patternStyle}
     >
       <div
-        className={`min-h-0 flex-1 px-4 overflow-y-auto ${
-          messages.length === 0 ? "hidden" : ""
-        }`}
+        className={`min-h-0 flex-1 px-4 overflow-y-auto ${messages.length === 0 ? "hidden" : ""
+          }`}
       >
         <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
           {messages.map((message: any) => (
@@ -658,9 +607,8 @@ const ChatBotDemo = () => {
       </div>
 
       <div
-        className={`min-w-0 px-10 pb-4 pt-2 ${
-          messages.length === 0 ? "w-full" : "sticky bottom-0"
-        }`}
+        className={`min-w-0 px-10 pb-4 pt-2 ${messages.length === 0 ? "w-full" : "sticky bottom-0"
+          }`}
       >
         <div className="mx-auto w-full min-w-0 max-w-3xl overflow-hidden">
           <PromptInput
@@ -694,7 +642,7 @@ const ChatBotDemo = () => {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
                   authenticated
-                    ? CHAT_INPUT_PLACEHOLDER
+                    ? `Ask ${MODELS.find((m) => m.id === selectedModel)?.name ?? "AI"} anything`
                     : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
                 }
                 value={input}
