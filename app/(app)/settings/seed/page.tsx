@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { ChevronLeft } from "lucide-react";
 import { useIdentityToken } from "@privy-io/react-auth";
 import {
@@ -178,48 +181,44 @@ export default function SeedPage() {
         )}
 
         {/* Configuration */}
-        <div className="rounded-xl bg-white dark:bg-card p-4 mb-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">
+        <div className="rounded-xl bg-white dark:bg-card p-4 mb-4 space-y-5">
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">
               Messages to insert: {maxMessages}
-            </label>
-            <input
-              type="range"
+            </Label>
+            <Slider
               min={10}
               max={1000}
               step={10}
-              value={maxMessages}
-              onChange={(e) => setMaxMessages(Number(e.target.value))}
-              className="w-full"
+              value={[maxMessages]}
+              onValueChange={([value]) => setMaxMessages(value)}
             />
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
               <span>10</span>
               <span>1000</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+          <div className="flex items-center justify-between">
+            <Label htmlFor="embeddings" className="text-sm">
+              Generate embeddings for messages
+            </Label>
+            <Switch
               id="embeddings"
               checked={generateEmbeddings}
-              onChange={(e) => setGenerateEmbeddings(e.target.checked)}
-              className="rounded"
+              onCheckedChange={setGenerateEmbeddings}
             />
-            <label htmlFor="embeddings" className="text-sm">
-              Generate embeddings for messages
-            </label>
           </div>
         </div>
 
         {/* Seed Button */}
-        <button
+        <Button
           onClick={handleSeedLongMemEval}
           disabled={status === "loading" || !identityToken}
-          className="w-full px-4 py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+          className="w-full py-6 rounded-xl mb-4"
         >
           {status === "loading" ? "Seeding..." : "Reset & Seed LongMemEval"}
-        </button>
+        </Button>
 
         {!identityToken && (
           <p className="text-sm text-amber-600 mb-4">
