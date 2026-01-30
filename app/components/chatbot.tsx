@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon } from "lucide-react";
+import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon, BrainIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 
 import {
@@ -21,6 +21,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import {
   Message,
   MessageContent,
@@ -44,40 +45,61 @@ import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 
-const MODELS = [
+type ModelVariant = {
+  modelId: string;
+  apiType: "completions" | "responses" | "messages";
+  useReasoning?: boolean;
+};
+
+type ModelConfig = {
+  id: string;
+  name: string;
+  fast: ModelVariant;
+  thinking: ModelVariant;
+};
+
+const MODELS: ModelConfig[] = [
   {
-    id: "openai/gpt-5.2-2025-12-11",
+    id: "anuma",
+    name: "Anuma Private",
+    fast: { modelId: "cerebras/qwen-3-235b-a22b-instruct-2507", apiType: "completions" },
+    thinking: { modelId: "fireworks/accounts/fireworks/models/qwen3-235b-a22b-thinking-2507", apiType: "completions" },
+  },
+  {
+    id: "gpt",
     name: "GPT 5.2",
-    apiType: "responses" as const,
+    fast: { modelId: "openai/gpt-5.2", apiType: "responses" },
+    thinking: { modelId: "openai/gpt-5.2", apiType: "responses", useReasoning: true },
   },
   {
-    id: "fireworks/accounts/fireworks/models/gpt-oss-20b",
-    name: "GPT-OSS 20B",
-    apiType: "responses" as const,
+    id: "claude",
+    name: "Claude Opus 4.5",
+    fast: { modelId: "anthropic/claude-opus-4-5-20251101", apiType: "messages" },
+    thinking: { modelId: "anthropic/claude-opus-4-5-20251101", apiType: "messages", useReasoning: true },
   },
   {
-    id: "grok/grok-4-1-fast-reasoning",
-    name: "Grok 4.1 Fast",
-    apiType: "completions" as const,
-  },
-  {
-    id: "fireworks/accounts/fireworks/models/qwen3-235b-a22b-instruct-2507",
-    name: "Anuma Private - Fast",
-    apiType: "completions" as const,
-  },
-  {
-    id: "fireworks/accounts/fireworks/models/glm-4p7",
-    name: "Anuma Private - Thinking",
-    apiType: "completions" as const,
+    id: "grok",
+    name: "Grok 4.1",
+    fast: { modelId: "grok/grok-4-1-fast-non-reasoning", apiType: "completions" },
+    thinking: { modelId: "grok/grok-4-1-fast-reasoning", apiType: "completions" },
   },
 ];
+
+// Helper to get the resolved model config based on thinking toggle
+function getModelConfig(modelId: string, thinkingEnabled: boolean): ModelVariant | null {
+  const model = MODELS.find((m) => m.id === modelId);
+  if (!model) return null;
+  return thinkingEnabled ? model.thinking : model.fast;
+}
 
 type PromptMenuProps = {
   selectedModel: string;
   onSelectModel: (modelId: string) => void;
+  thinkingEnabled: boolean;
+  onToggleThinking: () => void;
 };
 
-const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
+const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThinking }: PromptMenuProps) => {
   const attachments = usePromptInputAttachments();
 
   return (
@@ -91,6 +113,16 @@ const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
         <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
           <ImageIcon className="size-4" />
           Add photos & files
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={onToggleThinking}>
+          <BrainIcon className="size-4" />
+          <span>Thinking</span>
+          <Switch
+            checked={thinkingEnabled}
+            onCheckedChange={onToggleThinking}
+            onClick={(e) => e.stopPropagation()}
+            className="ml-auto"
+          />
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
@@ -291,6 +323,7 @@ const ChatBotDemo = () => {
     undefined
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [thinkingEnabled, setThinkingEnabled] = useState(true);
   const thinkingStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -363,7 +396,8 @@ const ChatBotDemo = () => {
       // No need for manual processing here
 
       // Step 3: Send to API (skip adding to UI again since we already did)
-      const currentModel = MODELS.find((m) => m.id === selectedModel);
+      // Get the resolved model config based on thinking toggle
+      const modelConfig = getModelConfig(selectedModel, thinkingEnabled);
       await handleSubmit(
         {
           ...message,
@@ -372,17 +406,20 @@ const ChatBotDemo = () => {
           files: message.files,
         },
         {
-          model: selectedModel,
-          apiType: currentModel?.apiType,
+          model: modelConfig?.modelId ?? selectedModel,
+          apiType: modelConfig?.apiType,
           maxOutputTokens: 32000,
           toolChoice: "auto",
-          // reasoning: { effort: "high", summary: "detailed" },
-          // thinking: { type: "enabled", budget_tokens: 10000 },
+          // Only include reasoning params for models that use API-level reasoning (Claude, GPT)
+          ...(thinkingEnabled && modelConfig?.useReasoning && {
+            reasoning: { effort: "high", summary: "detailed" },
+            thinking: { type: "enabled", budget_tokens: 10000 },
+          }),
           skipOptimisticUpdate: true,
         }
       );
     },
-    [handleSubmit, addMessageOptimistically, setInput, selectedModel]
+    [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled]
   );
 
   return (
@@ -649,6 +686,8 @@ const ChatBotDemo = () => {
               <PromptMenu
                 selectedModel={selectedModel}
                 onSelectModel={handleSelectModel}
+                thinkingEnabled={thinkingEnabled}
+                onToggleThinking={() => setThinkingEnabled(!thinkingEnabled)}
               />
               <PromptInputTextarea
                 disabled={!authenticated}
