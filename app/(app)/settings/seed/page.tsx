@@ -39,19 +39,15 @@ export default function SeedPage() {
   const [maxMessages, setMaxMessages] = useState(100);
   const [generateEmbeddings, setGenerateEmbeddings] = useState(true);
 
-  const isDev = process.env.NODE_ENV === "development";
-
   const getToken = useCallback(
     () => Promise.resolve(identityToken ?? null),
     [identityToken]
   );
 
   useEffect(() => {
-    if (isDev) {
-      refreshStats();
-      loadDatasetStats();
-    }
-  }, [isDev]);
+    refreshStats();
+    loadDatasetStats();
+  }, []);
 
   const refreshStats = async () => {
     try {
@@ -109,31 +105,6 @@ export default function SeedPage() {
       setProgress(null);
     }
   };
-
-  if (!isDev) {
-    return (
-      <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
-        <div className="mx-auto w-full max-w-2xl">
-          <div className="mb-6 flex items-center h-8 relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push("/settings")}
-              className="absolute left-0 top-1/2 -translate-y-1/2"
-            >
-              <ChevronLeft className="size-5" />
-            </Button>
-            <h1 className="text-lg font-semibold w-full text-center">
-              Seed Database
-            </h1>
-          </div>
-          <div className="rounded-xl bg-white dark:bg-card p-8 text-center text-muted-foreground">
-            This page is only available in development mode.
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
