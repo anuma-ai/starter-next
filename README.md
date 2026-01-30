@@ -1,21 +1,130 @@
 # AI App Starter Kit
 
-This starter kit bootstraps an AI-enabled web app built with:
+A feature-rich AI chat application with conversation management, project
+organization, file handling, and memory-augmented responses.
 
-- [Next.js](https://nextjs.org/docs) app router template for routing and rendering
-- [Portal SDK](https://github.com/zeta-chain/ai-sdk)
-- [Vercel AI Elements](https://ai-sdk.dev/docs/ai-sdk-ui) for conversational UI
-- [shadcn/ui](https://ui.shadcn.com/) component library
-- [Privy](https://docs.privy.io/) embedded wallet for user authentication
+## Tech Stack
+
+- [Next.js 16](https://nextjs.org/docs) - React framework with App Router
+- [React 19](https://react.dev/) - UI library
+- [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
+- [Reverbia SDK](https://github.com/zeta-chain/ai-sdk) - Unified AI SDK for chat,
+  storage, and memory
+- [shadcn/ui](https://ui.shadcn.com/) - Component library built on Radix UI
+- [Tailwind CSS 4](https://tailwindcss.com/) - Utility-first CSS framework
+- [Privy](https://docs.privy.io/) - Embedded wallet and authentication
+- [WatermelonDB](https://watermelondb.dev/) - Local reactive database
+
+## Features
+
+- AI chat interface with real-time streaming and multiple models (GPT-5.2, Grok,
+  Qwen, etc.)
+- Memory system with semantic retrieval from past conversations
+- Conversation management with persistent storage
+- Projects to organize conversations with custom icons and themes
+- File management with encrypted storage
+- App builder for creating applications via AI prompts
+- Thinking mode with extended reasoning and token visibility
+- Server-side and client-side tool integration
+- Cloud backups to Google Drive and Dropbox
+- Light/dark themes with customizable accent colors
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18.x or later
+- [pnpm](https://pnpm.io/) package manager (recommended)
 
 ## Getting Started
 
-Before running the app, configure your Privy credentials in a `.env.local` file:
+### Clone the repository
 
-```
-NEXT_PUBLIC_PRIVY_APP_ID=your-app-id
-NEXT_PUBLIC_PRIVY_CLIENT_ID=your-client-id
+```bash
+git clone https://github.com/zeta-chain/ai-examples.git
+cd ai-examples
 ```
 
-Install dependencies and run the development server as usual with `pnpm install`
-and `pnpm dev` (or your preferred package manager).
+### Install dependencies
+
+```bash
+pnpm install
+```
+
+### Configure environment variables
+
+Create a `.env.local` file in the root directory:
+
+```bash
+# Required
+NEXT_PUBLIC_API_URL=https://portal.anuma-dev.ai
+NEXT_PUBLIC_PRIVY_APP_ID=cmjkga3y002g0ju0clwca9wwp
+
+# Optional - for Google Drive/Calendar integration
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+
+# Optional - for Dropbox backups
+NEXT_PUBLIC_DROPBOX_APP_KEY=your-dropbox-app-key
+```
+
+To obtain optional credentials:
+
+- Google: Create OAuth credentials in the
+  [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+- Dropbox: Create an app in the
+  [Dropbox App Console](https://www.dropbox.com/developers/apps)
+
+### Run the development server
+
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Data Storage
+
+All data is stored locally in the browser:
+
+- WatermelonDB (with LokiJS adapter) for conversations, messages, projects, and
+  settings
+- IndexedDB for database persistence
+- OPFS (Origin Private File System) for encrypted file storage when wallet is
+  connected
+- localStorage for user preferences and theme settings
+
+No data is sent to external servers except for AI chat requests to the Portal
+API.
+
+## Running E2E Tests
+
+Configure test credentials in `.env.local`:
+
+```bash
+NEXT_PUBLIC_PRIVY_TEST_MODE=true
+TEST_USER_EMAIL=test@example.com
+TEST_USER_OTP=your-test-otp
+```
+
+Run the tests:
+
+```bash
+# Run all tests
+pnpm test:e2e
+
+# Run with interactive UI
+pnpm test:e2e:ui
+
+# Run in headed mode (visible browser)
+pnpm test:e2e:headed
+```
+
+## External Services
+
+The app connects to the following external services:
+
+| Service        | Purpose                          | Required |
+| -------------- | -------------------------------- | -------- |
+| Portal API     | AI chat completions and tools    | Yes      |
+| Privy          | Authentication and wallet        | Yes      |
+| Google Drive   | Backup/export conversations      | No       |
+| Google Calendar| Calendar integration             | No       |
+| Dropbox        | Alternative backup destination   | No       |
