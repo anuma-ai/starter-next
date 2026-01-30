@@ -407,8 +407,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     temperature,
     maxOutputTokens,
     walletAddress,
-    signMessage,
-    embeddedWalletSigner: embeddedWallet ? embeddedWalletSigner : undefined,
     serverTools: enabledServerTools,
     clientTools,
   });

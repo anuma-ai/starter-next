@@ -5,6 +5,11 @@
 import type { Database } from "@nozbe/watermelondb";
 import { getDatabase, resetDatabase } from "./database";
 import type { SeedData, SeedProject, SeedConversation, SeedMessage } from "./seed-data";
+import {
+  fetchLongMemEvalDataset,
+  getMessagesFromDataset,
+  type LongMemEvalMessage,
+} from "./longmemeval";
 
 export type SeedResult = {
   success: boolean;
@@ -50,6 +55,7 @@ export async function seedDatabase(data: SeedData): Promise<SeedResult> {
           await conversationsCollection.create((record: any) => {
             record._setRaw("conversation_id", conv.conversationId);
             record._setRaw("title", conv.title || "Untitled");
+            record._setRaw("is_deleted", false);
             if (conv.projectId) {
               record._setRaw("project_id", conv.projectId);
             }
@@ -129,4 +135,187 @@ export async function getDatabaseStats(): Promise<{
   const messages = await database.get("history").query().fetchCount();
 
   return { projects, conversations, messages };
+}
+
+export type LongMemEvalSeedResult = {
+  success: boolean;
+  conversationsCreated: number;
+  messagesCreated: number;
+  embeddingsGenerated: number;
+  error?: string;
+};
+
+export type LongMemEvalSeedOptions = {
+  maxMessages: number;
+  generateEmbeddings: boolean;
+  getToken: () => Promise<string | null>;
+  onProgress?: (progress: { phase: string; current: number; total: number }) => void;
+};
+
+/**
+ * Seed database with LongMemEval data
+ */
+export async function seedLongMemEval(
+  options: LongMemEvalSeedOptions
+): Promise<LongMemEvalSeedResult> {
+  const { maxMessages, generateEmbeddings, getToken, onProgress } = options;
+  const database = getDatabase();
+
+  let conversationsCreated = 0;
+  let messagesCreated = 0;
+  let embeddingsGenerated = 0;
+
+  try {
+    // Fetch dataset
+    onProgress?.({ phase: "Fetching dataset", current: 0, total: 1 });
+    const dataset = await fetchLongMemEvalDataset();
+
+    // Get messages from dataset
+    const conversations = getMessagesFromDataset(dataset, maxMessages);
+    const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
+
+    onProgress?.({ phase: "Creating conversations", current: 0, total: conversations.length });
+
+    // Find or create Sample Conversations project
+    let sampleProjectId: string | null = null;
+    const projectsCollection = database.get("projects");
+    const existingProjects = await projectsCollection.query().fetch();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sampleProject = existingProjects.find((p: any) => p._getRaw("name") === "Sample Conversations");
+
+    if (sampleProject) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sampleProjectId = (sampleProject as any)._getRaw("project_id") as string;
+    } else {
+      // Create Sample Conversations project
+      await database.write(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await projectsCollection.create((record: any) => {
+          sampleProjectId = `proj_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+          record._setRaw("project_id", sampleProjectId);
+          record._setRaw("name", "Sample Conversations");
+          record._setRaw("is_deleted", false);
+        });
+      });
+    }
+
+    // Insert into database
+    await database.write(async () => {
+      const conversationsCollection = database.get("conversations");
+      const historyCollection = database.get("history");
+
+      for (let i = 0; i < conversations.length; i++) {
+        const conv = conversations[i];
+
+        // Create conversation in Sample Conversations project
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await conversationsCollection.create((record: any) => {
+          record._setRaw("conversation_id", conv.conversationId);
+          record._setRaw("title", `LongMemEval ${conv.conversationId.slice(-8)}`);
+          record._setRaw("is_deleted", false);
+          if (sampleProjectId) {
+            record._setRaw("project_id", sampleProjectId);
+          }
+        });
+        conversationsCreated++;
+
+        // Create messages
+        for (let j = 0; j < conv.messages.length; j++) {
+          const msg = conv.messages[j];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await historyCollection.create((record: any) => {
+            record._setRaw("message_id", j + 1);
+            record._setRaw("conversation_id", conv.conversationId);
+            record._setRaw("role", msg.role);
+            record._setRaw("content", msg.content);
+          });
+          messagesCreated++;
+        }
+
+        onProgress?.({ phase: "Creating conversations", current: i + 1, total: conversations.length });
+      }
+    });
+
+    // Generate embeddings if requested
+    if (generateEmbeddings) {
+      const { generateEmbeddings: genEmbed } = await import("@reverbia/sdk/react");
+
+      onProgress?.({ phase: "Generating embeddings", current: 0, total: totalMessages });
+
+      // Get all messages and generate embeddings
+      const historyCollection = database.get("history");
+      const allMessages = await historyCollection.query().fetch();
+
+      // Process in batches
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < allMessages.length; i += BATCH_SIZE) {
+        const batch = allMessages.slice(i, i + BATCH_SIZE);
+        const texts = batch.map((m: any) => m._getRaw("content") as string);
+
+        try {
+          const embeddings = await genEmbed(texts, {
+            getToken,
+            baseUrl: process.env.NEXT_PUBLIC_API_URL,
+          });
+
+          // Update messages with embeddings
+          await database.write(async () => {
+            for (let j = 0; j < batch.length; j++) {
+              const msg = batch[j];
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              await (msg as any).update((record: any) => {
+                record._setRaw("vector", JSON.stringify(embeddings[j]));
+              });
+              embeddingsGenerated++;
+            }
+          });
+        } catch (err) {
+          console.error("Failed to generate embeddings for batch:", err);
+        }
+
+        onProgress?.({
+          phase: "Generating embeddings",
+          current: Math.min(i + BATCH_SIZE, allMessages.length),
+          total: allMessages.length,
+        });
+      }
+    }
+
+    return {
+      success: true,
+      conversationsCreated,
+      messagesCreated,
+      embeddingsGenerated,
+    };
+  } catch (error) {
+    console.error("Failed to seed LongMemEval data:", error);
+    return {
+      success: false,
+      conversationsCreated,
+      messagesCreated,
+      embeddingsGenerated,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Clear database and seed with LongMemEval data
+ */
+export async function clearAndSeedLongMemEval(
+  options: LongMemEvalSeedOptions
+): Promise<LongMemEvalSeedResult> {
+  try {
+    await resetDatabase();
+    return await seedLongMemEval(options);
+  } catch (error) {
+    console.error("Failed to clear and seed LongMemEval:", error);
+    return {
+      success: false,
+      conversationsCreated: 0,
+      messagesCreated: 0,
+      embeddingsGenerated: 0,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }

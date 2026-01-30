@@ -2,20 +2,15 @@
 
 import { useCallback, useState, useRef } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
-import { useAppMemoryStorage } from "./useAppMemoryStorage";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
-import type {
-  SignMessageFn,
-  EmbeddedWalletSignerFn,
-} from "@reverbia/sdk/react";
 
 /**
  * useAppChat Hook Example
  *
- * This hook demonstrates how to combine useAppChatStorage and useAppMemoryStorage
+ * This hook demonstrates how to use useAppChatStorage with memory retrieval tools
  * to create a complete chat experience with persistent storage and memory-augmented
- * responses.
+ * responses. Memories are fetched on-demand when sendMessage is called.
  */
 
 type UseAppChatProps = {
@@ -25,16 +20,19 @@ type UseAppChatProps = {
   temperature?: number;
   maxOutputTokens?: number;
   store?: boolean;
-  // Encryption props for encrypted memories
+  // Wallet address for encrypted file storage
   walletAddress?: string;
-  signMessage?: SignMessageFn;
-  embeddedWalletSigner?: EmbeddedWalletSignerFn;
   // Server-side tools (tool names from /api/v1/tools)
   serverTools?: string[];
   // Client-side tools (with local executors)
   clientTools?: any[];
   toolChoice?: string;
+  // System prompt for the AI
+  systemPrompt?: string;
 };
+
+// Default system prompt that includes memory retrieval instructions
+const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.`;
 
 //#region hookInit
 export function useAppChat({
@@ -44,11 +42,10 @@ export function useAppChat({
   temperature,
   maxOutputTokens,
   walletAddress,
-  signMessage,
-  embeddedWalletSigner,
   serverTools,
   clientTools,
   toolChoice,
+  systemPrompt,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +67,7 @@ export function useAppChat({
     thinkingCallbacksRef.current.forEach((callback) => callback(accumulated));
   }, []);
 
-  // Use chat storage for message persistence
+  // Use chat storage for message persistence and memory retrieval
   const {
     messages,
     setMessages,
@@ -86,22 +83,19 @@ export function useAppChat({
     refreshConversations,
     getMessages,
     getConversation,
+    createMemoryRetrievalTool,
   } = useAppChatStorage({
     database,
     getToken,
     onStreamingData: handleStreamingData,
     // Enable encrypted file storage in OPFS when wallet is connected
     walletAddress,
+    // System prompt with memory retrieval instructions
+    systemPrompt: systemPrompt || DEFAULT_SYSTEM_PROMPT,
   });
 
-  // Use memory storage for context-aware responses (with optional encryption)
-  const { extractMemories, findRelevantMemories } = useAppMemoryStorage({
-    database,
-    getToken,
-    walletAddress,
-    signMessage,
-    embeddedWalletSigner,
-  });
+  // Create a memory retrieval tool that fetches memories on-demand
+  const memoryTool = createMemoryRetrievalTool({ limit: 5 });
   //#endregion hookInit
 
   //#region sendMessage
@@ -151,30 +145,14 @@ export function useAppChat({
           handleThinkingData(thinkingTextRef.current);
         };
 
-        // Find relevant memories BEFORE sending to inject context
-        let apiText = text;
-        try {
-          const memories = await findRelevantMemories(text);
-          if (memories.length > 0) {
-            const memoryContext = memories
-              .map((m) => `- ${m.value}`)
-              .join("\n");
-            apiText = `[Context from user's previous conversations - use this information to provide personalized responses:\n${memoryContext}]\n\nUser message: ${text}`;
-            console.log(`Injecting ${memories.length} memories into context`);
-          }
-        } catch (err) {
-          console.error("Failed to find memories:", err);
-          // Continue without memories if search fails
-        }
-
         console.log("[APPCHAT sendMessage] Calling baseSendMessage");
-        // Send the message with memory context (if any)
-        // displayText shows the original user message in UI
         // Merge tools from hook props and per-request options
+        // Memory retrieval tool is automatically included for on-demand memory fetching
         const effectiveServerTools = options?.serverTools || serverTools;
-        const effectiveClientTools = options?.clientTools || clientTools;
+        const baseClientTools = options?.clientTools || clientTools || [];
+        const effectiveClientTools = [memoryTool, ...baseClientTools];
         const effectiveToolChoice = options?.toolChoice || toolChoice;
-        const response = await baseSendMessage(apiText, {
+        const response = await baseSendMessage(text, {
           model: effectiveModel,
           temperature: effectiveTemperature,
           maxOutputTokens: effectiveMaxOutputTokens,
@@ -195,11 +173,6 @@ export function useAppChat({
           onThinking,
         });
 
-        // Extract memories from the user message in the background
-        extractMemories(text, effectiveModel).catch((err) => {
-          console.error("Failed to extract memories:", err);
-        });
-
         console.log("[APPCHAT sendMessage] END, baseSendMessage completed");
         return response;
       } catch (err) {
@@ -216,8 +189,7 @@ export function useAppChat({
       temperature,
       maxOutputTokens,
       handleThinkingData,
-      findRelevantMemories,
-      extractMemories,
+      memoryTool,
       serverTools,
       clientTools,
       toolChoice,
@@ -318,9 +290,5 @@ export function useAppChat({
     subscribeToThinking,
     getMessages,
     getConversation,
-
-    // Memory actions
-    findRelevantMemories,
-    extractMemories,
   };
 }
