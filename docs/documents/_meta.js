@@ -1,5 +1,6 @@
 export default {
-  README: "Getting Started",
+  start: "Getting Started",
+  intro: "Introduction",
   useChatStorage: "Sending Messages",
   useMemoryStorage: "Storing Memories",
   useModels: "Fetching Models",

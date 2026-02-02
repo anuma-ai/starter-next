@@ -29,17 +29,6 @@ organization, file handling, and memory-augmented responses.
 - Cloud backups to Google Drive and Dropbox
 - Light/dark themes with customizable accent colors
 
-## Architecture
-
-The starter kit uses a hook-based architecture where each capability is
-encapsulated in its own hook. The hooks handle persistence to WatermelonDB,
-authentication via Privy, and communication with AI services through the SDK.
-
-All data is stored locally, enabling offline operation. The memory system
-extracts facts from conversations and stores
-them with embeddings for semantic search, making relevant context available to
-future conversations.
-
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) 18.x or later
@@ -139,8 +128,3 @@ The app connects to the following external services:
 | Google Drive   | Backup/export conversations      | No       |
 | Google Calendar| Calendar integration             | No       |
 | Dropbox        | Alternative backup destination   | No       |
-
-## Resources
-
-- [GitHub Repository](https://github.com/zeta-chain/ai-examples)
-- [Live Demo](https://ai-examples.zetachain.app/)
