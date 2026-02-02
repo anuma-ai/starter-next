@@ -338,7 +338,7 @@ const ChatBotDemo = () => {
       // Show loading indicator immediately
       setIsSubmitting(true);
 
-      // Step 1: Add message optimistically to UI and clear input immediately
+      // Step 1: Add user message optimistically
       addMessageOptimistically(message.text, message.files, message.text);
       setInput(""); // Clear input immediately for instant feedback
 
@@ -346,7 +346,7 @@ const ChatBotDemo = () => {
       // The SDK will extract text from PDF, Excel, and Word files automatically
       // No need for manual processing here
 
-      // Step 3: Send to API (skip adding to UI again since we already did)
+      // Step 3: Send to API (skip adding user message to UI again since we already did)
       // Get the resolved model config based on thinking toggle
       const modelConfig = getModelConfig(selectedModel, thinkingEnabled);
       await handleSubmit(
@@ -603,6 +603,12 @@ const ChatBotDemo = () => {
             </div>
           ))}
           {/* File preprocessing is now handled automatically by the SDK */}
+          {/* Standalone loading indicator when submitting but before assistant message appears */}
+          {isSubmitting && !isLoading && messages.at(-1)?.role === "user" && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm h-5 mt-4">
+              <span className="inline-block size-3 rounded-full bg-foreground flex-shrink-0 animate-[scale-pulse_1.5s_ease-in-out_infinite]" />
+            </div>
+          )}
         </div>
       </div>
 
