@@ -25,8 +25,8 @@ setup("authenticate via Privy", async ({ page }) => {
   await emailInput.waitFor({ timeout: 30000 });
   await emailInput.fill(PRIVY_TEST_EMAIL);
 
-  // Click continue button
-  await page.getByRole("button", { name: /continue|submit|log in/i }).click();
+  // Click submit button to continue with email
+  await page.getByRole("button", { name: "Submit" }).click();
 
   // Find and wait for OTP inputs to appear
   const otpInputs = page.locator(
