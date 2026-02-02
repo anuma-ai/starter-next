@@ -23,6 +23,7 @@ const {
   setConversationId,
   deleteConversation,
   getAllFiles,
+  createMemoryRetrievalTool,
 } = useChatStorage({
   database,
   getToken,
@@ -209,8 +210,15 @@ const handleSendMessage = useCallback(
     // If we have OCR/memory context that differs from displayText, pass it via memoryContext
     const memoryContext = displayText && text !== displayText ? text : undefined;
 
+    // Build messages array with optional system prompt
+    const messagesArray: Array<{ role: "system" | "user"; content: typeof contentParts }> = [];
+    if (systemPrompt) {
+      messagesArray.push({ role: "system" as const, content: [{ type: "text", text: systemPrompt }] });
+    }
+    messagesArray.push({ role: "user" as const, content: contentParts });
+
     const response = await sendMessage({
-      messages: [{ role: "user" as const, content: contentParts }],
+      messages: messagesArray,
       model,
       includeHistory: true,
       ...(temperature !== undefined && { temperature }),
@@ -565,9 +573,8 @@ const handleSwitchConversation = useCallback(
           parts.push({ type: "reasoning" as const, text: msg.thinking });
         }
 
-        // Add text content - strip memory context prefix if present
         // For assistant messages, SDK resolves image placeholders to markdown in content
-        const textContent = stripMemoryContext(msg.content);
+        const textContent = msg.content;
         if (textContent) {
           parts.push({ type: "text" as const, text: textContent });
         }
