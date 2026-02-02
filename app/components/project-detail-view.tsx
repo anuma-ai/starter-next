@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Setting07Icon, Delete02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon, PaletteIcon } from "lucide-react";
+import { ImageIcon, CheckIcon, CpuIcon, PaletteIcon, BrainIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import {
   DropdownMenu,
@@ -17,6 +17,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import { MODELS, getModelConfig } from "@/lib/models";
 import {
   PromptInput,
   PromptInputAttachment,
@@ -27,10 +29,7 @@ import {
   usePromptInputAttachments,
   type PromptInputMessage,
 } from "@/components/chat/prompt-input";
-import {
-  CHAT_INPUT_PLACEHOLDER,
-  CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED,
-} from "@/lib/constants";
+import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
 import { useChatContext } from "./chat-provider";
 import type { StoredConversation, StoredMessage } from "@reverbia/sdk/react";
 import { ICON_THEMES, type IconThemeId, useChatPatternWithProject } from "@/lib/chat-pattern";
@@ -40,40 +39,14 @@ import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import { ThemedProjectIcon, ProjectIconPicker } from "@/components/project-icon-picker";
 import { FolderLibraryIcon } from "@hugeicons/core-free-icons";
 
-const MODELS = [
-  {
-    id: "openai/gpt-5.2-2025-12-11",
-    name: "GPT 5.2",
-    apiType: "responses" as const,
-  },
-  {
-    id: "fireworks/accounts/fireworks/models/gpt-oss-20b",
-    name: "GPT-OSS 20B",
-    apiType: "responses" as const,
-  },
-  {
-    id: "grok/grok-4-1-fast-reasoning",
-    name: "Grok 4.1 Fast",
-    apiType: "completions" as const,
-  },
-  {
-    id: "fireworks/accounts/fireworks/models/qwen3-235b-a22b-instruct-2507",
-    name: "Anuma Private - Fast",
-    apiType: "completions" as const,
-  },
-  {
-    id: "fireworks/accounts/fireworks/models/glm-4p7",
-    name: "Anuma Private - Thinking",
-    apiType: "completions" as const,
-  },
-];
-
 type PromptMenuProps = {
   selectedModel: string;
   onSelectModel: (modelId: string) => void;
+  thinkingEnabled: boolean;
+  onToggleThinking: () => void;
 };
 
-const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
+const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThinking }: PromptMenuProps) => {
   const attachments = usePromptInputAttachments();
 
   return (
@@ -87,6 +60,16 @@ const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
         <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
           <ImageIcon className="size-4" />
           Add photos & files
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={onToggleThinking}>
+          <BrainIcon className="size-4" />
+          <span>Thinking</span>
+          <Switch
+            checked={thinkingEnabled}
+            onCheckedChange={onToggleThinking}
+            onClick={(e) => e.stopPropagation()}
+            className="ml-auto"
+          />
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
@@ -160,6 +143,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [editedName, setEditedName] = useState("");
   const [selectedModel, setSelectedModel] = useState<string>(MODELS[0].id);
+  const [thinkingEnabled, setThinkingEnabled] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Project theme settings
@@ -359,7 +343,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
 
       // Submit the message to API
       // The SDK's conversationId state was set by createConversation above
-      const currentModel = MODELS.find((m) => m.id === selectedModel);
+      const modelConfig = getModelConfig(selectedModel, thinkingEnabled);
       console.log("[ProjectDetailView] Submitting message with conversationId:", convId);
       await handleSubmit(
         {
@@ -368,10 +352,14 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
           files: message.files,
         },
         {
-          model: selectedModel,
-          apiType: currentModel?.apiType,
+          model: modelConfig?.modelId ?? selectedModel,
+          apiType: modelConfig?.apiType,
           maxOutputTokens: 32000,
           toolChoice: "auto",
+          ...(thinkingEnabled && modelConfig?.useReasoning && {
+            reasoning: { effort: "high", summary: "detailed" },
+            thinking: { type: "enabled", budget_tokens: 10000 },
+          }),
           skipOptimisticUpdate: true,
           conversationId: convId,
         }
@@ -381,7 +369,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
       // Trigger sidebar refresh to update conversation title (message is now stored)
       triggerProjectConversationsRefresh();
     },
-    [createConversation, projectId, handleSubmit, addMessageOptimistically, router, setInput, selectedModel, input, triggerProjectConversationsRefresh]
+    [createConversation, projectId, handleSubmit, addMessageOptimistically, router, setInput, selectedModel, thinkingEnabled, input, triggerProjectConversationsRefresh]
   );
 
   const handleSelectConversation = (conversationId: string) => {
@@ -560,13 +548,15 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
                 <PromptMenu
                   selectedModel={selectedModel}
                   onSelectModel={handleSelectModel}
+                  thinkingEnabled={thinkingEnabled}
+                  onToggleThinking={() => setThinkingEnabled(!thinkingEnabled)}
                 />
                 <PromptInputTextarea
                   disabled={!authenticated}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={
                     authenticated
-                      ? CHAT_INPUT_PLACEHOLDER
+                      ? `Ask ${MODELS.find((m) => m.id === selectedModel)?.name ?? "AI"} anything${thinkingEnabled ? " (thinking)" : ""}`
                       : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
                   }
                   value={input}

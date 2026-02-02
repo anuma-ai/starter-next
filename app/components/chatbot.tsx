@@ -5,13 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon } from "lucide-react";
+import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon, BrainIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 
-import {
-  CHAT_INPUT_PLACEHOLDER,
-  CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED,
-} from "@/lib/constants";
+import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
+import { MODELS, getModelConfig } from "@/lib/models";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +19,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import {
   Message,
   MessageContent,
@@ -44,40 +43,14 @@ import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 
-const MODELS = [
-  {
-    id: "openai/gpt-5.2-2025-12-11",
-    name: "GPT 5.2",
-    apiType: "responses" as const,
-  },
-  {
-    id: "fireworks/accounts/fireworks/models/gpt-oss-20b",
-    name: "GPT-OSS 20B",
-    apiType: "responses" as const,
-  },
-  {
-    id: "grok/grok-4-1-fast-reasoning",
-    name: "Grok 4.1 Fast",
-    apiType: "completions" as const,
-  },
-  {
-    id: "fireworks/accounts/fireworks/models/qwen3-235b-a22b-instruct-2507",
-    name: "Anuma Private - Fast",
-    apiType: "completions" as const,
-  },
-  {
-    id: "fireworks/accounts/fireworks/models/glm-4p7",
-    name: "Anuma Private - Thinking",
-    apiType: "completions" as const,
-  },
-];
-
 type PromptMenuProps = {
   selectedModel: string;
   onSelectModel: (modelId: string) => void;
+  thinkingEnabled: boolean;
+  onToggleThinking: () => void;
 };
 
-const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
+const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThinking }: PromptMenuProps) => {
   const attachments = usePromptInputAttachments();
 
   return (
@@ -91,6 +64,16 @@ const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
         <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
           <ImageIcon className="size-4" />
           Add photos & files
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={onToggleThinking}>
+          <BrainIcon className="size-4" />
+          <span>Thinking</span>
+          <Switch
+            checked={thinkingEnabled}
+            onCheckedChange={onToggleThinking}
+            onClick={(e) => e.stopPropagation()}
+            className="ml-auto"
+          />
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
@@ -291,6 +274,7 @@ const ChatBotDemo = () => {
     undefined
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [thinkingEnabled, setThinkingEnabled] = useState(false);
   const thinkingStartTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -354,7 +338,7 @@ const ChatBotDemo = () => {
       // Show loading indicator immediately
       setIsSubmitting(true);
 
-      // Step 1: Add message optimistically to UI and clear input immediately
+      // Step 1: Add user message optimistically
       addMessageOptimistically(message.text, message.files, message.text);
       setInput(""); // Clear input immediately for instant feedback
 
@@ -362,8 +346,9 @@ const ChatBotDemo = () => {
       // The SDK will extract text from PDF, Excel, and Word files automatically
       // No need for manual processing here
 
-      // Step 3: Send to API (skip adding to UI again since we already did)
-      const currentModel = MODELS.find((m) => m.id === selectedModel);
+      // Step 3: Send to API (skip adding user message to UI again since we already did)
+      // Get the resolved model config based on thinking toggle
+      const modelConfig = getModelConfig(selectedModel, thinkingEnabled);
       await handleSubmit(
         {
           ...message,
@@ -372,30 +357,31 @@ const ChatBotDemo = () => {
           files: message.files,
         },
         {
-          model: selectedModel,
-          apiType: currentModel?.apiType,
+          model: modelConfig?.modelId ?? selectedModel,
+          apiType: modelConfig?.apiType,
           maxOutputTokens: 32000,
           toolChoice: "auto",
-          // reasoning: { effort: "high", summary: "detailed" },
-          // thinking: { type: "enabled", budget_tokens: 10000 },
+          // Only include reasoning params for models that use API-level reasoning (Claude, GPT)
+          ...(thinkingEnabled && modelConfig?.useReasoning && {
+            reasoning: { effort: "high", summary: "detailed" },
+            thinking: { type: "enabled", budget_tokens: 10000 },
+          }),
           skipOptimisticUpdate: true,
         }
       );
     },
-    [handleSubmit, addMessageOptimistically, setInput, selectedModel]
+    [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled]
   );
 
   return (
     <div
-      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${
-        messages.length === 0 ? "justify-center" : ""
-      }`}
+      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${messages.length === 0 ? "justify-center" : ""
+        }`}
       style={patternStyle}
     >
       <div
-        className={`min-h-0 flex-1 px-4 overflow-y-auto ${
-          messages.length === 0 ? "hidden" : ""
-        }`}
+        className={`min-h-0 flex-1 px-4 overflow-y-auto ${messages.length === 0 ? "hidden" : ""
+          }`}
       >
         <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
           {messages.map((message: any) => (
@@ -617,13 +603,18 @@ const ChatBotDemo = () => {
             </div>
           ))}
           {/* File preprocessing is now handled automatically by the SDK */}
+          {/* Standalone loading indicator when submitting but before assistant message appears */}
+          {isSubmitting && !isLoading && messages.at(-1)?.role === "user" && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm h-5 mt-4">
+              <span className="inline-block size-3 rounded-full bg-foreground flex-shrink-0 animate-[scale-pulse_1.5s_ease-in-out_infinite]" />
+            </div>
+          )}
         </div>
       </div>
 
       <div
-        className={`min-w-0 px-10 pb-4 pt-2 ${
-          messages.length === 0 ? "w-full" : "sticky bottom-0"
-        }`}
+        className={`min-w-0 px-10 pb-4 pt-2 ${messages.length === 0 ? "w-full" : "sticky bottom-0"
+          }`}
       >
         <div className="mx-auto w-full min-w-0 max-w-3xl overflow-hidden">
           <PromptInput
@@ -649,13 +640,15 @@ const ChatBotDemo = () => {
               <PromptMenu
                 selectedModel={selectedModel}
                 onSelectModel={handleSelectModel}
+                thinkingEnabled={thinkingEnabled}
+                onToggleThinking={() => setThinkingEnabled(!thinkingEnabled)}
               />
               <PromptInputTextarea
                 disabled={!authenticated}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
                   authenticated
-                    ? CHAT_INPUT_PLACEHOLDER
+                    ? `Ask ${MODELS.find((m) => m.id === selectedModel)?.name ?? "AI"}${thinkingEnabled ? " (thinking)" : ""} anything`
                     : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
                 }
                 value={input}

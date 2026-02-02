@@ -18,6 +18,7 @@ import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import { getProjectTheme } from "@/lib/project-theme";
 import { useApps } from "@/hooks/useApps";
+import { RotatingLines } from "react-loader-spinner";
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -203,7 +204,14 @@ export function AppLayout({ children }: AppLayoutProps) {
   if (!ready || !authenticated) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <RotatingLines
+          visible={true}
+          width="32"
+          strokeColor="grey"
+          strokeWidth="5"
+          animationDuration="0.75"
+          ariaLabel="loading"
+        />
       </div>
     );
   }

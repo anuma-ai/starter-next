@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
@@ -58,6 +58,7 @@
     "pdfjs-dist": "^5.4.449",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "react-loader-spinner": "^8.0.2",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^4.5.2",
     "rehype-sanitize": "^6.0.0",
