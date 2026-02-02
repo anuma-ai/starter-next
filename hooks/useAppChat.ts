@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useRef, useEffect } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
+import { useTools } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
 
@@ -138,6 +139,9 @@ export function useAppChat({
     limit: memoryLimit,
     minSimilarity: memoryThreshold,
   });
+
+  // Use tools hook for checksum-based refresh
+  const { checkForUpdates } = useTools({ getToken });
   //#endregion hookInit
 
   //#region sendMessage
@@ -215,6 +219,11 @@ export function useAppChat({
           onThinking,
         });
 
+        // Auto-refresh tools if server tools changed
+        if (response?.toolsChecksum) {
+          checkForUpdates(response.toolsChecksum);
+        }
+
         console.log("[APPCHAT sendMessage] END, baseSendMessage completed");
         return response;
       } catch (err) {
@@ -235,6 +244,7 @@ export function useAppChat({
       serverTools,
       clientTools,
       toolChoice,
+      checkForUpdates,
     ]
   );
 

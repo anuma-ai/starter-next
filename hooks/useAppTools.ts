@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
+import { useTools } from "@reverbia/sdk/react";
 
 /**
  * Parameter property definition from the API
@@ -69,57 +70,36 @@ export function setEnabledTools(tools: string[]): void {
 /**
  * useAppTools Hook
  *
- * Fetches available server-side tools from the API and manages
- * which tools are enabled via localStorage.
+ * Wraps the SDK's useTools hook and adds local enabled tools management
+ * via localStorage.
  */
 export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
-  const [tools, setTools] = useState<Tool[]>([]);
   const [enabledTools, setEnabledToolsState] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [checksum, setChecksum] = useState<string | null>(null);
+
+  // Use SDK's useTools hook for fetching tools
+  const {
+    tools: sdkTools,
+    checksum,
+    isLoading,
+    error,
+    refresh,
+    checkForUpdates,
+  } = useTools({
+    getToken,
+    baseUrl,
+  });
 
   // Load enabled tools from localStorage on mount
   useEffect(() => {
     setEnabledToolsState(getEnabledTools());
   }, []);
 
-  const fetchTools = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const token = await getToken();
-      const apiUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || "";
-
-      const response = await fetch(`${apiUrl}/api/v1/tools`, {
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch tools: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // The API returns { checksum, tools: { ... } } where tools is an object with tool names as keys
-      // Convert to array format
-      const toolsArray: Tool[] = Object.entries(data.tools).map(([name, tool]: [string, any]) => ({
-        name,
-        description: tool.schema?.description || tool.description || "",
-        parameters: tool.schema?.parameters || tool.parameters || { type: "object", properties: {}, required: [] },
-      }));
-
-      setTools(toolsArray);
-      setChecksum(data.checksum || null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to fetch tools"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [getToken, baseUrl]);
+  // Map SDK tools to our Tool type
+  const tools: Tool[] = sdkTools.map((tool: any) => ({
+    name: tool.name,
+    description: tool.description || "",
+    parameters: tool.parameters || { type: "object", properties: {}, required: [] },
+  }));
 
   // Toggle a tool's enabled state
   const toggleTool = useCallback((toolName: string) => {
@@ -144,8 +124,9 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
     isLoading,
     error,
     checksum,
-    refetch: fetchTools,
+    refetch: refresh,
     toggleTool,
     isToolEnabled,
+    checkForUpdates,
   };
 }
