@@ -77,6 +77,7 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
   const [enabledTools, setEnabledToolsState] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [checksum, setChecksum] = useState<string | null>(null);
 
   // Load enabled tools from localStorage on mount
   useEffect(() => {
@@ -103,15 +104,16 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
 
       const data = await response.json();
 
-      // The API returns tools as an object with tool names as keys
+      // The API returns { checksum, tools: { ... } } where tools is an object with tool names as keys
       // Convert to array format
-      const toolsArray: Tool[] = Object.entries(data).map(([name, tool]: [string, any]) => ({
+      const toolsArray: Tool[] = Object.entries(data.tools).map(([name, tool]: [string, any]) => ({
         name,
-        description: tool.description || "",
-        parameters: tool.parameters || { type: "object", properties: {}, required: [] },
+        description: tool.schema?.description || tool.description || "",
+        parameters: tool.schema?.parameters || tool.parameters || { type: "object", properties: {}, required: [] },
       }));
 
       setTools(toolsArray);
+      setChecksum(data.checksum || null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to fetch tools"));
     } finally {
@@ -141,6 +143,7 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
     enabledTools,
     isLoading,
     error,
+    checksum,
     refetch: fetchTools,
     toggleTool,
     isToolEnabled,
