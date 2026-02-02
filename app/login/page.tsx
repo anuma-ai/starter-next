@@ -6,6 +6,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SourceCodeSquareIcon, Book03Icon } from "@hugeicons/core-free-icons";
+import { RotatingLines } from "react-loader-spinner";
 
 export default function LoginPage() {
   const { ready, authenticated, login } = usePrivy();
@@ -20,7 +21,14 @@ export default function LoginPage() {
   if (!ready) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+        <RotatingLines
+          visible={true}
+          width="32"
+          strokeColor="grey"
+          strokeWidth="5"
+          animationDuration="0.75"
+          ariaLabel="loading"
+        />
       </div>
     );
   }
