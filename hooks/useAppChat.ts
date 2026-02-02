@@ -194,7 +194,6 @@ export function useAppChat({
           handleThinkingData(thinkingTextRef.current);
         };
 
-        console.log("[APPCHAT sendMessage] Calling baseSendMessage");
         // Merge tools from hook props and per-request options
         // Memory retrieval tool is automatically included for on-demand memory fetching
         const effectiveServerTools = options?.serverTools || serverTools;
@@ -225,7 +224,12 @@ export function useAppChat({
         // Auto-refresh tools if server tools changed
         const toolsChecksum = (response?.data as any)?.toolsChecksum;
         if (toolsChecksum) {
-          checkForUpdates(toolsChecksum);
+          const needsRefresh = checkForUpdates(toolsChecksum);
+          if (needsRefresh) {
+            console.log("[APPCHAT] Tools checksum changed, refreshing tools");
+          } else {
+            console.log("[APPCHAT] Tools are up to date");
+          }
         }
 
         console.log("[APPCHAT sendMessage] END, baseSendMessage completed");
