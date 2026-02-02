@@ -141,7 +141,10 @@ export function useAppChat({
   });
 
   // Use tools hook for checksum-based refresh
-  const { checkForUpdates } = useTools({ getToken });
+  const { checkForUpdates } = useTools({
+    getToken,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+  });
   //#endregion hookInit
 
   //#region sendMessage
@@ -220,9 +223,11 @@ export function useAppChat({
         });
 
         // Auto-refresh tools if server tools changed
-        if (response?.toolsChecksum) {
-          checkForUpdates(response.toolsChecksum);
-        }
+        // TODO: Remove this simulation - forcing refresh on every request for testing
+        console.log("[APPCHAT] Response toolsChecksum:", response?.toolsChecksum);
+        console.log("[APPCHAT] Forcing checkForUpdates with fake checksum");
+        const didRefresh = checkForUpdates(`force-refresh-${Date.now()}`);
+        console.log("[APPCHAT] checkForUpdates returned:", didRefresh);
 
         console.log("[APPCHAT sendMessage] END, baseSendMessage completed");
         return response;
