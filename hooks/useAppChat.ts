@@ -222,9 +222,8 @@ export function useAppChat({
         });
 
         // Auto-refresh tools if server tools changed
-        const toolsChecksum = (response?.data as any)?.toolsChecksum;
-        if (toolsChecksum) {
-          const needsRefresh = checkForUpdates(toolsChecksum);
+        if (response?.toolsChecksum) {
+          const needsRefresh = checkForUpdates(response.toolsChecksum);
           if (needsRefresh) {
             console.log("[APPCHAT] Tools checksum changed, refreshing tools");
           } else {
