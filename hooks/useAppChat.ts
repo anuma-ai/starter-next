@@ -223,11 +223,10 @@ export function useAppChat({
         });
 
         // Auto-refresh tools if server tools changed
-        // TODO: Remove this simulation - forcing refresh on every request for testing
-        console.log("[APPCHAT] Response toolsChecksum:", response?.toolsChecksum);
-        console.log("[APPCHAT] Forcing checkForUpdates with fake checksum");
-        const didRefresh = checkForUpdates(`force-refresh-${Date.now()}`);
-        console.log("[APPCHAT] checkForUpdates returned:", didRefresh);
+        const toolsChecksum = (response?.data as any)?.toolsChecksum;
+        if (toolsChecksum) {
+          checkForUpdates(toolsChecksum);
+        }
 
         console.log("[APPCHAT sendMessage] END, baseSendMessage completed");
         return response;
