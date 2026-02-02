@@ -38,7 +38,11 @@ type UseToolsProps = {
 };
 
 const ENABLED_TOOLS_KEY = "chat_enabledServerTools";
-const DEFAULT_ENABLED_TOOLS = ["generate_cloud_image", "perplexity_search", "analyze_image"];
+const DEFAULT_ENABLED_TOOLS = [
+  'AnumaImageMCP_generate_cloud_image',
+  'PerplexityMCP_perplexity_search',
+  'VisionMCP_analyze_image',
+]
 
 /**
  * Get enabled tools from localStorage
