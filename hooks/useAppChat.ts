@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useRef, useEffect } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
+import { useTools } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
 
@@ -138,6 +139,12 @@ export function useAppChat({
     limit: memoryLimit,
     minSimilarity: memoryThreshold,
   });
+
+  // Use tools hook for checksum-based refresh
+  const { checkForUpdates } = useTools({
+    getToken,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+  });
   //#endregion hookInit
 
   //#region sendMessage
@@ -187,7 +194,6 @@ export function useAppChat({
           handleThinkingData(thinkingTextRef.current);
         };
 
-        console.log("[APPCHAT sendMessage] Calling baseSendMessage");
         // Merge tools from hook props and per-request options
         // Memory retrieval tool is automatically included for on-demand memory fetching
         const effectiveServerTools = options?.serverTools || serverTools;
@@ -215,6 +221,18 @@ export function useAppChat({
           onThinking,
         });
 
+        // Auto-refresh tools if server tools changed
+        // Both Responses API and Completions API formats include tools_checksum
+        const toolsChecksum = (response?.data as { tools_checksum?: string })?.tools_checksum;
+        if (toolsChecksum) {
+          const needsRefresh = checkForUpdates(toolsChecksum);
+          if (needsRefresh) {
+            console.log("[APPCHAT] Tools checksum changed, refreshing tools");
+          } else {
+            console.log("[APPCHAT] Tools are up to date");
+          }
+        }
+
         console.log("[APPCHAT sendMessage] END, baseSendMessage completed");
         return response;
       } catch (err) {
@@ -235,6 +253,7 @@ export function useAppChat({
       serverTools,
       clientTools,
       toolChoice,
+      checkForUpdates,
     ]
   );
 
