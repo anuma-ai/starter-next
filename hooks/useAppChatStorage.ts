@@ -201,6 +201,8 @@ export function useAppChatStorage({
   const messagesRef = useRef<Message[]>([]);
   // Track which conversation is currently streaming (for preserving state when switching)
   const streamingConversationIdRef = useRef<string | null>(null);
+  // State version for re-render purposes (to hide spinner when switching away from streaming conversation)
+  const [streamingConversationIdState, setStreamingConversationIdState] = useState<string | null>(null);
   // Cache messages for streaming conversation when user switches away
   const streamingMessagesCacheRef = useRef<Map<string, Message[]>>(new Map());
 
@@ -524,6 +526,7 @@ export function useAppChatStorage({
       // Mark this conversation as streaming so we can preserve state when switching
       if (explicitConversationId) {
         streamingConversationIdRef.current = explicitConversationId;
+        setStreamingConversationIdState(explicitConversationId);
       }
 
       // Use displayText for storage (clean user input), text for API (may include OCR/context)
@@ -839,6 +842,7 @@ export function useAppChatStorage({
       // Clear streaming state - streaming is complete
       if (messageConversationId) {
         streamingConversationIdRef.current = null;
+        setStreamingConversationIdState(null);
         streamingMessagesCacheRef.current.delete(messageConversationId);
       }
 
@@ -1001,12 +1005,16 @@ export function useAppChatStorage({
   );
   //#endregion conversationManagement
 
+  // Only show loading state when viewing the conversation that's actually streaming
+  // This prevents spinner from showing in conversation B when conversation A is streaming
+  const effectiveIsLoading = isLoading && conversationId === streamingConversationIdState;
+
   return {
     messages,
     setMessages,
     conversations,
     conversationId,
-    isLoading,
+    isLoading: effectiveIsLoading,
     sendMessage: handleSendMessage,
     addMessageOptimistically,
     createConversation: handleNewConversation,
