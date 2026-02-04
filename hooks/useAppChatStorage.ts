@@ -996,9 +996,16 @@ export function useAppChatStorage({
 
   const handleDeleteConversation = useCallback(
     async (id: string) => {
-      await deleteConversation(id);
-      if (conversationId === id) {
-        setMessages([]);
+      console.log("[useAppChatStorage] Deleting conversation:", id);
+      try {
+        const result = await deleteConversation(id);
+        console.log("[useAppChatStorage] Delete result:", result);
+        if (conversationId === id) {
+          setMessages([]);
+        }
+      } catch (error) {
+        console.error("[useAppChatStorage] Delete failed:", error);
+        throw error;
       }
     },
     [deleteConversation, conversationId]

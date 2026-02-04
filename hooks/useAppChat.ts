@@ -49,6 +49,7 @@ export function useAppChat({
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryLimit, setMemoryLimit] = useState(5);
   const [memoryThreshold, setMemoryThreshold] = useState(0.2);
   const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
@@ -57,6 +58,11 @@ export function useAppChat({
 
   // Load memory settings from localStorage
   useEffect(() => {
+    const savedEnabled = localStorage.getItem("chat_memoryEnabled");
+    if (savedEnabled !== null) {
+      setMemoryEnabled(savedEnabled === "true");
+    }
+
     const savedLimit = localStorage.getItem("chat_memoryLimit");
     if (savedLimit) {
       const limit = parseInt(savedLimit, 10);
@@ -75,6 +81,9 @@ export function useAppChat({
 
     // Listen for changes from settings page
     const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "chat_memoryEnabled" && e.newValue !== null) {
+        setMemoryEnabled(e.newValue === "true");
+      }
       if (e.key === "chat_memoryLimit" && e.newValue) {
         const limit = parseInt(e.newValue, 10);
         if (!isNaN(limit) && limit > 0) {
@@ -194,12 +203,17 @@ export function useAppChat({
           }
         }
 
-        const memoryTool = createMemoryRetrievalTool({
-          limit: memoryLimit,
-          minSimilarity: memoryThreshold,
-          excludeConversationId: effectiveConversationId ?? undefined,
-        });
-        const effectiveClientTools = [memoryTool, ...baseClientTools];
+        // Only include memory tool if memory retrieval is enabled
+        const effectiveClientTools = memoryEnabled
+          ? [
+              createMemoryRetrievalTool({
+                limit: memoryLimit,
+                minSimilarity: memoryThreshold,
+                excludeConversationId: effectiveConversationId ?? undefined,
+              }),
+              ...baseClientTools,
+            ]
+          : baseClientTools;
         const effectiveToolChoice = options?.toolChoice || toolChoice;
         const response = await baseSendMessage(text, {
           model: effectiveModel,
@@ -240,6 +254,7 @@ export function useAppChat({
       handleThinkingData,
       createMemoryRetrievalTool,
       createConversation,
+      memoryEnabled,
       memoryLimit,
       memoryThreshold,
       conversationId,
