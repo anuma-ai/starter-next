@@ -199,6 +199,10 @@ export function useAppChatStorage({
   const currentConversationIdRef = useRef<string | null>(null);
   // Track current messages for title generation (avoids stale closure issues)
   const messagesRef = useRef<Message[]>([]);
+  // Track which conversation is currently streaming (for preserving state when switching)
+  const streamingConversationIdRef = useRef<string | null>(null);
+  // Cache messages for streaming conversation when user switches away
+  const streamingMessagesCacheRef = useRef<Map<string, Message[]>>(new Map());
 
   //#region hookInit
   const {
@@ -517,6 +521,11 @@ export function useAppChatStorage({
       // Reset streaming text accumulator
       streamingTextRef.current = "";
 
+      // Mark this conversation as streaming so we can preserve state when switching
+      if (explicitConversationId) {
+        streamingConversationIdRef.current = explicitConversationId;
+      }
+
       // Use displayText for storage (clean user input), text for API (may include OCR/context)
       const textForStorage = displayText || text;
 
@@ -606,8 +615,11 @@ export function useAppChatStorage({
           // Accumulate text
           streamingTextRef.current += chunk;
 
-          // Notify callback for streaming updates
-          if (onStreamingData) {
+          // Only notify subscribers if user is viewing the streaming conversation
+          // This prevents streaming content from conversation A appearing in conversation B
+          const isViewingStreamingConversation =
+            loadedConversationIdRef.current === streamingConversationIdRef.current;
+          if (onStreamingData && isViewingStreamingConversation) {
             onStreamingData(chunk, streamingTextRef.current);
           }
         },
@@ -738,7 +750,10 @@ export function useAppChatStorage({
               ...(explicitConversationId && { conversationId: explicitConversationId }),
               onData: (chunk: string) => {
                 streamingTextRef.current += chunk;
-                if (onStreamingData) {
+                // Only notify if viewing the streaming conversation
+                const isViewingStreamingConversation =
+                  loadedConversationIdRef.current === streamingConversationIdRef.current;
+                if (onStreamingData && isViewingStreamingConversation) {
                   onStreamingData(chunk, streamingTextRef.current);
                 }
               },
@@ -821,6 +836,12 @@ export function useAppChatStorage({
         isSendingMessageRef.current = false;
       }, 100);
 
+      // Clear streaming state - streaming is complete
+      if (messageConversationId) {
+        streamingConversationIdRef.current = null;
+        streamingMessagesCacheRef.current.delete(messageConversationId);
+      }
+
       return response;
     },
     [sendMessage, onStreamingData, getToken]
@@ -863,9 +884,39 @@ export function useAppChatStorage({
         return;
       }
 
+      // If switching away from a streaming conversation, cache its messages
+      const currentLoadedId = loadedConversationIdRef.current;
+      if (currentLoadedId && streamingConversationIdRef.current === currentLoadedId) {
+        streamingMessagesCacheRef.current.set(currentLoadedId, messagesRef.current);
+      }
+
       // Update currentConversationIdRef immediately so title generation has the correct ID
       // This avoids waiting for the SDK state update cycle
       currentConversationIdRef.current = id;
+
+      // If switching TO a streaming conversation, restore from cache
+      if (streamingConversationIdRef.current === id) {
+        const cachedMessages = streamingMessagesCacheRef.current.get(id);
+        if (cachedMessages) {
+          loadedConversationIdRef.current = id;
+          // Update the assistant message with current streaming text before restoring
+          // The streaming text accumulates in streamingTextRef while user is on another conversation
+          const currentStreamingText = streamingTextRef.current;
+          const assistantMsgId = currentAssistantMessageIdRef.current;
+          const updatedMessages = cachedMessages.map((msg) => {
+            if (msg.id === assistantMsgId && currentStreamingText) {
+              return {
+                ...msg,
+                parts: [{ type: "text" as const, text: currentStreamingText }],
+              };
+            }
+            return msg;
+          });
+          setMessages(updatedMessages);
+          setConversationId(id);
+          return;
+        }
+      }
 
       // Preload messages before switching to prevent flicker
       // This ensures new messages are ready before we update state
