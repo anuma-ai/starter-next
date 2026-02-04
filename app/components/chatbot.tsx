@@ -214,6 +214,7 @@ const ChatBotDemo = () => {
     subscribeToStreaming,
     subscribeToThinking,
     conversationId,
+    setConversationId,
     getConversation,
     createConversation,
   } = chatState;

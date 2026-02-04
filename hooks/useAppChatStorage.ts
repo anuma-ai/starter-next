@@ -320,7 +320,6 @@ export function useAppChatStorage({
       // when rapidly switching between conversations
       const targetConversationId = conversationId;
       loadedConversationIdRef.current = targetConversationId;
-
       getMessages(conversationId).then(async (msgs) => {
         // Only update if this is still the target conversation
         // (prevents race conditions when rapidly switching)
@@ -760,21 +759,33 @@ export function useAppChatStorage({
       // Sync final streamed text to React state after streaming completes
       const finalText = streamingTextRef.current;
 
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id === assistantMessageId) {
-            return {
-              ...msg,
-              parts: [{ type: "text", text: finalText }],
-            };
-          }
-          return msg;
-        })
-      );
+      // IMPORTANT: Only update if we're still on the same conversation
+      // This prevents overwriting a different conversation's messages when user switches mid-stream
+      // Use explicitConversationId (what this message was sent to) vs loadedConversationIdRef (what user is viewing)
+      const messageConversationId = explicitConversationId;
+      const viewingConversationId = loadedConversationIdRef.current;
+
+      if (messageConversationId && viewingConversationId && messageConversationId !== viewingConversationId) {
+        // Don't update messages - user has switched to a different conversation
+        // The message is saved to DB, so it will appear when user switches back to that conversation
+      } else {
+        setMessages((prev) => {
+          return prev.map((msg) => {
+            if (msg.id === assistantMessageId) {
+              return {
+                ...msg,
+                parts: [{ type: "text", text: finalText }],
+              };
+            }
+            return msg;
+          });
+        });
+      }
 
       // Generate title for the first message only
       // Use isFirstMessage captured at the start of handleSendMessage
-      if (isFirstMessage) {
+      // Use messageConversationId (the conversation this message was sent to), not the current viewing conversation
+      if (isFirstMessage && messageConversationId) {
         const userText = textForStorage || text;
         const assistantText = finalText;
 
@@ -783,19 +794,17 @@ export function useAppChatStorage({
           { role: "assistant", text: assistantText.slice(0, 200) },
         ].filter((m) => m.text);
 
-        // Delay slightly to ensure conversation ID is available
+        // Delay slightly to ensure message is saved
         setTimeout(() => {
-          const currentConvId = currentConversationIdRef.current;
-          if (!currentConvId) return;
-
           generateConversationTitle(messagesForTitle, getToken).then(
             (newTitle) => {
               if (newTitle) {
-                storeConversationTitle(currentConvId, newTitle);
+                // Use the conversation ID this message was sent to, not where user is currently viewing
+                storeConversationTitle(messageConversationId, newTitle);
                 setConversations((prevConversations) =>
                   prevConversations.map((conv) =>
-                    conv.id === currentConvId ||
-                    conv.conversationId === currentConvId
+                    conv.id === messageConversationId ||
+                    conv.conversationId === messageConversationId
                       ? { ...conv, title: newTitle }
                       : conv
                   )
@@ -829,6 +838,13 @@ export function useAppChatStorage({
     // Otherwise, just reset state - conversation will be created on first message via autoCreateConversation
     if (opts?.createImmediately || opts?.projectId) {
       const conv = await createConversation(opts);
+
+      // Mark this conversation as already "loaded" to prevent useEffect from loading empty DB results
+      // The caller will add optimistic messages after we return
+      if (conv?.conversationId) {
+        loadedConversationIdRef.current = conv.conversationId;
+      }
+
       return conv;
     }
 
@@ -839,17 +855,17 @@ export function useAppChatStorage({
 
   const handleSwitchConversation = useCallback(
     async (id: string) => {
-      // Update currentConversationIdRef immediately so title generation has the correct ID
-      // This avoids waiting for the SDK state update cycle
-      currentConversationIdRef.current = id;
-
-      // If we're actively sending a message, don't overwrite optimistic messages
-      // Just update the conversation ID in the SDK
-      if (isSendingMessageRef.current) {
-        loadedConversationIdRef.current = id;
+      // Skip if this conversation is already loaded (prevents overwriting optimistic messages)
+      // This handles the case where page.tsx syncs from URL after chatbot.tsx created a new conversation
+      if (loadedConversationIdRef.current === id) {
+        currentConversationIdRef.current = id;
         setConversationId(id);
         return;
       }
+
+      // Update currentConversationIdRef immediately so title generation has the correct ID
+      // This avoids waiting for the SDK state update cycle
+      currentConversationIdRef.current = id;
 
       // Preload messages before switching to prevent flicker
       // This ensures new messages are ready before we update state
