@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useState, useRef, useEffect, useMemo } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
@@ -133,13 +133,6 @@ export function useAppChat({
     systemPrompt: systemPrompt || DEFAULT_SYSTEM_PROMPT,
   });
 
-  // Create a memory retrieval tool that fetches memories on-demand
-  // Exclude current conversation to avoid returning the user's current question as a result
-  const memoryTool = createMemoryRetrievalTool({
-    limit: memoryLimit,
-    minSimilarity: memoryThreshold,
-    excludeConversationId: conversationId ?? undefined,
-  });
   //#endregion hookInit
 
   //#region sendMessage
@@ -168,11 +161,6 @@ export function useAppChat({
         isFirstMessage?: boolean;
       }
     ) => {
-      console.log("[APPCHAT sendMessage] START", {
-        textPreview: text.slice(0, 50),
-        model: options?.model || model,
-      });
-
       setError(null);
       const effectiveModel = options?.model || model;
       const effectiveTemperature = options?.temperature ?? temperature;
@@ -189,11 +177,28 @@ export function useAppChat({
           handleThinkingData(thinkingTextRef.current);
         };
 
-        console.log("[APPCHAT sendMessage] Calling baseSendMessage");
         // Merge tools from hook props and per-request options
         // Memory retrieval tool is automatically included for on-demand memory fetching
         const effectiveServerTools = options?.serverTools || serverTools;
         const baseClientTools = options?.clientTools || clientTools || [];
+
+        // Ensure we have a conversation ID BEFORE creating the memory tool
+        // This is critical for excludeConversationId to work on new conversations
+        let effectiveConversationId = options?.conversationId || conversationId;
+        if (!effectiveConversationId) {
+          // Create a new conversation first so we have an ID to exclude
+          // Pass createImmediately to actually create the conversation now (not on first message)
+          const newConv = await createConversation({ createImmediately: true });
+          if (newConv) {
+            effectiveConversationId = newConv.conversationId;
+          }
+        }
+
+        const memoryTool = createMemoryRetrievalTool({
+          limit: memoryLimit,
+          minSimilarity: memoryThreshold,
+          excludeConversationId: effectiveConversationId ?? undefined,
+        });
         const effectiveClientTools = [memoryTool, ...baseClientTools];
         const effectiveToolChoice = options?.toolChoice || toolChoice;
         const response = await baseSendMessage(text, {
@@ -211,18 +216,18 @@ export function useAppChat({
           ...(effectiveClientTools && { clientTools: effectiveClientTools }),
           ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
           ...(options?.apiType && { apiType: options.apiType }),
-          ...(options?.conversationId && { conversationId: options.conversationId }),
+          // Always pass the effectiveConversationId (either from options, hook state, or newly created)
+          conversationId: effectiveConversationId ?? undefined,
           ...(options?.onToolCall && { onToolCall: options.onToolCall }),
           ...(options?.isFirstMessage !== undefined && { isFirstMessage: options.isFirstMessage }),
           onThinking,
         });
 
-        console.log("[APPCHAT sendMessage] END, baseSendMessage completed");
-        return response;
+        // Return both the response and the conversation ID for navigation
+        return { ...response, conversationId: effectiveConversationId };
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to send message";
-        console.error("[APPCHAT sendMessage] ERROR:", errorMessage);
         setError(errorMessage);
         throw err;
       }
@@ -233,7 +238,11 @@ export function useAppChat({
       temperature,
       maxOutputTokens,
       handleThinkingData,
-      memoryTool,
+      createMemoryRetrievalTool,
+      createConversation,
+      memoryLimit,
+      memoryThreshold,
+      conversationId,
       serverTools,
       clientTools,
       toolChoice,
@@ -258,22 +267,15 @@ export function useAppChat({
         isFirstMessage?: boolean;
       }
     ) => {
-      console.log("[APPCHAT handleSubmit] START", {
-        messageText: message.text?.slice(0, 50),
-        hasText: !!message.text
-      });
-
       if (!message.text) {
-        console.log("[APPCHAT handleSubmit] No text, returning");
         return;
       }
 
-      console.log("[APPCHAT handleSubmit] Calling sendMessage");
       // Only clear input if we haven't already done it optimistically
       if (!options?.skipOptimisticUpdate) {
         setInput("");
       }
-      await sendMessage(message.text, {
+      const result = await sendMessage(message.text, {
         ...options,
         files: message.files,
         displayText: message.displayText,
@@ -281,7 +283,7 @@ export function useAppChat({
         conversationId: options?.conversationId,
         isFirstMessage: options?.isFirstMessage,
       });
-      console.log("[APPCHAT handleSubmit] sendMessage completed");
+      return result;
     },
     [sendMessage, setInput]
   );

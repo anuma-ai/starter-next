@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@reverbia/sdk': link:../../../Library/pnpm/global/5/node_modules/@reverbia/sdk
+  '@reverbia/sdk': link:../ai-sdk
 
 importers:
 
@@ -87,8 +87,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.7)(react@19.2.3)
       '@reverbia/sdk':
-        specifier: link:../../../Library/pnpm/global/5/node_modules/@reverbia/sdk
-        version: link:../../../Library/pnpm/global/5/node_modules/@reverbia/sdk
+        specifier: link:../ai-sdk
+        version: link:../ai-sdk
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

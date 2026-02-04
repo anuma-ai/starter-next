@@ -177,9 +177,25 @@ const ChatBotDemo = () => {
     }
   }, []);
 
+  // Load saved thinking preference from localStorage after mount
+  useEffect(() => {
+    const saved = localStorage.getItem("chat_thinkingEnabled");
+    if (saved !== null) {
+      setThinkingEnabled(saved === "true");
+    }
+  }, []);
+
   const handleSelectModel = useCallback((modelId: string) => {
     setSelectedModel(modelId);
     localStorage.setItem("chat_selectedModel", modelId);
+  }, []);
+
+  const handleToggleThinking = useCallback(() => {
+    setThinkingEnabled((prev) => {
+      const newValue = !prev;
+      localStorage.setItem("chat_thinkingEnabled", String(newValue));
+      return newValue;
+    });
   }, []);
 
   // Note: File preprocessing (PDF, Excel, Word) is now handled automatically
@@ -199,6 +215,7 @@ const ChatBotDemo = () => {
     subscribeToThinking,
     conversationId,
     getConversation,
+    createConversation,
   } = chatState;
 
   // Fetch conversation's projectId when conversationId changes
@@ -338,6 +355,18 @@ const ChatBotDemo = () => {
       // Show loading indicator immediately
       setIsSubmitting(true);
 
+      // For new conversations from home page, create conversation and navigate FIRST
+      // This pattern ensures the user sees the conversation page immediately
+      let targetConversationId = conversationId;
+      if (pathname === "/" && !conversationId) {
+        const conv = await createConversation({ createImmediately: true });
+        if (conv?.conversationId) {
+          targetConversationId = conv.conversationId;
+          // Navigate IMMEDIATELY - don't wait for message to complete
+          router.replace(`/c/${conv.conversationId}`);
+        }
+      }
+
       // Step 1: Add user message optimistically
       addMessageOptimistically(message.text, message.files, message.text);
       setInput(""); // Clear input immediately for instant feedback
@@ -367,10 +396,12 @@ const ChatBotDemo = () => {
             thinking: { type: "enabled", budget_tokens: 10000 },
           }),
           skipOptimisticUpdate: true,
+          // Pass the conversation ID explicitly so memory tool can exclude it
+          conversationId: targetConversationId ?? undefined,
         }
       );
     },
-    [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled]
+    [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled, pathname, router, conversationId, createConversation]
   );
 
   return (
@@ -641,7 +672,7 @@ const ChatBotDemo = () => {
                 selectedModel={selectedModel}
                 onSelectModel={handleSelectModel}
                 thinkingEnabled={thinkingEnabled}
-                onToggleThinking={() => setThinkingEnabled(!thinkingEnabled)}
+                onToggleThinking={handleToggleThinking}
               />
               <PromptInputTextarea
                 disabled={!authenticated}
