@@ -134,9 +134,11 @@ export function useAppChat({
   });
 
   // Create a memory retrieval tool that fetches memories on-demand
+  // Exclude current conversation to avoid returning the user's current question as a result
   const memoryTool = createMemoryRetrievalTool({
     limit: memoryLimit,
     minSimilarity: memoryThreshold,
+    excludeConversationId: conversationId ?? undefined,
   });
   //#endregion hookInit
 
