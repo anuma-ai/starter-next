@@ -272,10 +272,21 @@ export function useAppChatStorage({
     }
   }, [conversationId, messages]);
 
+  // Track the wallet address that was used for last message load
+  // This allows us to reload when encryption becomes ready
+  const loadedWithWalletRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (conversationId) {
+      // Check if we need to reload due to wallet/encryption state change
+      // If wallet address changed, we should reload to get files from OPFS
+      const needsReloadForEncryption =
+        loadedConversationIdRef.current === conversationId &&
+        loadedWithWalletRef.current !== walletAddress;
+
       // Skip loading if messages were already preloaded by handleSwitchConversation
-      if (loadedConversationIdRef.current === conversationId) {
+      // UNLESS encryption state changed (wallet address changed)
+      if (loadedConversationIdRef.current === conversationId && !needsReloadForEncryption) {
         return;
       }
 
@@ -285,10 +296,11 @@ export function useAppChatStorage({
         return;
       }
 
-      // Track the target conversation to handle race conditions
-      // when rapidly switching between conversations
+      // Track the target conversation and wallet to handle race conditions
+      // when rapidly switching between conversations or encryption state changes
       const targetConversationId = conversationId;
       loadedConversationIdRef.current = targetConversationId;
+      loadedWithWalletRef.current = walletAddress || null;
       getMessages(conversationId).then(async (msgs) => {
         // Only update if this is still the target conversation
         // (prevents race conditions when rapidly switching)
@@ -378,7 +390,7 @@ export function useAppChatStorage({
         setMessages(uiMessages);
       });
     }
-  }, [conversationId, getMessages]);
+  }, [conversationId, getMessages, walletAddress]);
 
   //#region sendMessage
   const streamingTextRef = useRef<string>("");

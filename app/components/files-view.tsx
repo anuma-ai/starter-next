@@ -27,6 +27,7 @@ import {
   type StoredMedia,
 } from "@reverbia/sdk/react";
 import { useDatabase } from "@/app/providers";
+import { useChatContext } from "@/app/components/chat-provider";
 
 // Extended file type that includes SDK metadata plus blob URL for rendering
 interface FileWithBlobUrl extends StoredMedia {
@@ -65,6 +66,7 @@ export function FilesView() {
   const database = useDatabase();
   const { user } = usePrivy();
   const walletAddress = user?.wallet?.address;
+  const { encryptionReady } = useChatContext();
 
   const [files, setFiles] = useState<FileWithBlobUrl[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +89,9 @@ export function FilesView() {
   });
 
   const loadFiles = useCallback(async () => {
-    if (!walletAddress || !isReady) {
+    // Wait for encryption to be ready before loading files
+    // Files are stored encrypted in OPFS and require the encryption key to read
+    if (!walletAddress || !isReady || !encryptionReady) {
       setFiles([]);
       setLoading(false);
       return;
@@ -124,14 +128,14 @@ export function FilesView() {
     } finally {
       setLoading(false);
     }
-  }, [getRecentMedia, createBlobUrl, walletAddress, isReady]);
+  }, [getRecentMedia, createBlobUrl, walletAddress, isReady, encryptionReady]);
 
-  // Load files when ready
+  // Load files when ready (requires both database and encryption to be initialized)
   useEffect(() => {
-    if (isReady && walletAddress) {
+    if (isReady && walletAddress && encryptionReady) {
       loadFiles();
     }
-  }, [isReady, walletAddress, loadFiles]);
+  }, [isReady, walletAddress, encryptionReady, loadFiles]);
 
   const filteredFiles = useMemo(() => {
     let result = files;
@@ -312,9 +316,9 @@ export function FilesView() {
           />
         </div>
 
-        {loading ? (
+        {loading || (walletAddress && !encryptionReady) ? (
           <div className="text-center text-muted-foreground py-8">
-            Loading files...
+            {!encryptionReady && walletAddress ? "Initializing encryption..." : "Loading files..."}
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="rounded-xl bg-white dark:bg-card p-8">

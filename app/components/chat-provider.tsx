@@ -77,6 +77,8 @@ type ChatState = {
   markConversationAssigned: (conversationId: string) => void;
   setPendingProjectAssignment: (projectId: string | null) => void;
   triggerProjectConversationsRefresh: () => void;
+  // Encryption state
+  encryptionReady: boolean;
 };
 
 const ChatContext = createContext<ChatState | null>(null);
@@ -626,6 +628,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       markConversationAssigned,
       setPendingProjectAssignment,
       triggerProjectConversationsRefresh,
+      // Encryption
+      encryptionReady,
     }),
     [
       baseChatState,
@@ -646,6 +650,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       markConversationAssigned,
       setPendingProjectAssignment,
       triggerProjectConversationsRefresh,
+      encryptionReady,
     ]
   );
 
