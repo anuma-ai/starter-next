@@ -23,18 +23,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  useChatStorage,
-  type StoredFileWithContext,
-  readEncryptedFile,
-  deleteEncryptedFile,
-  hasEncryptionKey,
-  getEncryptionKey,
+  useFiles,
+  type StoredMedia,
 } from "@reverbia/sdk/react";
 import { useDatabase } from "@/app/providers";
 
-// Extended file type that includes SDK metadata plus data URL for rendering
-interface FileWithDataUrl extends StoredFileWithContext {
-  dataUrl: string;
+// Extended file type that includes SDK metadata plus blob URL for rendering
+interface FileWithBlobUrl extends StoredMedia {
+  blobUrl: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -58,26 +54,10 @@ function getFileIcon(mimeType: string, filename: string) {
   return { Icon: FileIcon, color: "text-gray-500" };
 }
 
-function getFileSizeBytes(dataUrl: string): number {
-  const base64 = dataUrl.split(",")[1] || "";
-  return Math.round((base64.length * 3) / 4);
-}
-
-function formatFileSize(dataUrl: string): string {
-  const bytes = getFileSizeBytes(dataUrl);
+function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-// Helper to convert blob to data URL
-async function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 export function FilesView() {
@@ -86,93 +66,72 @@ export function FilesView() {
   const { user } = usePrivy();
   const walletAddress = user?.wallet?.address;
 
-  const [files, setFiles] = useState<FileWithDataUrl[]>([]);
+  const [files, setFiles] = useState<FileWithBlobUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortBy, setSortBy] = useState<SortOption>("date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [fileToDelete, setFileToDelete] = useState<FileWithDataUrl | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<FileWithBlobUrl | null>(null);
 
-  // Use SDK's getAllFiles to get file metadata from messages
-  const { getAllFiles } = useChatStorage({
+  // Use SDK's useFiles hook for file management
+  const {
+    isReady,
+    getRecentMedia,
+    createBlobUrl,
+    deleteMedia,
+  } = useFiles({
     database,
-    autoCreateConversation: false,
     walletAddress,
   });
 
   const loadFiles = useCallback(async () => {
-    if (!walletAddress) {
+    if (!walletAddress || !isReady) {
       setFiles([]);
       setLoading(false);
       return;
     }
 
-    // Check if encryption key is ready
-    if (!hasEncryptionKey(walletAddress)) {
-      // Return true to indicate we should retry
-      return true;
-    }
-
     setLoading(true);
     try {
-      // Get file metadata from SDK (stored on messages)
-      const sdkFiles = await getAllFiles();
-      const encryptionKey = await getEncryptionKey(walletAddress);
+      // Get all recent media files
+      const mediaFiles = await getRecentMedia(100);
 
-      // Read encrypted files from OPFS
-      const filesWithDataUrls = await Promise.all(
-        sdkFiles.map(async (file) => {
-          let dataUrl = "";
+      // Create blob URLs for all files
+      const filesWithBlobUrls = await Promise.all(
+        mediaFiles.map(async (file) => {
+          let blobUrl = "";
 
           try {
-            const result = await readEncryptedFile(file.id, encryptionKey);
-            if (result) {
-              dataUrl = await blobToDataUrl(result.blob);
+            const url = await createBlobUrl(file.mediaId);
+            if (url) {
+              blobUrl = url;
             }
           } catch (err) {
-            // File not in OPFS
-            console.debug(`File ${file.id} not found in OPFS`);
+            console.debug(`File ${file.mediaId} could not be loaded`);
           }
 
           return {
             ...file,
-            dataUrl,
+            blobUrl,
           };
         })
       );
 
-      // Filter out files without data URLs (can't be displayed)
-      setFiles(filesWithDataUrls.filter((f) => f.dataUrl));
+      // Filter out files without blob URLs (can't be displayed)
+      setFiles(filesWithBlobUrls.filter((f) => f.blobUrl));
     } finally {
       setLoading(false);
     }
-    return false;
-  }, [getAllFiles, walletAddress]);
+  }, [getRecentMedia, createBlobUrl, walletAddress, isReady]);
 
-  // Poll for encryption key availability on page load
+  // Load files when ready
   useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 20; // Try for up to 10 seconds (20 * 500ms)
-    let timeoutId: NodeJS.Timeout;
-
-    const attemptLoad = async () => {
-      const shouldRetry = await loadFiles();
-      if (shouldRetry && retryCount < maxRetries) {
-        retryCount++;
-        timeoutId = setTimeout(attemptLoad, 500);
-      }
-    };
-
-    attemptLoad();
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [loadFiles]);
+    if (isReady && walletAddress) {
+      loadFiles();
+    }
+  }, [isReady, walletAddress, loadFiles]);
 
   const filteredFiles = useMemo(() => {
     let result = files;
@@ -183,7 +142,7 @@ export function FilesView() {
       result = result.filter((file) => {
         return (
           file.name.toLowerCase().includes(query) ||
-          file.type.toLowerCase().includes(query)
+          file.mimeType.toLowerCase().includes(query)
         );
       });
     }
@@ -196,7 +155,7 @@ export function FilesView() {
           comparison = (a.name || "").localeCompare(b.name || "");
           break;
         case "size":
-          comparison = getFileSizeBytes(a.dataUrl) - getFileSizeBytes(b.dataUrl);
+          comparison = a.size - b.size;
           break;
         case "date":
         default:
@@ -219,7 +178,7 @@ export function FilesView() {
     }
   };
 
-  const handleDeleteClick = (file: FileWithDataUrl) => {
+  const handleDeleteClick = (file: FileWithBlobUrl) => {
     setFileToDelete(file);
     setDeleteDialogOpen(true);
   };
@@ -227,26 +186,26 @@ export function FilesView() {
   const handleDeleteConfirm = async () => {
     if (fileToDelete) {
       try {
-        await deleteEncryptedFile(fileToDelete.id);
+        await deleteMedia(fileToDelete.mediaId);
       } catch (err) {
         console.error("Failed to delete file:", err);
       }
 
-      setFiles((prev) => prev.filter((f) => f.id !== fileToDelete.id));
+      setFiles((prev) => prev.filter((f) => f.mediaId !== fileToDelete.mediaId));
       setDeleteDialogOpen(false);
       setFileToDelete(null);
     }
   };
 
-  const handleShowInChat = (file: FileWithDataUrl) => {
+  const handleShowInChat = (file: FileWithBlobUrl) => {
     if (file.conversationId) {
       router.push(`/c/${file.conversationId}`);
     }
   };
 
-  const handleDownload = (file: FileWithDataUrl) => {
+  const handleDownload = (file: FileWithBlobUrl) => {
     const link = document.createElement("a");
-    link.href = file.dataUrl;
+    link.href = file.blobUrl;
     link.download = file.name || "download";
     document.body.appendChild(link);
     link.click();
@@ -368,8 +327,8 @@ export function FilesView() {
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredFiles.map((file) => {
-              const { Icon, color } = getFileIcon(file.type, file.name);
-              const isImage = file.type.startsWith("image/");
+              const { Icon, color } = getFileIcon(file.mimeType, file.name);
+              const isImage = file.mimeType.startsWith("image/");
               const date = new Date(file.createdAt);
               const formattedDate = date.toLocaleDateString("en-US", {
                 month: "short",
@@ -379,14 +338,14 @@ export function FilesView() {
 
               return (
                 <div
-                  key={file.id}
+                  key={file.mediaId}
                   className="group relative rounded-xl bg-white dark:bg-card overflow-hidden transition-transform duration-200 hover:scale-[1.02]"
                 >
                   {/* Preview area */}
                   <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
                     {isImage ? (
                       <img
-                        src={file.dataUrl}
+                        src={file.blobUrl}
                         alt={file.name}
                         className="w-full h-full object-cover"
                       />
@@ -405,7 +364,7 @@ export function FilesView() {
                         {formattedDate}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {formatFileSize(file.dataUrl)}
+                        {formatFileSize(file.size)}
                       </span>
                     </div>
                   </div>
@@ -461,8 +420,8 @@ export function FilesView() {
         ) : (
           <div className="rounded-xl bg-white dark:bg-card overflow-hidden">
             {filteredFiles.map((file, index) => {
-              const { Icon, color } = getFileIcon(file.type, file.name);
-              const isImage = file.type.startsWith("image/");
+              const { Icon, color } = getFileIcon(file.mimeType, file.name);
+              const isImage = file.mimeType.startsWith("image/");
               const date = new Date(file.createdAt);
               const formattedDate = date.toLocaleDateString("en-US", {
                 month: "short",
@@ -472,7 +431,7 @@ export function FilesView() {
 
               return (
                 <div
-                  key={file.id}
+                  key={file.mediaId}
                   className={`group flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors ${
                     index !== filteredFiles.length - 1 ? "border-b border-border" : ""
                   }`}
@@ -481,7 +440,7 @@ export function FilesView() {
                   <div className="size-12 rounded-lg bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
                     {isImage ? (
                       <img
-                        src={file.dataUrl}
+                        src={file.blobUrl}
                         alt={file.name}
                         className="w-full h-full object-cover"
                       />
@@ -496,7 +455,7 @@ export function FilesView() {
                       {file.name || "Unnamed file"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formattedDate} · {formatFileSize(file.dataUrl)}
+                      {formattedDate} · {formatFileSize(file.size)}
                     </p>
                   </div>
 
