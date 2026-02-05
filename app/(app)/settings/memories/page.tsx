@@ -12,6 +12,14 @@ const DEFAULT_MEMORY_LIMIT = 5;
 const DEFAULT_MEMORY_THRESHOLD = 0.2;
 const DEFAULT_MEMORY_ENABLED = true;
 
+// Helper to update localStorage and dispatch event for same-tab listeners
+function setLocalStorageWithEvent(key: string, value: string) {
+  localStorage.setItem(key, value);
+  window.dispatchEvent(
+    new StorageEvent("storage", { key, newValue: value })
+  );
+}
+
 export default function MemoriesPage() {
   const router = useRouter();
   const [memoryEnabled, setMemoryEnabled] = useState(DEFAULT_MEMORY_ENABLED);
@@ -31,19 +39,19 @@ export default function MemoriesPage() {
 
   const handleMemoryEnabledChange = (checked: boolean) => {
     setMemoryEnabled(checked);
-    localStorage.setItem("chat_memoryEnabled", checked.toString());
+    setLocalStorageWithEvent("chat_memoryEnabled", checked.toString());
   };
 
   const handleMemoryLimitChange = (value: number[]) => {
     const limit = value[0];
     setMemoryLimit(limit);
-    localStorage.setItem("chat_memoryLimit", limit.toString());
+    setLocalStorageWithEvent("chat_memoryLimit", limit.toString());
   };
 
   const handleMemoryThresholdChange = (value: number[]) => {
     const threshold = value[0];
     setMemoryThreshold(threshold);
-    localStorage.setItem("chat_memoryThreshold", threshold.toString());
+    setLocalStorageWithEvent("chat_memoryThreshold", threshold.toString());
   };
 
   return (
