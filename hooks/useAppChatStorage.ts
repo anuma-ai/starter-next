@@ -199,6 +199,12 @@ export function useAppChatStorage({
   const currentConversationIdRef = useRef<string | null>(null);
   // Track current messages for title generation (avoids stale closure issues)
   const messagesRef = useRef<Message[]>([]);
+  // Track which conversation is currently streaming (for preserving state when switching)
+  const streamingConversationIdRef = useRef<string | null>(null);
+  // State version for re-render purposes (to hide spinner when switching away from streaming conversation)
+  const [streamingConversationIdState, setStreamingConversationIdState] = useState<string | null>(null);
+  // Cache messages for streaming conversation when user switches away
+  const streamingMessagesCacheRef = useRef<Map<string, Message[]>>(new Map());
 
   //#region hookInit
   const {
@@ -320,7 +326,6 @@ export function useAppChatStorage({
       // when rapidly switching between conversations
       const targetConversationId = conversationId;
       loadedConversationIdRef.current = targetConversationId;
-
       getMessages(conversationId).then(async (msgs) => {
         // Only update if this is still the target conversation
         // (prevents race conditions when rapidly switching)
@@ -518,6 +523,12 @@ export function useAppChatStorage({
       // Reset streaming text accumulator
       streamingTextRef.current = "";
 
+      // Mark this conversation as streaming so we can preserve state when switching
+      if (explicitConversationId) {
+        streamingConversationIdRef.current = explicitConversationId;
+        setStreamingConversationIdState(explicitConversationId);
+      }
+
       // Use displayText for storage (clean user input), text for API (may include OCR/context)
       const textForStorage = displayText || text;
 
@@ -607,8 +618,11 @@ export function useAppChatStorage({
           // Accumulate text
           streamingTextRef.current += chunk;
 
-          // Notify callback for streaming updates
-          if (onStreamingData) {
+          // Only notify subscribers if user is viewing the streaming conversation
+          // This prevents streaming content from conversation A appearing in conversation B
+          const isViewingStreamingConversation =
+            loadedConversationIdRef.current === streamingConversationIdRef.current;
+          if (onStreamingData && isViewingStreamingConversation) {
             onStreamingData(chunk, streamingTextRef.current);
           }
         },
@@ -743,7 +757,10 @@ export function useAppChatStorage({
               ...(explicitConversationId && { conversationId: explicitConversationId }),
               onData: (chunk: string) => {
                 streamingTextRef.current += chunk;
-                if (onStreamingData) {
+                // Only notify if viewing the streaming conversation
+                const isViewingStreamingConversation =
+                  loadedConversationIdRef.current === streamingConversationIdRef.current;
+                if (onStreamingData && isViewingStreamingConversation) {
                   onStreamingData(chunk, streamingTextRef.current);
                 }
               },
@@ -764,21 +781,33 @@ export function useAppChatStorage({
       // Sync final streamed text to React state after streaming completes
       const finalText = streamingTextRef.current;
 
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id === assistantMessageId) {
-            return {
-              ...msg,
-              parts: [{ type: "text", text: finalText }],
-            };
-          }
-          return msg;
-        })
-      );
+      // IMPORTANT: Only update if we're still on the same conversation
+      // This prevents overwriting a different conversation's messages when user switches mid-stream
+      // Use explicitConversationId (what this message was sent to) vs loadedConversationIdRef (what user is viewing)
+      const messageConversationId = explicitConversationId;
+      const viewingConversationId = loadedConversationIdRef.current;
+
+      if (messageConversationId && viewingConversationId && messageConversationId !== viewingConversationId) {
+        // Don't update messages - user has switched to a different conversation
+        // The message is saved to DB, so it will appear when user switches back to that conversation
+      } else {
+        setMessages((prev) => {
+          return prev.map((msg) => {
+            if (msg.id === assistantMessageId) {
+              return {
+                ...msg,
+                parts: [{ type: "text", text: finalText }],
+              };
+            }
+            return msg;
+          });
+        });
+      }
 
       // Generate title for the first message only
       // Use isFirstMessage captured at the start of handleSendMessage
-      if (isFirstMessage) {
+      // Use messageConversationId (the conversation this message was sent to), not the current viewing conversation
+      if (isFirstMessage && messageConversationId) {
         const userText = textForStorage || text;
         const assistantText = finalText;
 
@@ -787,19 +816,17 @@ export function useAppChatStorage({
           { role: "assistant", text: assistantText.slice(0, 200) },
         ].filter((m) => m.text);
 
-        // Delay slightly to ensure conversation ID is available
+        // Delay slightly to ensure message is saved
         setTimeout(() => {
-          const currentConvId = currentConversationIdRef.current;
-          if (!currentConvId) return;
-
           generateConversationTitle(messagesForTitle, getToken).then(
             (newTitle) => {
               if (newTitle) {
-                storeConversationTitle(currentConvId, newTitle);
+                // Use the conversation ID this message was sent to, not where user is currently viewing
+                storeConversationTitle(messageConversationId, newTitle);
                 setConversations((prevConversations) =>
                   prevConversations.map((conv) =>
-                    conv.id === currentConvId ||
-                    conv.conversationId === currentConvId
+                    conv.id === messageConversationId ||
+                    conv.conversationId === messageConversationId
                       ? { ...conv, title: newTitle }
                       : conv
                   )
@@ -815,6 +842,13 @@ export function useAppChatStorage({
       setTimeout(() => {
         isSendingMessageRef.current = false;
       }, 100);
+
+      // Clear streaming state - streaming is complete
+      if (messageConversationId) {
+        streamingConversationIdRef.current = null;
+        setStreamingConversationIdState(null);
+        streamingMessagesCacheRef.current.delete(messageConversationId);
+      }
 
       return response;
     },
@@ -833,6 +867,13 @@ export function useAppChatStorage({
     // Otherwise, just reset state - conversation will be created on first message via autoCreateConversation
     if (opts?.createImmediately || opts?.projectId) {
       const conv = await createConversation(opts);
+
+      // Mark this conversation as already "loaded" to prevent useEffect from loading empty DB results
+      // The caller will add optimistic messages after we return
+      if (conv?.conversationId) {
+        loadedConversationIdRef.current = conv.conversationId;
+      }
+
       return conv;
     }
 
@@ -843,16 +884,46 @@ export function useAppChatStorage({
 
   const handleSwitchConversation = useCallback(
     async (id: string) => {
+      // Skip if this conversation is already loaded (prevents overwriting optimistic messages)
+      // This handles the case where page.tsx syncs from URL after chatbot.tsx created a new conversation
+      if (loadedConversationIdRef.current === id) {
+        currentConversationIdRef.current = id;
+        setConversationId(id);
+        return;
+      }
+
+      // If switching away from a streaming conversation, cache its messages
+      const currentLoadedId = loadedConversationIdRef.current;
+      if (currentLoadedId && streamingConversationIdRef.current === currentLoadedId) {
+        streamingMessagesCacheRef.current.set(currentLoadedId, messagesRef.current);
+      }
+
       // Update currentConversationIdRef immediately so title generation has the correct ID
       // This avoids waiting for the SDK state update cycle
       currentConversationIdRef.current = id;
 
-      // If we're actively sending a message, don't overwrite optimistic messages
-      // Just update the conversation ID in the SDK
-      if (isSendingMessageRef.current) {
-        loadedConversationIdRef.current = id;
-        setConversationId(id);
-        return;
+      // If switching TO a streaming conversation, restore from cache
+      if (streamingConversationIdRef.current === id) {
+        const cachedMessages = streamingMessagesCacheRef.current.get(id);
+        if (cachedMessages) {
+          loadedConversationIdRef.current = id;
+          // Update the assistant message with current streaming text before restoring
+          // The streaming text accumulates in streamingTextRef while user is on another conversation
+          const currentStreamingText = streamingTextRef.current;
+          const assistantMsgId = currentAssistantMessageIdRef.current;
+          const updatedMessages = cachedMessages.map((msg) => {
+            if (msg.id === assistantMsgId && currentStreamingText) {
+              return {
+                ...msg,
+                parts: [{ type: "text" as const, text: currentStreamingText }],
+              };
+            }
+            return msg;
+          });
+          setMessages(updatedMessages);
+          setConversationId(id);
+          return;
+        }
       }
 
       // Preload messages before switching to prevent flicker
@@ -929,21 +1000,32 @@ export function useAppChatStorage({
 
   const handleDeleteConversation = useCallback(
     async (id: string) => {
-      await deleteConversation(id);
-      if (conversationId === id) {
-        setMessages([]);
+      console.log("[useAppChatStorage] Deleting conversation:", id);
+      try {
+        const result = await deleteConversation(id);
+        console.log("[useAppChatStorage] Delete result:", result);
+        if (conversationId === id) {
+          setMessages([]);
+        }
+      } catch (error) {
+        console.error("[useAppChatStorage] Delete failed:", error);
+        throw error;
       }
     },
     [deleteConversation, conversationId]
   );
   //#endregion conversationManagement
 
+  // Only show loading state when viewing the conversation that's actually streaming
+  // This prevents spinner from showing in conversation B when conversation A is streaming
+  const effectiveIsLoading = isLoading && conversationId === streamingConversationIdState;
+
   return {
     messages,
     setMessages,
     conversations,
     conversationId,
-    isLoading,
+    isLoading: effectiveIsLoading,
     sendMessage: handleSendMessage,
     addMessageOptimistically,
     createConversation: handleNewConversation,

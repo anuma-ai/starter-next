@@ -11,6 +11,8 @@ import { useIdentityToken } from "@privy-io/react-auth";
 import {
   getDatabaseStats,
   clearAndSeedLongMemEval,
+  clearAllEmbeddings,
+  regenerateAllEmbeddings,
 } from "@/lib/seed-database";
 import { fetchLongMemEvalDataset, getDatasetStats } from "@/lib/longmemeval";
 
@@ -106,6 +108,60 @@ export default function SeedPage() {
     }
   };
 
+  const handleRegenerateEmbeddings = async () => {
+    setStatus("loading");
+    setMessage("Regenerating embeddings...");
+    setProgress(null);
+
+    try {
+      const result = await regenerateAllEmbeddings({
+        getToken,
+        onProgress: setProgress,
+      });
+
+      if (result.success) {
+        setStatus("success");
+        setMessage(`Regenerated ${result.embeddingsGenerated} embeddings`);
+      } else {
+        setStatus("error");
+        setMessage(`Failed: ${result.error || "Unknown error"}`);
+      }
+
+      await refreshStats();
+    } catch (err) {
+      setStatus("error");
+      setMessage(
+        `Error: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    } finally {
+      setProgress(null);
+    }
+  };
+
+  const handleClearEmbeddings = async () => {
+    setStatus("loading");
+    setMessage("Clearing all embeddings...");
+
+    try {
+      const result = await clearAllEmbeddings();
+
+      if (result.success) {
+        setStatus("success");
+        setMessage(`Cleared embeddings from ${result.messagesCleared} messages`);
+      } else {
+        setStatus("error");
+        setMessage(`Failed: ${result.error || "Unknown error"}`);
+      }
+
+      await refreshStats();
+    } catch (err) {
+      setStatus("error");
+      setMessage(
+        `Error: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col p-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
       <div className="mx-auto w-full max-w-2xl">
@@ -189,6 +245,26 @@ export default function SeedPage() {
           className="w-full py-6 rounded-xl mb-4"
         >
           {status === "loading" ? "Seeding..." : "Reset & Seed LongMemEval"}
+        </Button>
+
+        {/* Regenerate Embeddings Button */}
+        <Button
+          onClick={handleRegenerateEmbeddings}
+          disabled={status === "loading" || !identityToken}
+          variant="outline"
+          className="w-full py-6 rounded-xl mb-4"
+        >
+          {status === "loading" ? "Processing..." : "Regenerate All Embeddings"}
+        </Button>
+
+        {/* Clear Embeddings Button */}
+        <Button
+          onClick={handleClearEmbeddings}
+          disabled={status === "loading"}
+          variant="outline"
+          className="w-full py-6 rounded-xl mb-4"
+        >
+          {status === "loading" ? "Processing..." : "Clear All Embeddings"}
         </Button>
 
         {!identityToken && (

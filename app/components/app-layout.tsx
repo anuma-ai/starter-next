@@ -98,18 +98,18 @@ export function AppLayout({ children }: AppLayoutProps) {
     // Apply global theme immediately before navigation to prevent flash
     applyTheme(getStoredThemeId());
 
-    // Reset to empty state and navigate to root
-    // Don't create conversation yet - it will be auto-created when first message is sent
+    // Reset state and navigate to root
+    // page.tsx only syncs from URL on initial mount, so order doesn't matter
     await createConversation();
     router.push("/");
   }, [createConversation, router]);
 
   const handleSelectConversation = useCallback(
-    (id: string) => {
-      // Update conversation state and navigate using Next.js router
-      setConversationId(id).then(() => {
-        router.push(`/c/${id}`);
-      });
+    async (id: string) => {
+      // Load messages and update state first, then navigate
+      // This ensures messages are ready before URL changes
+      await setConversationId(id);
+      router.push(`/c/${id}`);
     },
     [setConversationId, router]
   );

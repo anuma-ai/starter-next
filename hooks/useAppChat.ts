@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useState, useRef, useEffect, useMemo } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
 import { useTools } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
@@ -50,6 +50,7 @@ export function useAppChat({
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryLimit, setMemoryLimit] = useState(5);
   const [memoryThreshold, setMemoryThreshold] = useState(0.2);
   const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
@@ -58,6 +59,11 @@ export function useAppChat({
 
   // Load memory settings from localStorage
   useEffect(() => {
+    const savedEnabled = localStorage.getItem("chat_memoryEnabled");
+    if (savedEnabled !== null) {
+      setMemoryEnabled(savedEnabled === "true");
+    }
+
     const savedLimit = localStorage.getItem("chat_memoryLimit");
     if (savedLimit) {
       const limit = parseInt(savedLimit, 10);
@@ -76,6 +82,9 @@ export function useAppChat({
 
     // Listen for changes from settings page
     const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "chat_memoryEnabled" && e.newValue !== null) {
+        setMemoryEnabled(e.newValue === "true");
+      }
       if (e.key === "chat_memoryLimit" && e.newValue) {
         const limit = parseInt(e.newValue, 10);
         if (!isNaN(limit) && limit > 0) {
@@ -134,12 +143,6 @@ export function useAppChat({
     systemPrompt: systemPrompt || DEFAULT_SYSTEM_PROMPT,
   });
 
-  // Create a memory retrieval tool that fetches memories on-demand
-  const memoryTool = createMemoryRetrievalTool({
-    limit: memoryLimit,
-    minSimilarity: memoryThreshold,
-  });
-
   // Use tools hook for checksum-based refresh
   const { checkForUpdates } = useTools({
     getToken,
@@ -173,11 +176,6 @@ export function useAppChat({
         isFirstMessage?: boolean;
       }
     ) => {
-      console.log("[APPCHAT sendMessage] START", {
-        textPreview: text.slice(0, 50),
-        model: options?.model || model,
-      });
-
       setError(null);
       const effectiveModel = options?.model || model;
       const effectiveTemperature = options?.temperature ?? temperature;
@@ -198,7 +196,30 @@ export function useAppChat({
         // Memory retrieval tool is automatically included for on-demand memory fetching
         const effectiveServerTools = options?.serverTools || serverTools;
         const baseClientTools = options?.clientTools || clientTools || [];
-        const effectiveClientTools = [memoryTool, ...baseClientTools];
+
+        // Ensure we have a conversation ID BEFORE creating the memory tool
+        // This is critical for excludeConversationId to work on new conversations
+        let effectiveConversationId = options?.conversationId || conversationId;
+        if (!effectiveConversationId) {
+          // Create a new conversation first so we have an ID to exclude
+          // Pass createImmediately to actually create the conversation now (not on first message)
+          const newConv = await createConversation({ createImmediately: true });
+          if (newConv) {
+            effectiveConversationId = newConv.conversationId;
+          }
+        }
+
+        // Only include memory tool if memory retrieval is enabled
+        const effectiveClientTools = memoryEnabled
+          ? [
+              createMemoryRetrievalTool({
+                limit: memoryLimit,
+                minSimilarity: memoryThreshold,
+                excludeConversationId: effectiveConversationId ?? undefined,
+              }),
+              ...baseClientTools,
+            ]
+          : baseClientTools;
         const effectiveToolChoice = options?.toolChoice || toolChoice;
         const response = await baseSendMessage(text, {
           model: effectiveModel,
@@ -215,7 +236,8 @@ export function useAppChat({
           ...(effectiveClientTools && { clientTools: effectiveClientTools }),
           ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
           ...(options?.apiType && { apiType: options.apiType }),
-          ...(options?.conversationId && { conversationId: options.conversationId }),
+          // Always pass the effectiveConversationId (either from options, hook state, or newly created)
+          conversationId: effectiveConversationId ?? undefined,
           ...(options?.onToolCall && { onToolCall: options.onToolCall }),
           ...(options?.isFirstMessage !== undefined && { isFirstMessage: options.isFirstMessage }),
           onThinking,
@@ -233,12 +255,11 @@ export function useAppChat({
           }
         }
 
-        console.log("[APPCHAT sendMessage] END, baseSendMessage completed");
-        return response;
+        // Return both the response and the conversation ID for navigation
+        return { ...response, conversationId: effectiveConversationId };
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to send message";
-        console.error("[APPCHAT sendMessage] ERROR:", errorMessage);
         setError(errorMessage);
         throw err;
       }
@@ -249,7 +270,12 @@ export function useAppChat({
       temperature,
       maxOutputTokens,
       handleThinkingData,
-      memoryTool,
+      createMemoryRetrievalTool,
+      createConversation,
+      memoryEnabled,
+      memoryLimit,
+      memoryThreshold,
+      conversationId,
       serverTools,
       clientTools,
       toolChoice,
@@ -275,22 +301,15 @@ export function useAppChat({
         isFirstMessage?: boolean;
       }
     ) => {
-      console.log("[APPCHAT handleSubmit] START", {
-        messageText: message.text?.slice(0, 50),
-        hasText: !!message.text
-      });
-
       if (!message.text) {
-        console.log("[APPCHAT handleSubmit] No text, returning");
         return;
       }
 
-      console.log("[APPCHAT handleSubmit] Calling sendMessage");
       // Only clear input if we haven't already done it optimistically
       if (!options?.skipOptimisticUpdate) {
         setInput("");
       }
-      await sendMessage(message.text, {
+      const result = await sendMessage(message.text, {
         ...options,
         files: message.files,
         displayText: message.displayText,
@@ -298,7 +317,7 @@ export function useAppChat({
         conversationId: options?.conversationId,
         isFirstMessage: options?.isFirstMessage,
       });
-      console.log("[APPCHAT handleSubmit] sendMessage completed");
+      return result;
     },
     [sendMessage, setInput]
   );

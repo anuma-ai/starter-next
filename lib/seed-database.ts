@@ -10,6 +10,10 @@ import {
   getMessagesFromDataset,
   type LongMemEvalMessage,
 } from "./longmemeval";
+import {
+  chunkAndEmbedAllMessages,
+  type StorageOperationsContext,
+} from "@reverbia/sdk/react";
 
 export type SeedResult = {
   success: boolean;
@@ -236,48 +240,38 @@ export async function seedLongMemEval(
       }
     });
 
-    // Generate embeddings if requested
+    // Generate embeddings with chunking if requested
     if (generateEmbeddings) {
-      const { generateEmbeddings: genEmbed } = await import("@reverbia/sdk/react");
+      onProgress?.({ phase: "Generating embeddings with chunking", current: 0, total: totalMessages });
 
-      onProgress?.({ phase: "Generating embeddings", current: 0, total: totalMessages });
+      // Create storage context for chunk operations
+      const storageCtx = {
+        database,
+        messagesCollection: database.get("history"),
+        conversationsCollection: database.get("conversations"),
+      } as StorageOperationsContext;
 
-      // Get all messages and generate embeddings
-      const historyCollection = database.get("history");
-      const allMessages = await historyCollection.query().fetch();
-
-      // Process in batches
-      const BATCH_SIZE = 10;
-      for (let i = 0; i < allMessages.length; i += BATCH_SIZE) {
-        const batch = allMessages.slice(i, i + BATCH_SIZE);
-        const texts = batch.map((m: any) => m._getRaw("content") as string);
-
-        try {
-          const embeddings = await genEmbed(texts, {
+      try {
+        // Use chunkAndEmbedAllMessages which properly chunks long messages
+        // and creates individual embeddings for each chunk
+        embeddingsGenerated = await chunkAndEmbedAllMessages(
+          storageCtx,
+          {
             getToken,
             baseUrl: process.env.NEXT_PUBLIC_API_URL,
-          });
-
-          // Update messages with embeddings
-          await database.write(async () => {
-            for (let j = 0; j < batch.length; j++) {
-              const msg = batch[j];
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              await (msg as any).update((record: any) => {
-                record._setRaw("vector", JSON.stringify(embeddings[j]));
-              });
-              embeddingsGenerated++;
-            }
-          });
-        } catch (err) {
-          console.error("Failed to generate embeddings for batch:", err);
-        }
+          },
+          {
+            roles: ["user", "assistant"],
+          }
+        );
 
         onProgress?.({
-          phase: "Generating embeddings",
-          current: Math.min(i + BATCH_SIZE, allMessages.length),
-          total: allMessages.length,
+          phase: "Generating embeddings with chunking",
+          current: totalMessages,
+          total: totalMessages,
         });
+      } catch (err) {
+        console.error("Failed to generate embeddings with chunking:", err);
       }
     }
 
@@ -319,3 +313,114 @@ export async function clearAndSeedLongMemEval(
     };
   }
 }
+
+export type ClearEmbeddingsResult = {
+  success: boolean;
+  messagesCleared: number;
+  error?: string;
+};
+
+/**
+ * Clear all embeddings (vector and chunks) from all messages.
+ * Use this before regenerating embeddings to apply new filters.
+ */
+export async function clearAllEmbeddings(): Promise<ClearEmbeddingsResult> {
+  const database = getDatabase();
+
+  try {
+    const historyCollection = database.get("history");
+    const allMessages = await historyCollection.query().fetch();
+
+    let messagesCleared = 0;
+
+    await database.write(async () => {
+      for (const msg of allMessages) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const record = msg as any;
+        const hasVector = record._getRaw("vector");
+        const hasChunks = record._getRaw("chunks");
+
+        if (hasVector || hasChunks) {
+          await record.update(() => {
+            record._setRaw("vector", null);
+            record._setRaw("chunks", null);
+            record._setRaw("embedding_model", null);
+          });
+          messagesCleared++;
+        }
+      }
+    });
+
+    return {
+      success: true,
+      messagesCleared,
+    };
+  } catch (error) {
+    console.error("Failed to clear embeddings:", error);
+    return {
+      success: false,
+      messagesCleared: 0,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export type RegenerateEmbeddingsResult = {
+  success: boolean;
+  embeddingsGenerated: number;
+  error?: string;
+};
+
+/**
+ * Regenerate embeddings for all messages in the database.
+ * This will rechunk and re-embed all messages, replacing existing embeddings.
+ */
+export async function regenerateAllEmbeddings(options: {
+  getToken: () => Promise<string | null>;
+  onProgress?: (progress: { phase: string; current: number; total: number }) => void;
+}): Promise<RegenerateEmbeddingsResult> {
+  const { getToken, onProgress } = options;
+  const database = getDatabase();
+
+  try {
+    // Get total message count for progress
+    const historyCollection = database.get("history");
+    const allMessages = await historyCollection.query().fetch();
+    const totalMessages = allMessages.length;
+
+    onProgress?.({ phase: "Regenerating embeddings", current: 0, total: totalMessages });
+
+    const storageCtx = {
+      database,
+      messagesCollection: database.get("history"),
+      conversationsCollection: database.get("conversations"),
+    } as StorageOperationsContext;
+
+    const embeddingsGenerated = await chunkAndEmbedAllMessages(
+      storageCtx,
+      {
+        getToken,
+        baseUrl: process.env.NEXT_PUBLIC_API_URL,
+      },
+      {
+        roles: ["user", "assistant"],
+        rechunkExisting: true,
+      }
+    );
+
+    onProgress?.({ phase: "Regenerating embeddings", current: totalMessages, total: totalMessages });
+
+    return {
+      success: true,
+      embeddingsGenerated,
+    };
+  } catch (error) {
+    console.error("Failed to regenerate embeddings:", error);
+    return {
+      success: false,
+      embeddingsGenerated: 0,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
