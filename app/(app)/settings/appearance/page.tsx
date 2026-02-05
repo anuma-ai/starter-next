@@ -1,13 +1,39 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ThemePicker } from "@/app/components/theme-picker";
-import { useIconTheme, useChatPattern, getPreviewIcons, getPatternStrokeColor, ICON_THEMES } from "@/lib/chat-pattern";
+import { useIconTheme, useChatPattern, getPreviewIcons, getPatternStrokeColor, ICON_THEMES, IconThemeId } from "@/lib/chat-pattern";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
+
+// Hook to load preview icons for all themes
+function usePreviewIcons(strokeColor: string) {
+  const [previewIcons, setPreviewIcons] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    const loadIcons = async () => {
+      const entries = Object.keys(ICON_THEMES) as IconThemeId[];
+      const results: Record<string, string[]> = {};
+
+      await Promise.all(
+        entries.map(async (id) => {
+          const icons = await getPreviewIcons(id, strokeColor);
+          results[id] = icons;
+        })
+      );
+
+      setPreviewIcons(results);
+    };
+
+    loadIcons();
+  }, [strokeColor]);
+
+  return previewIcons;
+}
 
 export default function AppearancePage() {
   const router = useRouter();
@@ -17,6 +43,7 @@ export default function AppearancePage() {
 
   // Get the stroke color for pattern previews based on current theme
   const previewStrokeColor = getPatternStrokeColor(currentThemeId);
+  const previewIconsMap = usePreviewIcons(previewStrokeColor);
 
   return (
     <div
@@ -80,7 +107,7 @@ export default function AppearancePage() {
                 {(Object.entries(ICON_THEMES) as [keyof typeof ICON_THEMES, (typeof ICON_THEMES)[keyof typeof ICON_THEMES]][]).map(
                   ([id, theme]) => {
                     const isSelected = iconTheme === id;
-                    const previewIcons = getPreviewIcons(id, previewStrokeColor);
+                    const previewIcons = previewIconsMap[id] || [];
                     return (
                       <button
                         key={id}

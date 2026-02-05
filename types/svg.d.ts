@@ -1,9 +1,3 @@
-// Type declaration for raw SVG imports
-declare module "*.svg?raw" {
-  const content: string;
-  export default content;
-}
-
 // Type declaration for openmoji JSON data
 declare module "openmoji/data/openmoji.json" {
   const data: Array<{
@@ -24,22 +18,4 @@ declare module "openmoji/data/openmoji.json" {
     order: number;
   }>;
   export default data;
-}
-
-// Type declaration for webpack require.context
-interface RequireContext {
-  keys(): string[];
-  (id: string): string;
-  <T>(id: string): T;
-  resolve(id: string): string;
-  id: string;
-}
-
-declare function require(path: string): unknown;
-declare namespace require {
-  function context(
-    directory: string,
-    useSubdirectories?: boolean,
-    regExp?: RegExp
-  ): RequireContext;
 }
