@@ -10,6 +10,7 @@ export default function ChatPage() {
   const slug = params.slug as string[] | undefined;
   const conversationIdFromUrl = slug?.[0] === "c" ? slug[1] : null;
   const initialSyncDone = useRef(false);
+  const prevConversationIdRef = useRef<string | null>(null);
 
   const { setConversationId, conversationId: currentConversationId, createConversation } =
     useChatContext();
@@ -22,11 +23,20 @@ export default function ChatPage() {
   // prevents handleSwitchConversation from overwriting optimistic messages
   useEffect(() => {
     // Case 1: URL is "/" (new chat) but state has a conversationId - need to reset
-    if (!conversationIdFromUrl && currentConversationId) {
+    // Guard: Only reset if we previously had a conversationId (user navigated from a conversation).
+    // This prevents a race condition where submitting from "/" creates a conversation,
+    // sets state, but router.replace hasn't updated the URL yet. Without this guard,
+    // the effect would see "URL is / but state has conversationId" and incorrectly reset,
+    // wiping the optimistic messages mid-send.
+    if (!conversationIdFromUrl && currentConversationId && prevConversationIdRef.current !== null) {
       initialSyncDone.current = false; // Reset so next page load syncs properly
       createConversation(); // Reset state to new conversation
+      prevConversationIdRef.current = currentConversationId;
       return;
     }
+
+    // Track previous conversationId for the race condition guard above
+    prevConversationIdRef.current = currentConversationId;
 
     // Only sync from URL on INITIAL MOUNT
     // After initial mount, we don't sync from URL when state changes because:
