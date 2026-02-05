@@ -437,29 +437,62 @@ const handleSendMessage = useCallback(
       const userText = textForStorage || text;
       const assistantText = finalText;
 
-      const messagesForTitle = [
+      const conversationContext = [
         { role: "user", text: userText.slice(0, 200) },
         { role: "assistant", text: assistantText.slice(0, 200) },
-      ].filter((m) => m.text);
+      ]
+        .filter((m) => m.text)
+        .map((m) => `${m.role}: ${m.text}`)
+        .join("\n");
 
-      // Delay slightly to ensure message is saved
-      setTimeout(() => {
-        generateConversationTitle(messagesForTitle, getToken).then(
-          (newTitle) => {
-            if (newTitle) {
-              // Use the conversation ID this message was sent to, not where user is currently viewing
-              storeConversationTitle(messageConversationId, newTitle);
-              setConversations((prevConversations) =>
-                prevConversations.map((conv) =>
-                  conv.id === messageConversationId ||
-                  conv.conversationId === messageConversationId
-                    ? { ...conv, title: newTitle }
-                    : conv
-                )
-              );
+      // Generate title using sendMessage with skipStorage to avoid polluting the database
+      // Delay slightly to ensure main message is saved first
+      setTimeout(async () => {
+        try {
+          const titleResponse = await sendMessage({
+            messages: [
+              {
+                role: "user" as const,
+                content: [
+                  {
+                    type: "text",
+                    text: `Generate a short, descriptive title (3-6 words) for this conversation. Return ONLY the title, nothing else.\n\nConversation:\n${conversationContext}`,
+                  },
+                ],
+              },
+            ],
+            model: "openai/gpt-4o-mini",
+            maxOutputTokens: 50,
+            skipStorage: true,
+            includeHistory: false,
+          });
+
+          if (titleResponse.error || !titleResponse.data) return;
+
+          // Extract title from response
+          let newTitle = extractTextFromResponse(titleResponse.data);
+          if (newTitle) {
+            // Clean up the title - remove quotes, trim whitespace
+            newTitle = newTitle.replace(/^["']|["']$/g, "").trim();
+            // Limit to reasonable length
+            if (newTitle.length > 50) {
+              newTitle = newTitle.slice(0, 47) + "...";
             }
+
+            // Use the conversation ID this message was sent to, not where user is currently viewing
+            storeConversationTitle(messageConversationId, newTitle);
+            setConversations((prevConversations) =>
+              prevConversations.map((conv) =>
+                conv.id === messageConversationId ||
+                conv.conversationId === messageConversationId
+                  ? { ...conv, title: newTitle }
+                  : conv
+              )
+            );
           }
-        );
+        } catch {
+          // Title generation is non-critical, silently fail
+        }
       }, 500);
     }
 
