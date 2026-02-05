@@ -409,6 +409,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     temperature,
     maxOutputTokens,
     walletAddress,
+    encryptionReady,
     serverTools: enabledServerTools,
     clientTools,
   });

@@ -56,6 +56,8 @@ type UseChatStorageProps = {
   walletAddress?: string;
   /** System prompt for the AI (added as system role message) */
   systemPrompt?: string;
+  /** Whether encryption is ready (from chat provider) */
+  encryptionReady?: boolean;
 };
 
 type ToolCall = {
@@ -151,6 +153,7 @@ export function useAppChatStorage({
   onStreamingData,
   walletAddress,
   systemPrompt,
+  encryptionReady,
 }: UseChatStorageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
@@ -275,17 +278,29 @@ export function useAppChatStorage({
   // Track the wallet address that was used for last message load
   // This allows us to reload when encryption becomes ready
   const loadedWithWalletRef = useRef<string | null>(null);
+  // Track if encryption was ready when messages were last loaded
+  // This allows us to reload when encryption transitions from not-ready to ready
+  const loadedWithEncryptionReadyRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (conversationId) {
       // Check if we need to reload due to wallet/encryption state change
       // If wallet address changed, we should reload to get files from OPFS
-      const needsReloadForEncryption =
+      const walletChanged =
         loadedConversationIdRef.current === conversationId &&
         loadedWithWalletRef.current !== walletAddress;
 
+      // Check if encryption just became ready (was not ready before, now is ready)
+      // This ensures we reload to decrypt files that couldn't be read before
+      const encryptionJustBecameReady =
+        loadedConversationIdRef.current === conversationId &&
+        !loadedWithEncryptionReadyRef.current &&
+        encryptionReady;
+
+      const needsReloadForEncryption = walletChanged || encryptionJustBecameReady;
+
       // Skip loading if messages were already preloaded by handleSwitchConversation
-      // UNLESS encryption state changed (wallet address changed)
+      // UNLESS encryption state changed (wallet address changed or encryption became ready)
       if (loadedConversationIdRef.current === conversationId && !needsReloadForEncryption) {
         return;
       }
@@ -301,6 +316,7 @@ export function useAppChatStorage({
       const targetConversationId = conversationId;
       loadedConversationIdRef.current = targetConversationId;
       loadedWithWalletRef.current = walletAddress || null;
+      loadedWithEncryptionReadyRef.current = encryptionReady || false;
       getMessages(conversationId).then(async (msgs) => {
         // Only update if this is still the target conversation
         // (prevents race conditions when rapidly switching)
@@ -338,10 +354,14 @@ export function useAppChatStorage({
               parts.push({ type: "text" as const, text: textContent });
             }
 
-            // SDK stores file metadata for user-uploaded files
-            // Files may have `url` (direct data URI) or need to be read from OPFS
-            // Generated images (from MCP tools) have `sourceUrl` - they're embedded in content as markdown
+            // SDK stores file metadata in two ways:
+            // 1. `files` - Old style with full FileMetadata (includes url, id, etc.)
+            // 2. `fileIds` - New style with just media IDs (for OPFS-stored files)
+            // We need to handle both cases.
             const storedFiles = msg.files || [];
+            const storedFileIds = msg.fileIds || [];
+
+            // Handle old-style files array (with full metadata)
             if (storedFiles.length > 0) {
               for (const file of storedFiles) {
                 const mimeType = file.type || "";
@@ -379,6 +399,37 @@ export function useAppChatStorage({
               }
             }
 
+            // Handle new-style fileIds (media IDs for OPFS-stored files)
+            // Only process if old-style files array was empty (avoid duplicates)
+            if (storedFiles.length === 0 && storedFileIds.length > 0 && walletAddress && hasEncryptionKey(walletAddress)) {
+              for (const mediaId of storedFileIds) {
+                try {
+                  const encryptionKey = await getEncryptionKey(walletAddress);
+                  const result = await readEncryptedFile(mediaId, encryptionKey);
+                  if (result) {
+                    const fileUrl = await blobToDataUrl(result.blob);
+                    const mimeType = result.metadata?.type || "application/octet-stream";
+
+                    if (mimeType.startsWith("image/")) {
+                      parts.push({
+                        type: "image_url" as const,
+                        image_url: { url: fileUrl },
+                      });
+                    } else {
+                      parts.push({
+                        type: "file" as const,
+                        url: fileUrl,
+                        mediaType: mimeType,
+                        filename: result.metadata?.name || mediaId,
+                      });
+                    }
+                  }
+                } catch (err) {
+                  console.error(`Failed to read file ${mediaId} from OPFS:`, err);
+                }
+              }
+            }
+
             return {
               id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
               role: msg.role,
@@ -390,7 +441,7 @@ export function useAppChatStorage({
         setMessages(uiMessages);
       });
     }
-  }, [conversationId, getMessages, walletAddress]);
+  }, [conversationId, getMessages, walletAddress, encryptionReady]);
 
   //#region sendMessage
   const streamingTextRef = useRef<string>("");
@@ -950,9 +1001,13 @@ export function useAppChatStorage({
             parts.push({ type: "text" as const, text: textContent });
           }
 
-          // Files may have `url` (direct data URI) or need to be read from OPFS
-          // Generated images (from MCP tools) have `sourceUrl` - they're embedded in content as markdown
+          // SDK stores file metadata in two ways:
+          // 1. `files` - Old style with full FileMetadata (includes url, id, etc.)
+          // 2. `fileIds` - New style with just media IDs (for OPFS-stored files)
           const storedFiles = msg.files || [];
+          const storedFileIds = msg.fileIds || [];
+
+          // Handle old-style files array
           if (storedFiles.length > 0) {
             for (const file of storedFiles) {
               const mimeType = file.type || "";
@@ -985,6 +1040,36 @@ export function useAppChatStorage({
                   mediaType: mimeType,
                   filename: file.name || "",
                 });
+              }
+            }
+          }
+
+          // Handle new-style fileIds (media IDs for OPFS-stored files)
+          if (storedFiles.length === 0 && storedFileIds.length > 0 && walletAddress && hasEncryptionKey(walletAddress)) {
+            for (const mediaId of storedFileIds) {
+              try {
+                const encryptionKey = await getEncryptionKey(walletAddress);
+                const result = await readEncryptedFile(mediaId, encryptionKey);
+                if (result) {
+                  const fileUrl = await blobToDataUrl(result.blob);
+                  const mimeType = result.metadata?.type || "application/octet-stream";
+
+                  if (mimeType.startsWith("image/")) {
+                    parts.push({
+                      type: "image_url" as const,
+                      image_url: { url: fileUrl },
+                    });
+                  } else {
+                    parts.push({
+                      type: "file" as const,
+                      url: fileUrl,
+                      mediaType: mimeType,
+                      filename: result.metadata?.name || mediaId,
+                    });
+                  }
+                }
+              } catch (err) {
+                console.error(`Failed to read file ${mediaId} from OPFS:`, err);
               }
             }
           }
