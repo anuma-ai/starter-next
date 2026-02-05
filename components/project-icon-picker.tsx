@@ -32,15 +32,26 @@ const ALL_ICONS = (openmojiData as OpenmojiEntry[]).filter((emoji) => {
   return true;
 });
 
-// Dynamically import SVG files using webpack's require.context
-const svgContext = require.context(
-  "openmoji/black/svg",
-  false,
-  /^\.\/[A-Fa-f0-9]+\.svg$/
-);
-
-// Cache for loaded SVG data URLs
+// Cache for loaded SVG content and data URLs
+const svgContentCache = new Map<string, string>();
 const svgUrlCache = new Map<string, string>();
+
+// Fetch SVG content from the API route
+async function fetchSvgContent(hexcode: string): Promise<string | null> {
+  if (svgContentCache.has(hexcode)) {
+    return svgContentCache.get(hexcode)!;
+  }
+
+  try {
+    const response = await fetch(`/api/openmoji/${hexcode}`);
+    if (!response.ok) return null;
+    const content = await response.text();
+    svgContentCache.set(hexcode, content);
+    return content;
+  } catch {
+    return null;
+  }
+}
 
 // Apply color, stroke width, and optional scale to SVG content
 // scale > 1 crops the viewBox padding to make the icon appear larger
@@ -102,14 +113,16 @@ function applyColor(svg: string, color: string, strokeWidth?: number, scale?: nu
 }
 
 // Load an SVG and convert to data URL with custom color, stroke width, and scale
-function getSvgDataUrl(hexcode: string, color: string = "currentColor", strokeWidth?: number, scale?: number): string | null {
+async function getSvgDataUrl(hexcode: string, color: string = "currentColor", strokeWidth?: number, scale?: number): Promise<string | null> {
   const cacheKey = `${hexcode}-${color}-${strokeWidth ?? "default"}-${scale ?? "default"}`;
   if (svgUrlCache.has(cacheKey)) {
     return svgUrlCache.get(cacheKey)!;
   }
 
   try {
-    const svgContent = svgContext(`./${hexcode}.svg`) as string;
+    const svgContent = await fetchSvgContent(hexcode);
+    if (!svgContent) return null;
+
     const coloredSvg = applyColor(svgContent, color, strokeWidth, scale);
 
     const encoded = encodeURIComponent(coloredSvg)
@@ -141,12 +154,20 @@ export function ProjectIcon({
   className?: string;
   style?: React.CSSProperties;
 }) {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+
   // Use provided color, or default based on theme
   const effectiveColor = color || "#000";
-  const dataUrl = useMemo(
-    () => getSvgDataUrl(hexcode, effectiveColor, strokeWidth, scale),
-    [hexcode, effectiveColor, strokeWidth, scale]
-  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getSvgDataUrl(hexcode, effectiveColor, strokeWidth, scale).then((url) => {
+      if (!cancelled) setDataUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hexcode, effectiveColor, strokeWidth, scale]);
 
   if (!dataUrl) {
     return <div className={`bg-muted rounded ${className}`} style={{ width: size, height: size, ...style }} />;

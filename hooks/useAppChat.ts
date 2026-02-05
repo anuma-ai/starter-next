@@ -23,6 +23,8 @@ type UseAppChatProps = {
   store?: boolean;
   // Wallet address for encrypted file storage
   walletAddress?: string;
+  // Whether encryption is ready (for reloading files after encryption initializes)
+  encryptionReady?: boolean;
   // Server-side tools (tool names from /api/v1/tools)
   serverTools?: string[];
   // Client-side tools (with local executors)
@@ -43,6 +45,7 @@ export function useAppChat({
   temperature,
   maxOutputTokens,
   walletAddress,
+  encryptionReady,
   serverTools,
   clientTools,
   toolChoice,
@@ -139,6 +142,8 @@ export function useAppChat({
     onStreamingData: handleStreamingData,
     // Enable encrypted file storage in OPFS when wallet is connected
     walletAddress,
+    // Re-load messages when encryption becomes ready (to decrypt file attachments)
+    encryptionReady,
     // System prompt with memory retrieval instructions
     systemPrompt: systemPrompt || DEFAULT_SYSTEM_PROMPT,
   });

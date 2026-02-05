@@ -56,6 +56,8 @@ export const MessageContent = ({
 export type MessageResponseProps = {
   children: string;
   className?: string;
+  /** Optional function to resolve SDK file placeholders to blob URLs */
+  resolveFilePlaceholders?: (content: string) => Promise<string>;
 };
 
 // Regex to detect standalone image URLs (not already in markdown syntax)
@@ -64,7 +66,8 @@ const IMAGE_URL_REGEX =
   /(?<!\[.*?\]\()(?<!!.*?\]\()(https?:\/\/[^\s<>"]+?\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[^\s<>"]*)?|https?:\/\/[^\s<>"]*?(?:image|img)[^\s<>"]*?\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s<>"]*)?)/gi;
 
 // Regex to detect SDK file placeholders that haven't been resolved yet
-const SDK_FILE_PLACEHOLDER_REGEX = /__SDKFILE__[a-f0-9-]+__/gi;
+// Must match the SDK's format: __SDKFILE__media_uuid__ (includes underscore and alphanumeric)
+const SDK_FILE_PLACEHOLDER_REGEX = /__SDKFILE__[a-zA-Z0-9_-]+__/g;
 
 // Convert standalone image URLs to markdown image syntax
 function convertImageUrlsToMarkdown(text: string): string {
@@ -72,7 +75,7 @@ function convertImageUrlsToMarkdown(text: string): string {
 }
 
 // Remove unresolved SDK file placeholders from display
-function replaceUnresolvedPlaceholders(text: string): string {
+function removeUnresolvedPlaceholders(text: string): string {
   return text.replace(SDK_FILE_PLACEHOLDER_REGEX, "");
 }
 
@@ -166,13 +169,73 @@ const CodeBlock = ({
 
 // Use marked's lexer to parse markdown into tokens, then render code blocks specially
 export const MessageResponse = memo(
-  ({ className, children }: MessageResponseProps) => {
-    const content = useMemo(() => {
+  ({ className, children, resolveFilePlaceholders }: MessageResponseProps) => {
+    const [resolvedText, setResolvedText] = useState<string>(children || "");
+    // Track retry count for resolution
+    const [retryCount, setRetryCount] = useState(0);
+    const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Cleanup on unmount
+    useEffect(() => {
+      return () => {
+        if (retryTimeoutRef.current) {
+          clearTimeout(retryTimeoutRef.current);
+        }
+      };
+    }, []);
+
+    // Resolve SDK file placeholders when content changes
+    useEffect(() => {
       if (!children) {
+        setResolvedText("");
+        return;
+      }
+
+      // Reset regex lastIndex since it's global
+      SDK_FILE_PLACEHOLDER_REGEX.lastIndex = 0;
+      const hasPlaceholders = SDK_FILE_PLACEHOLDER_REGEX.test(children);
+      SDK_FILE_PLACEHOLDER_REGEX.lastIndex = 0;
+
+      if (hasPlaceholders && resolveFilePlaceholders) {
+        resolveFilePlaceholders(children).then((resolved) => {
+          // Check if resolution actually happened (content changed)
+          const contentChanged = resolved !== children;
+          if (contentChanged) {
+            // Resolution succeeded - remove any remaining unresolved placeholders
+            // (e.g., files that couldn't be found in OPFS)
+            setResolvedText(removeUnresolvedPlaceholders(resolved));
+            // Clear any pending retry
+            if (retryTimeoutRef.current) {
+              clearTimeout(retryTimeoutRef.current);
+              retryTimeoutRef.current = null;
+            }
+          } else {
+            // Content unchanged means encryption wasn't ready
+            // Show text without placeholders for now, but schedule retry
+            setResolvedText(removeUnresolvedPlaceholders(children));
+            // Schedule retry if we haven't exceeded max retries
+            if (retryCount < 10) {
+              retryTimeoutRef.current = setTimeout(() => {
+                setRetryCount((c) => c + 1);
+              }, 500);
+            }
+          }
+        });
+      } else if (hasPlaceholders && !resolveFilePlaceholders) {
+        // Has placeholders but no resolver - remove them
+        setResolvedText(removeUnresolvedPlaceholders(children));
+      } else {
+        // No placeholders - use text as-is
+        setResolvedText(children);
+      }
+    }, [children, resolveFilePlaceholders, retryCount]);
+
+    const content = useMemo(() => {
+      if (!resolvedText) {
         return [];
       }
 
-      const processedText = replaceUnresolvedPlaceholders(convertImageUrlsToMarkdown(children));
+      const processedText = convertImageUrlsToMarkdown(resolvedText);
       const tokens = marked.lexer(processedText);
       const result: Array<{ type: "html" | "code"; html?: string; code?: string; lang?: string }> = [];
 
@@ -203,7 +266,7 @@ export const MessageResponse = memo(
 
       flushHtml();
       return result;
-    }, [children]);
+    }, [resolvedText]);
 
     return (
       <div
@@ -223,7 +286,9 @@ export const MessageResponse = memo(
       </div>
     );
   },
-  (prevProps, nextProps) => prevProps.children === nextProps.children
+  (prevProps, nextProps) =>
+    prevProps.children === nextProps.children &&
+    prevProps.resolveFilePlaceholders === nextProps.resolveFilePlaceholders
 );
 
 MessageResponse.displayName = "MessageResponse";
@@ -235,6 +300,8 @@ export type StreamingMessageProps = {
   className?: string;
   initialText?: string;
   isLoading?: boolean;
+  /** Optional function to resolve SDK file placeholders to blob URLs */
+  resolveFilePlaceholders?: (content: string) => Promise<string>;
 };
 
 // Custom image component that doesn't wrap in div (avoids <p><div> hydration error)
@@ -251,10 +318,15 @@ export const StreamingMessage = ({
   className,
   initialText = "",
   isLoading = false,
+  resolveFilePlaceholders,
 }: StreamingMessageProps) => {
   const [text, setText] = useState(initialText);
+  const [resolvedText, setResolvedText] = useState(initialText);
+  const [retryCount, setRetryCount] = useState(0);
   const textRef = useRef(initialText);
   const rafRef = useRef<number | null>(null);
+  const resolutionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const updateText = () => {
@@ -286,10 +358,77 @@ export const StreamingMessage = ({
     }
   }, [initialText]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Resolve SDK file placeholders with debouncing to avoid excessive calls during streaming
+  useEffect(() => {
+    // Clear any pending resolution
+    if (resolutionTimeoutRef.current) {
+      clearTimeout(resolutionTimeoutRef.current);
+    }
+
+    if (!text) {
+      setResolvedText("");
+      return;
+    }
+
+    // Reset regex lastIndex since it's global
+    SDK_FILE_PLACEHOLDER_REGEX.lastIndex = 0;
+    const hasPlaceholders = SDK_FILE_PLACEHOLDER_REGEX.test(text);
+    SDK_FILE_PLACEHOLDER_REGEX.lastIndex = 0;
+
+    // Check if there are any placeholders to resolve
+    if (hasPlaceholders && resolveFilePlaceholders) {
+      // Debounce the resolution to avoid too many calls during streaming
+      resolutionTimeoutRef.current = setTimeout(() => {
+        resolveFilePlaceholders(text).then((resolved) => {
+          const contentChanged = resolved !== text;
+          if (contentChanged) {
+            // Resolution succeeded - remove any remaining unresolved placeholders
+            setResolvedText(removeUnresolvedPlaceholders(resolved));
+            // Clear any pending retry
+            if (retryTimeoutRef.current) {
+              clearTimeout(retryTimeoutRef.current);
+              retryTimeoutRef.current = null;
+            }
+          } else {
+            // Content unchanged means encryption wasn't ready
+            setResolvedText(removeUnresolvedPlaceholders(text));
+            // Schedule retry if we haven't exceeded max retries
+            if (retryCount < 10) {
+              retryTimeoutRef.current = setTimeout(() => {
+                setRetryCount((c) => c + 1);
+              }, 500);
+            }
+          }
+        });
+      }, 100);
+    } else if (hasPlaceholders && !resolveFilePlaceholders) {
+      // Has placeholders but no resolver - remove them
+      setResolvedText(removeUnresolvedPlaceholders(text));
+    } else {
+      // No placeholders - use text as-is
+      setResolvedText(text);
+    }
+
+    return () => {
+      if (resolutionTimeoutRef.current) {
+        clearTimeout(resolutionTimeoutRef.current);
+      }
+    };
+  }, [text, resolveFilePlaceholders, retryCount]);
+
   // Process text for display - must be before early return to follow Rules of Hooks
   const processedText = useMemo(
-    () => replaceUnresolvedPlaceholders(convertImageUrlsToMarkdown(text)),
-    [text]
+    () => convertImageUrlsToMarkdown(resolvedText),
+    [resolvedText]
   );
 
   // Show loading indicator when loading and no text yet

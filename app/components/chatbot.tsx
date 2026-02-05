@@ -10,6 +10,8 @@ import { usePrivy } from "@privy-io/react-auth";
 
 import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
 import { MODELS, getModelConfig } from "@/lib/models";
+import { useFiles } from "@reverbia/sdk/react";
+import { useDatabase } from "@/app/providers";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -130,9 +132,17 @@ const ChatBotDemo = () => {
   const pathname = usePathname();
   const router = useRouter();
   const chatState = useChatContext();
-  const { authenticated } = usePrivy();
+  const { authenticated, user } = usePrivy();
   const thinkingPanel = useThinkingPanel();
   const hasRedirectedRef = useRef(false);
+  const database = useDatabase();
+  const walletAddress = user?.wallet?.address;
+
+  // Use SDK's useFiles hook for resolving file placeholders in messages
+  const { resolveFilePlaceholders } = useFiles({
+    database,
+    walletAddress,
+  });
 
   // Get conversationId early to determine if this is a new chat
   const { conversationId: currentConversationId } = chatState;
@@ -465,7 +475,9 @@ const ChatBotDemo = () => {
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
-                            <MessageResponse>{part.text}</MessageResponse>
+                            <MessageResponse resolveFilePlaceholders={resolveFilePlaceholders}>
+                              {part.text}
+                            </MessageResponse>
                           </MessageContent>
                         </Message>
                       );
@@ -511,9 +523,12 @@ const ChatBotDemo = () => {
                                   subscribe={subscribeToStreaming}
                                   initialText={part.text || ""}
                                   isLoading={false}
+                                  resolveFilePlaceholders={resolveFilePlaceholders}
                                 />
                               ) : (
-                                <MessageResponse>{part.text}</MessageResponse>
+                                <MessageResponse resolveFilePlaceholders={resolveFilePlaceholders}>
+                                  {part.text}
+                                </MessageResponse>
                               )}
                             </MessageContent>
                           </Message>

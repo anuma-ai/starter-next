@@ -98,155 +98,53 @@ function getIconsForTheme(themeId: IconThemeId, limit: number = 20): string[] {
   return selected;
 }
 
-// Dynamically import SVG files using webpack's require.context
-// This creates a bundle with all black SVGs at build time
-// Regex matches hexcode filenames (uppercase A-F and digits 0-9)
-const svgContext = require.context(
-  "openmoji/black/svg",
-  false,
-  /^\.\/[A-Fa-f0-9]+\.svg$/
-);
-
 // Cache for loaded SVG content (stores raw extracted content, not color-normalized)
-// Cache is cleared on each module load to ensure fresh data
 const svgCache = new Map<string, string>();
-svgCache.clear(); // Ensure clean slate
 
-// Debug: expose function to test SVG loading (call from browser console)
-if (typeof window !== "undefined") {
-  const debugSvgLoad = (hexcode: string) => {
-    try {
-      const content = svgContext(`./${hexcode}.svg`);
-      console.log(`[debug] ${hexcode} type:`, typeof content);
-      console.log(`[debug] ${hexcode} length:`, typeof content === "string" ? content.length : "N/A");
-      console.log(`[debug] ${hexcode} first 100:`, typeof content === "string" ? content.substring(0, 100) : content);
-      return content;
-    } catch (e) {
-      console.error(`[debug] ${hexcode} error:`, e);
-      return null;
-    }
-  };
-  const debugThemeIcons = (themeId: string) => {
-    const hexcodes = getIconsForTheme(themeId as IconThemeId);
-    console.log(`[debug] ${themeId} hexcodes:`, hexcodes);
-    hexcodes.slice(0, 3).forEach(hex => debugSvgLoad(hex));
-  };
-  const debugPatternIcons = (themeId: string) => {
-    const icons = getPatternIcons(themeId as IconThemeId);
-    console.log(`[debug] ${themeId} patternIcons count:`, icons.length);
-    icons.slice(0, 3).forEach(icon => {
-      console.log(`[debug] ${icon.name} svg length:`, icon.svg.length);
-      console.log(`[debug] ${icon.name} svg first 100:`, icon.svg.substring(0, 100));
-    });
-  };
-  const debugFullPattern = (themeId: string) => {
-    const strokeColor = "#404040"; // dark theme color
-    const svg = generateChatPatternSVG(strokeColor, themeId as IconThemeId);
-    console.log(`[debug] ${themeId} full SVG length:`, svg.length);
-    console.log(`[debug] ${themeId} SVG start:`, svg.substring(0, 200));
-    console.log(`[debug] ${themeId} SVG contains icons:`, svg.includes("<g transform"));
+// Track which themes have been preloaded
+const preloadedThemes = new Set<IconThemeId>();
+const preloadPromises = new Map<IconThemeId, Promise<void>>();
 
-    const dataUrl = generateChatPatternDataURL(strokeColor, themeId as IconThemeId);
-    console.log(`[debug] ${themeId} dataURL length:`, dataUrl.length);
-    console.log(`[debug] ${themeId} dataURL start:`, dataUrl.substring(0, 100));
-  };
-
-  // Debug: test rendering SVG directly in DOM
-  const debugRenderPattern = (themeId: string) => {
-    const strokeColor = "#404040";
-    const svg = generateChatPatternSVG(strokeColor, themeId as IconThemeId);
-    const dataUrl = generateChatPatternDataURL(strokeColor, themeId as IconThemeId);
-
-    // Create a test div
-    const testDiv = document.createElement("div");
-    testDiv.id = `debug-pattern-${themeId}`;
-    testDiv.style.cssText = `
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      width: 300px;
-      height: 300px;
-      border: 2px solid red;
-      background-color: #f0f0f0;
-      background-image: url("${dataUrl}");
-      background-repeat: repeat;
-      background-size: 150px 150px;
-      z-index: 99999;
-    `;
-    document.body.appendChild(testDiv);
-
-    // Also create an img element to test
-    const img = document.createElement("img");
-    img.id = `debug-img-${themeId}`;
-    img.src = dataUrl;
-    img.style.cssText = `
-      position: fixed;
-      top: 10px;
-      left: 320px;
-      width: 300px;
-      height: 300px;
-      border: 2px solid blue;
-      z-index: 99999;
-    `;
-    img.onerror = () => console.error(`[debug] ${themeId} img failed to load`);
-    img.onload = () => console.log(`[debug] ${themeId} img loaded successfully`);
-    document.body.appendChild(img);
-
-    console.log(`[debug] ${themeId} test elements created. Remove with: document.getElementById('debug-pattern-${themeId}').remove(); document.getElementById('debug-img-${themeId}').remove();`);
-    return { svg, dataUrl };
-  };
-
-  // Debug: compare raw SVG content between two themes
-  const debugCompareThemes = (theme1: string, theme2: string) => {
-    const hexcodes1 = getIconsForTheme(theme1 as IconThemeId);
-    const hexcodes2 = getIconsForTheme(theme2 as IconThemeId);
-
-    console.log(`[debug] ${theme1} first hexcode:`, hexcodes1[0]);
-    console.log(`[debug] ${theme2} first hexcode:`, hexcodes2[0]);
-
-    // Get raw SVG content
-    const raw1 = svgContext(`./${hexcodes1[0]}.svg`) as string;
-    const raw2 = svgContext(`./${hexcodes2[0]}.svg`) as string;
-
-    console.log(`[debug] ${theme1} raw length:`, raw1.length);
-    console.log(`[debug] ${theme2} raw length:`, raw2.length);
-
-    // Check if they have <g id="line">
-    console.log(`[debug] ${theme1} has <g id="line">:`, raw1.includes('<g id="line"'));
-    console.log(`[debug] ${theme2} has <g id="line">:`, raw2.includes('<g id="line"'));
-
-    // Show the structure
-    console.log(`[debug] ${theme1} raw SVG (first 500):`, raw1.substring(0, 500));
-    console.log(`[debug] ${theme2} raw SVG (first 500):`, raw2.substring(0, 500));
-  };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).debugSvgLoad = debugSvgLoad;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).debugThemeIcons = debugThemeIcons;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).debugPatternIcons = debugPatternIcons;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).debugFullPattern = debugFullPattern;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).debugRenderPattern = debugRenderPattern;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).debugCompareThemes = debugCompareThemes;
-}
-
-// Load an SVG by hexcode (returns raw extracted content without color normalization)
-function loadSvg(hexcode: string): string | null {
+// Fetch SVG content from the API route
+async function fetchSvgContent(hexcode: string): Promise<string | null> {
   if (svgCache.has(hexcode)) {
     return svgCache.get(hexcode)!;
   }
 
   try {
-    const svgContent = svgContext(`./${hexcode}.svg`) as string;
-    const extracted = extractSvgContent(svgContent);
+    const response = await fetch(`/api/openmoji/${hexcode}`);
+    if (!response.ok) return null;
+    const content = await response.text();
+    const extracted = extractSvgContent(content);
     svgCache.set(hexcode, extracted);
     return extracted;
   } catch {
     return null;
   }
+}
+
+// Preload all icons for a theme
+async function preloadThemeIcons(themeId: IconThemeId): Promise<void> {
+  if (themeId === "none" || preloadedThemes.has(themeId)) return;
+
+  // Return existing promise if preload is in progress
+  if (preloadPromises.has(themeId)) {
+    return preloadPromises.get(themeId);
+  }
+
+  const promise = (async () => {
+    const hexcodes = getIconsForTheme(themeId);
+    await Promise.all(hexcodes.map((hexcode) => fetchSvgContent(hexcode)));
+    preloadedThemes.add(themeId);
+  })();
+
+  preloadPromises.set(themeId, promise);
+  return promise;
+}
+
+// Load an SVG by hexcode (returns cached content, must be preloaded first)
+function loadSvg(hexcode: string): string | null {
+  return svgCache.get(hexcode) || null;
 }
 
 // Extract the inner content from an SVG string (content inside the <g id="line"> tag)
@@ -362,10 +260,13 @@ function getPatternIcons(themeId: IconThemeId): Array<{ name: string; svg: strin
 }
 
 // Get preview icon data URLs for a theme (returns 3 icons for triangle preview)
-export function getPreviewIcons(
+export async function getPreviewIcons(
   themeId: IconThemeId,
   strokeColor: string
-): string[] {
+): Promise<string[]> {
+  // Ensure icons are preloaded
+  await preloadThemeIcons(themeId);
+
   const icons = getPatternIcons(themeId);
   if (icons.length === 0) return [];
 
@@ -569,6 +470,7 @@ export function useChatPattern(): React.CSSProperties {
   // Use lazy initializers to read from DOM/localStorage synchronously (prevents flicker)
   const [colorThemeId, setColorThemeId] = React.useState<string>(getThemeFromClasses);
   const [iconTheme, setIconTheme] = React.useState<IconThemeId>(getSavedIconTheme);
+  const [iconsLoaded, setIconsLoaded] = React.useState(false);
 
   React.useEffect(() => {
     // Observe class changes on html element
@@ -597,12 +499,32 @@ export function useChatPattern(): React.CSSProperties {
     };
   }, []);
 
+  // Preload icons when theme changes
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (iconTheme === "none") {
+      setIconsLoaded(true);
+      return;
+    }
+    setIconsLoaded(preloadedThemes.has(iconTheme));
+    preloadThemeIcons(iconTheme).then(() => {
+      if (!cancelled) {
+        setIconsLoaded(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [iconTheme]);
+
   const strokeColor = getPatternStrokeColor(colorThemeId);
 
   // Memoize the pattern style to prevent expensive SVG regeneration on every render
   return React.useMemo(
-    () => getChatPatternStyle(strokeColor, iconTheme),
-    [strokeColor, iconTheme]
+    () => (iconsLoaded ? getChatPatternStyle(strokeColor, iconTheme) : {}),
+    [strokeColor, iconTheme, iconsLoaded]
   );
 }
 
@@ -641,6 +563,7 @@ export function useChatPatternWithProject(
     React.useState<string>(getThemeFromClasses);
   const [globalIconTheme, setGlobalIconTheme] =
     React.useState<IconThemeId>(getSavedIconTheme);
+  const [iconsLoaded, setIconsLoaded] = React.useState(false);
 
   React.useEffect(() => {
     // Observe class changes on html element
@@ -676,11 +599,31 @@ export function useChatPatternWithProject(
     ? (projectIconTheme as IconThemeId)
     : globalIconTheme;
 
+  // Preload icons when theme changes
+  React.useEffect(() => {
+    let cancelled = false;
+
+    if (effectiveIconTheme === "none") {
+      setIconsLoaded(true);
+      return;
+    }
+    setIconsLoaded(preloadedThemes.has(effectiveIconTheme));
+    preloadThemeIcons(effectiveIconTheme).then(() => {
+      if (!cancelled) {
+        setIconsLoaded(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveIconTheme]);
+
   const strokeColor = getPatternStrokeColor(effectiveColorTheme);
 
   // Memoize the pattern style to prevent expensive SVG regeneration on every render
   return React.useMemo(
-    () => getChatPatternStyle(strokeColor, effectiveIconTheme),
-    [strokeColor, effectiveIconTheme]
+    () => (iconsLoaded ? getChatPatternStyle(strokeColor, effectiveIconTheme) : {}),
+    [strokeColor, effectiveIconTheme, iconsLoaded]
   );
 }

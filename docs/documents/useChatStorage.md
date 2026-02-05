@@ -682,9 +682,13 @@ const handleSwitchConversation = useCallback(
           parts.push({ type: "text" as const, text: textContent });
         }
 
-        // Files may have `url` (direct data URI) or need to be read from OPFS
-        // Generated images (from MCP tools) have `sourceUrl` - they're embedded in content as markdown
+        // SDK stores file metadata in two ways:
+        // 1. `files` - Old style with full FileMetadata (includes url, id, etc.)
+        // 2. `fileIds` - New style with just media IDs (for OPFS-stored files)
         const storedFiles = msg.files || [];
+        const storedFileIds = msg.fileIds || [];
+
+        // Handle old-style files array
         if (storedFiles.length > 0) {
           for (const file of storedFiles) {
             const mimeType = file.type || "";
@@ -717,6 +721,36 @@ const handleSwitchConversation = useCallback(
                 mediaType: mimeType,
                 filename: file.name || "",
               });
+            }
+          }
+        }
+
+        // Handle new-style fileIds (media IDs for OPFS-stored files)
+        if (storedFiles.length === 0 && storedFileIds.length > 0 && walletAddress && hasEncryptionKey(walletAddress)) {
+          for (const mediaId of storedFileIds) {
+            try {
+              const encryptionKey = await getEncryptionKey(walletAddress);
+              const result = await readEncryptedFile(mediaId, encryptionKey);
+              if (result) {
+                const fileUrl = await blobToDataUrl(result.blob);
+                const mimeType = result.metadata?.type || "application/octet-stream";
+
+                if (mimeType.startsWith("image/")) {
+                  parts.push({
+                    type: "image_url" as const,
+                    image_url: { url: fileUrl },
+                  });
+                } else {
+                  parts.push({
+                    type: "file" as const,
+                    url: fileUrl,
+                    mediaType: mimeType,
+                    filename: result.metadata?.name || mediaId,
+                  });
+                }
+              }
+            } catch (err) {
+              console.error(`Failed to read file ${mediaId} from OPFS:`, err);
             }
           }
         }
