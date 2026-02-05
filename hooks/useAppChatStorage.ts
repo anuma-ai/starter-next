@@ -652,9 +652,13 @@ export function useAppChatStorage({
             else if (currentResponse.tool_calls) {
               toolCalls = currentResponse.tool_calls;
             }
-            // SDK wrapped format: response.data.output with function_call items
+            // SDK wrapped format: response.data.output with function_call items (Responses API)
             else if (currentResponse.data?.output && Array.isArray(currentResponse.data.output)) {
               toolCalls = currentResponse.data.output.filter((item: any) => item.type === 'function_call');
+            }
+            // SDK wrapped format: response.data.choices with tool_calls (Completions API)
+            else if (currentResponse.data?.choices && currentResponse.data.choices[0]?.message?.tool_calls) {
+              toolCalls = currentResponse.data.choices[0].message.tool_calls;
             }
             // Responses API format: output array with function_call items
             else if (currentResponse.output && Array.isArray(currentResponse.output)) {

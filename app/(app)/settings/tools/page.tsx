@@ -135,7 +135,7 @@ export default function ToolsPage() {
     return identityToken ?? null;
   }, [identityToken]);
 
-  const { tools, enabledTools, isLoading, error, refetch, toggleTool } =
+  const { tools, enabledTools, isLoading, error, checksum, refetch, toggleTool } =
     useAppTools({
       getToken,
       baseUrl: process.env.NEXT_PUBLIC_API_URL,
@@ -304,6 +304,11 @@ export default function ToolsPage() {
           {lastFetched && !isLoading && (
             <p className="text-xs text-muted-foreground mt-3 text-center">
               Last updated: {lastFetched.toLocaleTimeString()}
+            </p>
+          )}
+          {checksum && !isLoading && (
+            <p className="text-xs text-muted-foreground mt-1 text-center font-mono">
+              {checksum}
             </p>
           )}
         </div>
