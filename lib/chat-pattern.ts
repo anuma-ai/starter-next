@@ -501,12 +501,22 @@ export function useChatPattern(): React.CSSProperties {
 
   // Preload icons when theme changes
   React.useEffect(() => {
+    let cancelled = false;
+
     if (iconTheme === "none") {
       setIconsLoaded(true);
       return;
     }
     setIconsLoaded(preloadedThemes.has(iconTheme));
-    preloadThemeIcons(iconTheme).then(() => setIconsLoaded(true));
+    preloadThemeIcons(iconTheme).then(() => {
+      if (!cancelled) {
+        setIconsLoaded(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [iconTheme]);
 
   const strokeColor = getPatternStrokeColor(colorThemeId);
@@ -591,12 +601,22 @@ export function useChatPatternWithProject(
 
   // Preload icons when theme changes
   React.useEffect(() => {
+    let cancelled = false;
+
     if (effectiveIconTheme === "none") {
       setIconsLoaded(true);
       return;
     }
     setIconsLoaded(preloadedThemes.has(effectiveIconTheme));
-    preloadThemeIcons(effectiveIconTheme).then(() => setIconsLoaded(true));
+    preloadThemeIcons(effectiveIconTheme).then(() => {
+      if (!cancelled) {
+        setIconsLoaded(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [effectiveIconTheme]);
 
   const strokeColor = getPatternStrokeColor(effectiveColorTheme);
