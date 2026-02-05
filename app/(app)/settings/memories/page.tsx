@@ -31,10 +31,20 @@ export default function MemoriesPage() {
     if (savedEnabled !== null) setMemoryEnabled(savedEnabled === "true");
 
     const savedMemoryLimit = localStorage.getItem("chat_memoryLimit");
-    if (savedMemoryLimit) setMemoryLimit(parseInt(savedMemoryLimit, 10));
+    if (savedMemoryLimit) {
+      const limit = parseInt(savedMemoryLimit, 10);
+      if (!isNaN(limit) && limit > 0) {
+        setMemoryLimit(limit);
+      }
+    }
 
     const savedMemoryThreshold = localStorage.getItem("chat_memoryThreshold");
-    if (savedMemoryThreshold) setMemoryThreshold(parseFloat(savedMemoryThreshold));
+    if (savedMemoryThreshold) {
+      const threshold = parseFloat(savedMemoryThreshold);
+      if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
+        setMemoryThreshold(threshold);
+      }
+    }
   }, []);
 
   const handleMemoryEnabledChange = (checked: boolean) => {
