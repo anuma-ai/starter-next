@@ -120,63 +120,26 @@ function storeConversationTitle(conversationId: string, title: string): void {
 }
 
 /**
- * Generate a conversation title based on the messages
+ * Extract text content from SDK response data
  */
-async function generateConversationTitle(
-  messages: Array<{ role: string; text: string }>,
-  getToken: () => Promise<string | null>
-): Promise<string | null> {
-  try {
-    const token = await getToken();
-    if (!token) return null;
-
-    // Take up to the first 3 message exchanges for context
-    const contextMessages = messages.slice(0, 6);
-    const conversationContext = contextMessages
-      .map((m) => `${m.role}: ${m.text.slice(0, 200)}`)
-      .join("\n");
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/responses`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          model: "openai/gpt-4o-mini",
-          input: `Generate a short, descriptive title (3-6 words) for this conversation. Return ONLY the title, nothing else.\n\nConversation:\n${conversationContext}`,
-          max_output_tokens: 50,
-        }),
-      }
-    );
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-
-    // Extract text from response - handle various formats
-    let title =
-      data.output?.[0]?.content?.[0]?.text ||
-      data.output?.[0]?.content ||
-      data.choices?.[0]?.message?.content ||
-      data.text ||
-      null;
-
-    if (title) {
-      // Clean up the title - remove quotes, trim whitespace
-      title = title.replace(/^["']|["']$/g, "").trim();
-      // Limit to reasonable length
-      if (title.length > 50) {
-        title = title.slice(0, 47) + "...";
+function extractTextFromResponse(data: any): string | null {
+  // Handle Responses API format
+  if (data?.output && Array.isArray(data.output)) {
+    for (const item of data.output) {
+      if (item.type === "message" && item.content) {
+        for (const content of item.content) {
+          if (content.type === "output_text" && content.text) {
+            return content.text;
+          }
+        }
       }
     }
-
-    return title;
-  } catch {
-    return null;
   }
+  // Handle Chat Completions API format
+  if (data?.choices?.[0]?.message?.content) {
+    return data.choices[0].message.content;
+  }
+  return null;
 }
 
 /**
@@ -811,29 +774,62 @@ export function useAppChatStorage({
         const userText = textForStorage || text;
         const assistantText = finalText;
 
-        const messagesForTitle = [
+        const conversationContext = [
           { role: "user", text: userText.slice(0, 200) },
           { role: "assistant", text: assistantText.slice(0, 200) },
-        ].filter((m) => m.text);
+        ]
+          .filter((m) => m.text)
+          .map((m) => `${m.role}: ${m.text}`)
+          .join("\n");
 
-        // Delay slightly to ensure message is saved
-        setTimeout(() => {
-          generateConversationTitle(messagesForTitle, getToken).then(
-            (newTitle) => {
-              if (newTitle) {
-                // Use the conversation ID this message was sent to, not where user is currently viewing
-                storeConversationTitle(messageConversationId, newTitle);
-                setConversations((prevConversations) =>
-                  prevConversations.map((conv) =>
-                    conv.id === messageConversationId ||
-                    conv.conversationId === messageConversationId
-                      ? { ...conv, title: newTitle }
-                      : conv
-                  )
-                );
+        // Generate title using sendMessage with skipStorage to avoid polluting the database
+        // Delay slightly to ensure main message is saved first
+        setTimeout(async () => {
+          try {
+            const titleResponse = await sendMessage({
+              messages: [
+                {
+                  role: "user" as const,
+                  content: [
+                    {
+                      type: "text",
+                      text: `Generate a short, descriptive title (3-6 words) for this conversation. Return ONLY the title, nothing else.\n\nConversation:\n${conversationContext}`,
+                    },
+                  ],
+                },
+              ],
+              model: "openai/gpt-4o-mini",
+              maxOutputTokens: 50,
+              skipStorage: true,
+              includeHistory: false,
+            });
+
+            if (titleResponse.error || !titleResponse.data) return;
+
+            // Extract title from response
+            let newTitle = extractTextFromResponse(titleResponse.data);
+            if (newTitle) {
+              // Clean up the title - remove quotes, trim whitespace
+              newTitle = newTitle.replace(/^["']|["']$/g, "").trim();
+              // Limit to reasonable length
+              if (newTitle.length > 50) {
+                newTitle = newTitle.slice(0, 47) + "...";
               }
+
+              // Use the conversation ID this message was sent to, not where user is currently viewing
+              storeConversationTitle(messageConversationId, newTitle);
+              setConversations((prevConversations) =>
+                prevConversations.map((conv) =>
+                  conv.id === messageConversationId ||
+                  conv.conversationId === messageConversationId
+                    ? { ...conv, title: newTitle }
+                    : conv
+                )
+              );
             }
-          );
+          } catch {
+            // Title generation is non-critical, silently fail
+          }
         }, 500);
       }
 
