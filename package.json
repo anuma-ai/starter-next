@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "docs": "rimraf docs && typedoc && cp README.md documents/_meta.js docs/documents/",
+    "generate": "rimraf docs && typedoc && cp README.md documents/_meta.js docs/documents/",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
