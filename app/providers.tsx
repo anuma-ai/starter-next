@@ -7,9 +7,10 @@ import {
   useContext,
   type ReactNode,
 } from "react";
-import { PrivyProvider } from "@privy-io/react-auth";
+import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import type { Database } from "@nozbe/watermelondb";
-import { getDatabase } from "@/lib/database";
+import { useDatabaseManager } from "@reverbia/sdk/react";
+import { dbManager } from "@/lib/database";
 import { BackupAuthProvider as SDKBackupAuthProvider } from "@reverbia/sdk/react";
 
 type Props = {
@@ -26,22 +27,39 @@ export function useDatabase(): Database {
   return database;
 }
 
-export function DatabaseProvider({ children }: Props) {
-  const [database, setDatabase] = useState<Database | null>(null);
-
-  useEffect(() => {
-    setDatabase(getDatabase());
-  }, []);
-
-  if (!database) {
-    return null;
-  }
-
+function DatabaseProviderWithPrivy({ children }: Props) {
+  const { user } = usePrivy();
+  const database = useDatabaseManager(user?.wallet?.address, dbManager);
   return (
     <DatabaseContext.Provider value={database}>
       {children}
     </DatabaseContext.Provider>
   );
+}
+
+function DatabaseProviderGuest({ children }: Props) {
+  const database = useDatabaseManager(undefined, dbManager);
+  return (
+    <DatabaseContext.Provider value={database}>
+      {children}
+    </DatabaseContext.Provider>
+  );
+}
+
+export function DatabaseProvider({ children }: Props) {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
+
+  if (privyAppId) {
+    return <DatabaseProviderWithPrivy>{children}</DatabaseProviderWithPrivy>;
+  }
+  return <DatabaseProviderGuest>{children}</DatabaseProviderGuest>;
 }
 
 const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
