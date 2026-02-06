@@ -269,7 +269,7 @@ export default function ToolsPage() {
                       onClick={() => hasDetails && toggleExpanded(tool.name)}
                     >
                       <div className="flex items-center flex-1 pr-4">
-                        <p className="text-sm">
+                        <p className={`text-sm ${currentMode === "disable" ? "text-neutral-300" : ""}`}>
                           {formatToolName(tool.name)}
                         </p>
                       </div>
