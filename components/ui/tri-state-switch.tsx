@@ -53,7 +53,7 @@ function TriStateSwitch({
         data-state={dataState}
       >
         {value === "disable" && (
-          <X className="size-2.5 text-neutral-300" strokeWidth={3} />
+          <X className="size-2.5 text-neutral-300" strokeWidth={4} />
         )}
       </span>
     </button>
