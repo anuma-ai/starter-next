@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type TriState = "auto" | "enable" | "disable"
@@ -44,13 +45,17 @@ function TriStateSwitch({
       <span
         data-slot="switch-thumb"
         className={cn(
-          "bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full ring-0 transition-transform",
+          "bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none flex items-center justify-center size-4 rounded-full ring-0 transition-transform",
           value === "disable" && "translate-x-0",
           value === "auto" && "translate-x-[11px]",
           value === "enable" && "translate-x-[22px]"
         )}
         data-state={dataState}
-      />
+      >
+        {value === "disable" && (
+          <X className="size-2.5 text-neutral-300" strokeWidth={3} />
+        )}
+      </span>
     </button>
   )
 }
