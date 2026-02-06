@@ -6,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
-import { useAppTools, type ToolParameter, type ToolMode } from "@/hooks/useAppTools";
+import { useAppTools, type ToolParameter } from "@/hooks/useAppTools";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Tick01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import { TriStateSwitch, type TriState } from "@/components/ui/tri-state-switch";
 
 /**
  * Convert tool name to human readable format
@@ -262,29 +261,12 @@ export default function ToolsPage() {
                           {formatToolName(tool.name)}
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const nextMode: ToolMode =
-                            currentMode === "auto"
-                              ? "enable"
-                              : currentMode === "enable"
-                                ? "disable"
-                                : "auto";
-                          setToolMode(tool.name, nextMode);
-                        }}
+                      <TriStateSwitch
+                        value={currentMode as TriState}
+                        onChange={(mode) => setToolMode(tool.name, mode)}
+                        onClick={(e) => e.stopPropagation()}
                         title={`Mode: ${currentMode}`}
-                        className={`size-8 border shadow-none ${currentMode === "auto" ? "border-border" : "border-neutral-300 dark:border-neutral-600"}`}
-                      >
-                        {currentMode === "enable" && (
-                          <HugeiconsIcon icon={Tick01Icon} strokeWidth={2} className="size-4 text-neutral-700 dark:text-neutral-300" />
-                        )}
-                        {currentMode === "disable" && (
-                          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-4 text-neutral-700 dark:text-neutral-300" />
-                        )}
-                      </Button>
+                      />
                     </div>
                     <div
                       className={`grid transition-all duration-200 ease-out ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
