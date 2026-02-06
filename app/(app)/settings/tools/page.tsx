@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
 import { SearchInput } from "@/components/ui/search-input";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import { useAppTools, type ToolParameter } from "@/hooks/useAppTools";
@@ -13,6 +12,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { TriStateSwitch, type TriState } from "@/components/ui/tri-state-switch";
+import { Switch } from "@/components/ui/switch";
 
 /**
  * Convert tool name to human readable format
@@ -135,7 +136,7 @@ export default function ToolsPage() {
     return identityToken ?? null;
   }, [identityToken]);
 
-  const { tools, enabledTools, isLoading, error, checksum, refetch, toggleTool } =
+  const { tools, isLoading, error, checksum, refetch, setToolMode, getMode, semanticSearchEnabled, toggleSemanticSearch } =
     useAppTools({
       getToken,
       baseUrl: process.env.NEXT_PUBLIC_API_URL,
@@ -190,10 +191,20 @@ export default function ToolsPage() {
           </h1>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-4">
-          Enable tools to extend the AI assistant&apos;s capabilities. Enabled
-          tools will be available when sending messages.
-        </p>
+        <div className="rounded-xl bg-white dark:bg-card p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Semantic Tool Search</p>
+              <p className="text-xs text-muted-foreground">
+                Automatically select relevant tools based on your message
+              </p>
+            </div>
+            <Switch
+              checked={semanticSearchEnabled}
+              onCheckedChange={toggleSemanticSearch}
+            />
+          </div>
+        </div>
 
         <SearchInput
           value={searchQuery}
@@ -228,7 +239,7 @@ export default function ToolsPage() {
           ) : (
             <div className="rounded-xl bg-white dark:bg-card p-1">
               {filteredTools.map((tool, index) => {
-                const isEnabled = enabledTools.includes(tool.name);
+                const currentMode = getMode(tool.name);
                 const properties = tool.parameters?.properties || {};
                 const required = tool.parameters?.required || [];
                 const paramNames = Object.keys(properties);
@@ -248,25 +259,26 @@ export default function ToolsPage() {
                 return (
                   <div
                     key={tool.name}
-                    className={`${
-                      index < filteredTools.length - 1
-                        ? "border-b border-border/50"
-                        : ""
-                    }`}
+                    className={`${index < filteredTools.length - 1
+                      ? "border-b border-border/50"
+                      : ""
+                      }`}
                   >
                     <div
                       className={`flex items-center justify-between px-4 py-3 ${hasDetails ? "cursor-pointer" : ""}`}
                       onClick={() => hasDetails && toggleExpanded(tool.name)}
                     >
                       <div className="flex items-center flex-1 pr-4">
-                        <p className="text-sm">
+                        <p className={`text-sm ${currentMode === "disable" ? "text-neutral-300" : ""}`}>
                           {formatToolName(tool.name)}
                         </p>
                       </div>
-                      <Switch
-                        checked={isEnabled}
-                        onCheckedChange={() => toggleTool(tool.name)}
+                      <TriStateSwitch
+                        value={currentMode as TriState}
+                        onChange={(mode) => setToolMode(tool.name, mode)}
                         onClick={(e) => e.stopPropagation()}
+                        title={`Mode: ${currentMode}`}
+                        twoStateMode={!semanticSearchEnabled}
                       />
                     </div>
                     <div

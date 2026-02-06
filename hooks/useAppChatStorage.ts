@@ -6,6 +6,7 @@ import {
   hasEncryptionKey,
   getEncryptionKey,
   readEncryptedFile,
+  type ServerToolsFilter,
 } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
@@ -77,7 +78,7 @@ type SendMessageOptions = {
   files?: FileUIPart[];
   displayText?: string;
   skipOptimisticUpdate?: boolean;
-  serverTools?: string[];
+  serverTools?: ServerToolsFilter;
   clientTools?: any[];
   toolChoice?: string;
   apiType?: "responses" | "completions";
@@ -635,7 +636,7 @@ export function useAppChatStorage({
         ...(onThinking && { onThinking }),
         ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
         ...(memoryContext && { memoryContext }),
-        ...(serverTools && serverTools.length > 0 && { serverTools }),
+        ...(serverTools && (typeof serverTools === "function" || serverTools.length > 0) && { serverTools }),
         ...(clientTools && clientTools.length > 0 && { clientTools }),
         ...(toolChoice && { toolChoice }),
         ...(apiType && { apiType }),

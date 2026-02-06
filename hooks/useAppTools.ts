@@ -38,43 +38,140 @@ type UseToolsProps = {
   baseUrl?: string;
 };
 
-const ENABLED_TOOLS_KEY = "chat_enabledServerTools";
-const DEFAULT_ENABLED_TOOLS = [
-  'AnumaImageMCP_generate_cloud_image',
-  'PerplexityMCP_perplexity_search',
-  'VisionMCP_analyze_image',
-]
+/**
+ * Tool mode: auto (semantic search decides), enable (always include), disable (always exclude)
+ */
+export type ToolMode = 'auto' | 'enable' | 'disable';
 
 /**
- * Get enabled tools from localStorage
+ * Storage format: map of tool name to mode
  */
-export function getEnabledTools(): string[] {
-  if (typeof window === "undefined") return DEFAULT_ENABLED_TOOLS;
-  const stored = localStorage.getItem(ENABLED_TOOLS_KEY);
-  if (!stored) return DEFAULT_ENABLED_TOOLS;
+export type ToolModes = Record<string, ToolMode>;
+
+const TOOL_MODES_KEY = "chat_serverToolModes";
+const SEMANTIC_SEARCH_KEY = "chat_semanticToolSearch";
+
+// Legacy key for migration
+const LEGACY_ENABLED_TOOLS_KEY = "chat_enabledServerTools";
+
+/**
+ * Get semantic search enabled state from localStorage
+ */
+export function getSemanticSearchEnabled(): boolean {
+  if (typeof window === "undefined") return true;
+  const stored = localStorage.getItem(SEMANTIC_SEARCH_KEY);
+  if (stored === null) return true; // Default to enabled
+  return stored === "true";
+}
+
+/**
+ * Set semantic search enabled state in localStorage
+ */
+export function setSemanticSearchEnabled(enabled: boolean): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SEMANTIC_SEARCH_KEY, String(enabled));
+}
+
+
+/**
+ * Migrate from legacy enabled tools array to new modes format
+ */
+function migrateLegacyStorage(): ToolModes | null {
+  if (typeof window === "undefined") return null;
+
+  const legacyStored = localStorage.getItem(LEGACY_ENABLED_TOOLS_KEY);
+  if (!legacyStored) return null;
+
   try {
-    return JSON.parse(stored);
+    const enabledTools: string[] = JSON.parse(legacyStored);
+    const modes: ToolModes = {};
+
+    // Convert enabled tools to 'enable' mode
+    for (const toolName of enabledTools) {
+      modes[toolName] = 'enable';
+    }
+
+    // Remove legacy key after migration
+    localStorage.removeItem(LEGACY_ENABLED_TOOLS_KEY);
+
+    return modes;
   } catch {
-    return DEFAULT_ENABLED_TOOLS;
+    return null;
   }
 }
 
 /**
- * Save enabled tools to localStorage
+ * Get tool modes from localStorage
  */
-export function setEnabledTools(tools: string[]): void {
+export function getToolModes(): ToolModes {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  // Check for legacy format and migrate
+  const migrated = migrateLegacyStorage();
+  if (migrated) {
+    localStorage.setItem(TOOL_MODES_KEY, JSON.stringify(migrated));
+    return migrated;
+  }
+
+  const stored = localStorage.getItem(TOOL_MODES_KEY);
+  if (!stored) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Save tool modes to localStorage
+ */
+export function setToolModes(modes: ToolModes): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(ENABLED_TOOLS_KEY, JSON.stringify(tools));
+  localStorage.setItem(TOOL_MODES_KEY, JSON.stringify(modes));
+}
+
+/**
+ * Get mode for a specific tool (defaults to 'auto')
+ */
+export function getToolMode(toolName: string): ToolMode {
+  const modes = getToolModes();
+  return modes[toolName] || 'auto';
+}
+
+/**
+ * Get all tools with 'enable' mode
+ */
+export function getEnabledTools(): string[] {
+  const modes = getToolModes();
+  return Object.entries(modes)
+    .filter(([_, mode]) => mode === 'enable')
+    .map(([name]) => name);
+}
+
+/**
+ * Get all tools with 'disable' mode
+ */
+export function getDisabledTools(): string[] {
+  const modes = getToolModes();
+  return Object.entries(modes)
+    .filter(([_, mode]) => mode === 'disable')
+    .map(([name]) => name);
 }
 
 /**
  * useAppTools Hook
  *
- * Wraps the SDK's useTools hook and adds local enabled tools management
+ * Wraps the SDK's useTools hook and adds local tool modes management
  * via localStorage.
  */
 export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
-  const [enabledTools, setEnabledToolsState] = useState<string[]>([]);
+  const [toolModes, setToolModesState] = useState<ToolModes>({});
+  const [semanticSearchEnabled, setSemanticSearchEnabledState] = useState(true);
 
   // Use SDK's useTools hook for fetching tools
   const {
@@ -89,9 +186,10 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
     baseUrl,
   });
 
-  // Load enabled tools from localStorage on mount
+  // Load tool modes and semantic search setting from localStorage on mount
   useEffect(() => {
-    setEnabledToolsState(getEnabledTools());
+    setToolModesState(getToolModes());
+    setSemanticSearchEnabledState(getSemanticSearchEnabled());
   }, []);
 
   // Map SDK tools to our Tool type
@@ -101,32 +199,50 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
     parameters: tool.parameters || { type: "object", properties: {}, required: [] },
   }));
 
-  // Toggle a tool's enabled state
-  const toggleTool = useCallback((toolName: string) => {
-    setEnabledToolsState((prev) => {
-      const newEnabled = prev.includes(toolName)
-        ? prev.filter((t) => t !== toolName)
-        : [...prev, toolName];
-      setEnabledTools(newEnabled);
-      return newEnabled;
+  // Set mode for a specific tool
+  const setToolMode = useCallback((toolName: string, mode: ToolMode) => {
+    setToolModesState((prev) => {
+      const newModes = { ...prev };
+      if (mode === 'auto') {
+        // Remove from storage when set to auto (default)
+        delete newModes[toolName];
+      } else {
+        newModes[toolName] = mode;
+      }
+      setToolModes(newModes);
+      return newModes;
     });
   }, []);
 
-  // Check if a tool is enabled
-  const isToolEnabled = useCallback(
-    (toolName: string) => enabledTools.includes(toolName),
-    [enabledTools]
+  // Get mode for a specific tool
+  const getMode = useCallback(
+    (toolName: string): ToolMode => toolModes[toolName] || 'auto',
+    [toolModes]
   );
+
+  // Legacy: get enabled tools (for backwards compatibility)
+  const enabledTools = Object.entries(toolModes)
+    .filter(([_, mode]) => mode === 'enable')
+    .map(([name]) => name);
+
+  // Toggle semantic search
+  const toggleSemanticSearch = useCallback((enabled: boolean) => {
+    setSemanticSearchEnabledState(enabled);
+    setSemanticSearchEnabled(enabled);
+  }, []);
 
   return {
     tools,
+    toolModes,
     enabledTools,
     isLoading,
     error,
     checksum,
     refetch: refresh,
-    toggleTool,
-    isToolEnabled,
+    setToolMode,
+    getMode,
     checkForUpdates,
+    semanticSearchEnabled,
+    toggleSemanticSearch,
   };
 }
