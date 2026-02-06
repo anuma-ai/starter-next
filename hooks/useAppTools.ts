@@ -49,9 +49,28 @@ export type ToolMode = 'auto' | 'enable' | 'disable';
 export type ToolModes = Record<string, ToolMode>;
 
 const TOOL_MODES_KEY = "chat_serverToolModes";
+const SEMANTIC_SEARCH_KEY = "chat_semanticToolSearch";
 
 // Legacy key for migration
 const LEGACY_ENABLED_TOOLS_KEY = "chat_enabledServerTools";
+
+/**
+ * Get semantic search enabled state from localStorage
+ */
+export function getSemanticSearchEnabled(): boolean {
+  if (typeof window === "undefined") return true;
+  const stored = localStorage.getItem(SEMANTIC_SEARCH_KEY);
+  if (stored === null) return true; // Default to enabled
+  return stored === "true";
+}
+
+/**
+ * Set semantic search enabled state in localStorage
+ */
+export function setSemanticSearchEnabled(enabled: boolean): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SEMANTIC_SEARCH_KEY, String(enabled));
+}
 
 // Default tools that should be enabled
 const DEFAULT_ENABLED_TOOLS = [
@@ -172,6 +191,7 @@ export function getDisabledTools(): string[] {
  */
 export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
   const [toolModes, setToolModesState] = useState<ToolModes>({});
+  const [semanticSearchEnabled, setSemanticSearchEnabledState] = useState(true);
 
   // Use SDK's useTools hook for fetching tools
   const {
@@ -186,9 +206,10 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
     baseUrl,
   });
 
-  // Load tool modes from localStorage on mount
+  // Load tool modes and semantic search setting from localStorage on mount
   useEffect(() => {
     setToolModesState(getToolModes());
+    setSemanticSearchEnabledState(getSemanticSearchEnabled());
   }, []);
 
   // Map SDK tools to our Tool type
@@ -224,6 +245,12 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
     .filter(([_, mode]) => mode === 'enable')
     .map(([name]) => name);
 
+  // Toggle semantic search
+  const toggleSemanticSearch = useCallback((enabled: boolean) => {
+    setSemanticSearchEnabledState(enabled);
+    setSemanticSearchEnabled(enabled);
+  }, []);
+
   return {
     tools,
     toolModes,
@@ -235,5 +262,7 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
     setToolMode,
     getMode,
     checkForUpdates,
+    semanticSearchEnabled,
+    toggleSemanticSearch,
   };
 }

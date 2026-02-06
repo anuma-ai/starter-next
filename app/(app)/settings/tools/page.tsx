@@ -13,6 +13,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { TriStateSwitch, type TriState } from "@/components/ui/tri-state-switch";
+import { Switch } from "@/components/ui/switch";
 
 /**
  * Convert tool name to human readable format
@@ -135,7 +136,7 @@ export default function ToolsPage() {
     return identityToken ?? null;
   }, [identityToken]);
 
-  const { tools, isLoading, error, checksum, refetch, setToolMode, getMode } =
+  const { tools, isLoading, error, checksum, refetch, setToolMode, getMode, semanticSearchEnabled, toggleSemanticSearch } =
     useAppTools({
       getToken,
       baseUrl: process.env.NEXT_PUBLIC_API_URL,
@@ -190,9 +191,20 @@ export default function ToolsPage() {
           </h1>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-4">
-          Click the icon to toggle: auto (semantic search), enabled (always include), disabled (always exclude).
-        </p>
+        <div className="rounded-xl bg-white dark:bg-card p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Semantic Tool Search</p>
+              <p className="text-xs text-muted-foreground">
+                Automatically select relevant tools based on your message
+              </p>
+            </div>
+            <Switch
+              checked={semanticSearchEnabled}
+              onCheckedChange={toggleSemanticSearch}
+            />
+          </div>
+        </div>
 
         <SearchInput
           value={searchQuery}

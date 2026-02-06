@@ -33,7 +33,7 @@ import {
   findMatchingTools,
 } from "@reverbia/sdk/react";
 import { useAppProjects } from "@/hooks/useAppProjects";
-import { getEnabledTools, getDisabledTools } from "@/hooks/useAppTools";
+import { getEnabledTools, getDisabledTools, getSemanticSearchEnabled } from "@/hooks/useAppTools";
 import type {
   StoredProject,
   StoredConversation,
@@ -411,17 +411,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     serverTools: (embeddings: number[] | number[][], tools: ServerTool[]) => {
       const enabledToolNames = getEnabledTools();
       const disabledToolNames = getDisabledTools();
+      const semanticEnabled = getSemanticSearchEnabled();
 
-      // Get semantic matches, excluding disabled tools
-      const semanticMatches = findMatchingTools(embeddings, tools, { limit: 5 })
-        .map((m: { tool: ServerTool }) => m.tool.name)
-        .filter((name: string) => !disabledToolNames.includes(name));
-
-      // Add enabled tools at the beginning (if not already included)
+      // Start with enabled tools
       const result = [...enabledToolNames];
-      for (const name of semanticMatches) {
-        if (!result.includes(name)) {
-          result.push(name);
+
+      // If semantic search is enabled, add semantic matches
+      if (semanticEnabled) {
+        const semanticMatches = findMatchingTools(embeddings, tools, { limit: 5 })
+          .map((m: { tool: ServerTool }) => m.tool.name)
+          .filter((name: string) => !disabledToolNames.includes(name));
+
+        for (const name of semanticMatches) {
+          if (!result.includes(name)) {
+            result.push(name);
+          }
         }
       }
 
