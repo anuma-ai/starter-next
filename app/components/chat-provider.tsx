@@ -33,6 +33,7 @@ import {
   findMatchingTools,
 } from "@reverbia/sdk/react";
 import { useAppProjects } from "@/hooks/useAppProjects";
+import { getEnabledTools, getDisabledTools } from "@/hooks/useAppTools";
 import type {
   StoredProject,
   StoredConversation,
@@ -406,8 +407,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     walletAddress,
     encryptionReady,
     // Use semantic search to find relevant tools based on prompt similarity
-    serverTools: (embeddings: number[] | number[][], tools: ServerTool[]) =>
-      findMatchingTools(embeddings, tools, { limit: 5 }).map((m) => m.tool.name),
+    // Apply user's tool mode preferences: enable (always include), disable (always exclude), auto (semantic search)
+    serverTools: (embeddings: number[] | number[][], tools: ServerTool[]) => {
+      const enabledToolNames = getEnabledTools();
+      const disabledToolNames = getDisabledTools();
+
+      // Get semantic matches, excluding disabled tools
+      const semanticMatches = findMatchingTools(embeddings, tools, { limit: 5 })
+        .map((m: { tool: ServerTool }) => m.tool.name)
+        .filter((name: string) => !disabledToolNames.includes(name));
+
+      // Add enabled tools at the beginning (if not already included)
+      const result = [...enabledToolNames];
+      for (const name of semanticMatches) {
+        if (!result.includes(name)) {
+          result.push(name);
+        }
+      }
+
+      return result;
+    },
     clientTools,
   });
 

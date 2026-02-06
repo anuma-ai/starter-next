@@ -4,15 +4,21 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
 import { SearchInput } from "@/components/ui/search-input";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
-import { useAppTools, type ToolParameter } from "@/hooks/useAppTools";
+import { useAppTools, type ToolParameter, type ToolMode } from "@/hooks/useAppTools";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /**
  * Convert tool name to human readable format
@@ -135,7 +141,7 @@ export default function ToolsPage() {
     return identityToken ?? null;
   }, [identityToken]);
 
-  const { tools, enabledTools, isLoading, error, checksum, refetch, toggleTool } =
+  const { tools, isLoading, error, checksum, refetch, setToolMode, getMode } =
     useAppTools({
       getToken,
       baseUrl: process.env.NEXT_PUBLIC_API_URL,
@@ -191,8 +197,8 @@ export default function ToolsPage() {
         </div>
 
         <p className="text-sm text-muted-foreground mb-4">
-          Enable tools to extend the AI assistant&apos;s capabilities. Enabled
-          tools will be available when sending messages.
+          Configure tool availability. Auto lets semantic search decide,
+          Enable always includes the tool, Disable always excludes it.
         </p>
 
         <SearchInput
@@ -228,7 +234,7 @@ export default function ToolsPage() {
           ) : (
             <div className="rounded-xl bg-white dark:bg-card p-1">
               {filteredTools.map((tool, index) => {
-                const isEnabled = enabledTools.includes(tool.name);
+                const currentMode = getMode(tool.name);
                 const properties = tool.parameters?.properties || {};
                 const required = tool.parameters?.required || [];
                 const paramNames = Object.keys(properties);
@@ -263,11 +269,23 @@ export default function ToolsPage() {
                           {formatToolName(tool.name)}
                         </p>
                       </div>
-                      <Switch
-                        checked={isEnabled}
-                        onCheckedChange={() => toggleTool(tool.name)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      <Select
+                        value={currentMode}
+                        onValueChange={(value: ToolMode) => setToolMode(tool.name, value)}
+                      >
+                        <SelectTrigger
+                          size="sm"
+                          className="w-[100px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Auto</SelectItem>
+                          <SelectItem value="enable">Enable</SelectItem>
+                          <SelectItem value="disable">Disable</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div
                       className={`grid transition-all duration-200 ease-out ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
