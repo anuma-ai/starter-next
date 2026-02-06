@@ -72,12 +72,6 @@ export function setSemanticSearchEnabled(enabled: boolean): void {
   localStorage.setItem(SEMANTIC_SEARCH_KEY, String(enabled));
 }
 
-// Default tools that should be enabled
-const DEFAULT_ENABLED_TOOLS = [
-  'AnumaImageMCP_generate_cloud_image',
-  'PerplexityMCP_perplexity_search',
-  'VisionMCP_analyze_image',
-];
 
 /**
  * Migrate from legacy enabled tools array to new modes format
@@ -111,12 +105,7 @@ function migrateLegacyStorage(): ToolModes | null {
  */
 export function getToolModes(): ToolModes {
   if (typeof window === "undefined") {
-    // Return defaults for SSR
-    const modes: ToolModes = {};
-    for (const toolName of DEFAULT_ENABLED_TOOLS) {
-      modes[toolName] = 'enable';
-    }
-    return modes;
+    return {};
   }
 
   // Check for legacy format and migrate
@@ -128,22 +117,13 @@ export function getToolModes(): ToolModes {
 
   const stored = localStorage.getItem(TOOL_MODES_KEY);
   if (!stored) {
-    // Initialize with defaults
-    const modes: ToolModes = {};
-    for (const toolName of DEFAULT_ENABLED_TOOLS) {
-      modes[toolName] = 'enable';
-    }
-    return modes;
+    return {};
   }
 
   try {
     return JSON.parse(stored);
   } catch {
-    const modes: ToolModes = {};
-    for (const toolName of DEFAULT_ENABLED_TOOLS) {
-      modes[toolName] = 'enable';
-    }
-    return modes;
+    return {};
   }
 }
 
