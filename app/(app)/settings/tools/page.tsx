@@ -278,6 +278,7 @@ export default function ToolsPage() {
                         onChange={(mode) => setToolMode(tool.name, mode)}
                         onClick={(e) => e.stopPropagation()}
                         title={`Mode: ${currentMode}`}
+                        twoStateMode={!semanticSearchEnabled}
                       />
                     </div>
                     <div

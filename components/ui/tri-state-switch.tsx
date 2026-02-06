@@ -9,6 +9,8 @@ type TriState = "auto" | "enable" | "disable"
 interface TriStateSwitchProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {
   value?: TriState
   onChange?: (value: TriState) => void
+  /** When true, only cycles between enable/disable (skips auto) */
+  twoStateMode?: boolean
 }
 
 function TriStateSwitch({
@@ -16,17 +18,27 @@ function TriStateSwitch({
   value = "auto",
   onChange,
   onClick,
+  twoStateMode = false,
   ...props
 }: TriStateSwitchProps) {
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     onClick?.(e)
-    const nextState: TriState =
-      value === "auto" ? "enable" : value === "enable" ? "disable" : "auto"
+    let nextState: TriState
+    if (twoStateMode) {
+      // Two-state mode: toggle between enable and disable
+      nextState = value === "enable" ? "disable" : "enable"
+    } else {
+      // Three-state mode: auto -> enable -> disable -> auto
+      nextState = value === "auto" ? "enable" : value === "enable" ? "disable" : "auto"
+    }
     onChange?.(nextState)
   }
 
+  // In two-state mode, treat "auto" as "disable" for positioning
+  const effectiveValue = twoStateMode && value === "auto" ? "disable" : value
+
   // Map to data-state for styling (enable=checked, disable/auto=unchecked)
-  const dataState = value === "enable" ? "checked" : "unchecked"
+  const dataState = effectiveValue === "enable" ? "checked" : "unchecked"
 
   return (
     <button
@@ -46,13 +58,13 @@ function TriStateSwitch({
         data-slot="switch-thumb"
         className={cn(
           "bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none flex items-center justify-center size-4 rounded-full ring-0 transition-transform",
-          value === "disable" && "translate-x-0",
-          value === "auto" && "translate-x-[7px]",
-          value === "enable" && "translate-x-[14px]"
+          effectiveValue === "disable" && "translate-x-0",
+          effectiveValue === "auto" && "translate-x-[7px]",
+          effectiveValue === "enable" && "translate-x-[14px]"
         )}
         data-state={dataState}
       >
-        {value === "disable" && (
+        {effectiveValue === "disable" && (
           <X className="size-2.5 text-neutral-300" strokeWidth={4} />
         )}
       </span>
