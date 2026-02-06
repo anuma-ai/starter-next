@@ -5,4 +5,8 @@ export default withReverbia({
   reactStrictMode: false,
   // Empty turbopack config to acknowledge Next.js 16 default and silence the webpack/turbopack error
   turbopack: {},
+  // Include openmoji SVGs in Vercel serverless function bundles (dynamic fs.readFile isn't traced)
+  outputFileTracingIncludes: {
+    "/api/openmoji/\\[hexcode\\]": ["./node_modules/openmoji/black/svg/**/*"],
+  },
 });
