@@ -235,7 +235,7 @@ const handleSendMessage = useCallback(
       ...(onThinking && { onThinking }),
       ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
       ...(memoryContext && { memoryContext }),
-      ...(serverTools && serverTools.length > 0 && { serverTools }),
+      ...(serverTools && (typeof serverTools === "function" || serverTools.length > 0) && { serverTools }),
       ...(clientTools && clientTools.length > 0 && { clientTools }),
       ...(toolChoice && { toolChoice }),
       ...(apiType && { apiType }),
