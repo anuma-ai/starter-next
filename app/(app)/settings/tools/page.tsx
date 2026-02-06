@@ -12,13 +12,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Tick01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 
 /**
  * Convert tool name to human readable format
@@ -197,8 +192,7 @@ export default function ToolsPage() {
         </div>
 
         <p className="text-sm text-muted-foreground mb-4">
-          Configure tool availability. Auto lets semantic search decide,
-          Enable always includes the tool, Disable always excludes it.
+          Click the icon to toggle: auto (semantic search), enabled (always include), disabled (always exclude).
         </p>
 
         <SearchInput
@@ -254,11 +248,10 @@ export default function ToolsPage() {
                 return (
                   <div
                     key={tool.name}
-                    className={`${
-                      index < filteredTools.length - 1
-                        ? "border-b border-border/50"
-                        : ""
-                    }`}
+                    className={`${index < filteredTools.length - 1
+                      ? "border-b border-border/50"
+                      : ""
+                      }`}
                   >
                     <div
                       className={`flex items-center justify-between px-4 py-3 ${hasDetails ? "cursor-pointer" : ""}`}
@@ -269,23 +262,29 @@ export default function ToolsPage() {
                           {formatToolName(tool.name)}
                         </p>
                       </div>
-                      <Select
-                        value={currentMode}
-                        onValueChange={(value: ToolMode) => setToolMode(tool.name, value)}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const nextMode: ToolMode =
+                            currentMode === "auto"
+                              ? "enable"
+                              : currentMode === "enable"
+                                ? "disable"
+                                : "auto";
+                          setToolMode(tool.name, nextMode);
+                        }}
+                        title={`Mode: ${currentMode}`}
+                        className={`size-8 border shadow-none ${currentMode === "auto" ? "border-border" : "border-neutral-300 dark:border-neutral-600"}`}
                       >
-                        <SelectTrigger
-                          size="sm"
-                          className="w-[100px]"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Auto</SelectItem>
-                          <SelectItem value="enable">Enable</SelectItem>
-                          <SelectItem value="disable">Disable</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        {currentMode === "enable" && (
+                          <HugeiconsIcon icon={Tick01Icon} strokeWidth={2} className="size-4 text-neutral-700 dark:text-neutral-300" />
+                        )}
+                        {currentMode === "disable" && (
+                          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-4 text-neutral-700 dark:text-neutral-300" />
+                        )}
+                      </Button>
                     </div>
                     <div
                       className={`grid transition-all duration-200 ease-out ${isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
