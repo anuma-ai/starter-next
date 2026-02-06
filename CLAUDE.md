@@ -6,6 +6,7 @@ When asked to create a PR, use `gh pr create` with:
 
 - Title: semantic, comparing current branch to main (e.g., "feat: add new hook", "fix: resolve memory leak")
 - Description should be concise and include summary of changes
+- Do not include the "🤖 Generated with Claude Code" footer
 
 ## Branches
 
