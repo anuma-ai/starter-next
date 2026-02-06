@@ -29,15 +29,17 @@ import {
   hasDriveCredentials,
   storeDrivePendingMessage,
   getAndClearDrivePendingMessage,
+  // Semantic tool matching
+  findMatchingTools,
 } from "@reverbia/sdk/react";
 import { useAppProjects } from "@/hooks/useAppProjects";
 import type {
   StoredProject,
   StoredConversation,
   CreateProjectOptions,
+  ServerTool,
 } from "@reverbia/sdk/react";
 import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
-import { getEnabledTools } from "@/hooks/useAppTools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -118,10 +120,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [maxOutputTokens, setMaxOutputTokens] = useState<number | undefined>(
     undefined
   );
-  const [enabledServerTools, setEnabledServerTools] = useState<string[]>(() =>
-    getEnabledTools()
-  );
-
   // Get wallet address from user's linked wallet
   const walletAddress = user?.wallet?.address;
 
@@ -267,9 +265,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (e.key === "chat_maxOutputTokens" && e.newValue) {
         setMaxOutputTokens(parseInt(e.newValue, 10));
       }
-      if (e.key === "chat_enabledServerTools") {
-        setEnabledServerTools(getEnabledTools());
-      }
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -410,7 +405,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     maxOutputTokens,
     walletAddress,
     encryptionReady,
-    serverTools: enabledServerTools,
+    // Use semantic search to find relevant tools based on prompt similarity
+    serverTools: (embeddings: number[] | number[][], tools: ServerTool[]) =>
+      findMatchingTools(embeddings, tools, { limit: 5 }).map((m) => m.tool.name),
     clientTools,
   });
 

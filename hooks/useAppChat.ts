@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState, useRef, useEffect, useMemo } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
-import { useTools } from "@reverbia/sdk/react";
+import { useTools, type ServerToolsFilter } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
 
@@ -25,8 +25,8 @@ type UseAppChatProps = {
   walletAddress?: string;
   // Whether encryption is ready (for reloading files after encryption initializes)
   encryptionReady?: boolean;
-  // Server-side tools (tool names from /api/v1/tools)
-  serverTools?: string[];
+  // Server-side tools (tool names or dynamic filter function)
+  serverTools?: ServerToolsFilter;
   // Client-side tools (with local executors)
   clientTools?: any[];
   toolChoice?: string;
@@ -169,7 +169,7 @@ export function useAppChat({
         files?: FileUIPart[];
         displayText?: string;
         skipOptimisticUpdate?: boolean;
-        serverTools?: string[];
+        serverTools?: ServerToolsFilter;
         clientTools?: any[];
         toolChoice?: string;
         apiType?: "responses" | "completions";
