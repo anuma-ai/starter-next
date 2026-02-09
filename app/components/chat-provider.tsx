@@ -405,6 +405,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     temperature,
     maxOutputTokens,
     walletAddress,
+    signMessage,
+    embeddedWalletSigner,
     encryptionReady,
     // Use semantic search to find relevant tools based on prompt similarity
     // Apply user's tool mode preferences: enable (always include), disable (always exclude), auto (semantic search)

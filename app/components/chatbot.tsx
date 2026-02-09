@@ -2,10 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon, BrainIcon } from "lucide-react";
+import { SquareMenuIcon, ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon, BrainIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 
 import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
@@ -59,7 +58,7 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <PromptInputButton>
-          <MenuSquareIcon className="size-4" strokeWidth={2} />
+          <SquareMenuIcon className="size-4" strokeWidth={2} />
         </PromptInputButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="overflow-hidden">
