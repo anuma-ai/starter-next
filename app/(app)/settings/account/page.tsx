@@ -69,8 +69,9 @@ export default function AccountPage() {
               createdAt: msg._getRaw("created_at"),
             });
           }
-        } catch {}
+        } catch { }
       }
+
       if (entries.length === 0) {
         setEstimatedMessages(null);
         setEstimatedDays(null);
@@ -227,9 +228,8 @@ export default function AccountPage() {
                 return (
                   <div
                     key={index}
-                    className={`px-4 py-3 ${
-                      index < linkedAccounts.length - 1 ? "border-b border-border/50" : ""
-                    }`}
+                    className={`px-4 py-3 ${index < linkedAccounts.length - 1 ? "border-b border-border/50" : ""
+                      }`}
                   >
                     <p className="text-sm text-muted-foreground">{label}</p>
                     <p className="text-sm font-medium font-mono break-all">
@@ -283,18 +283,21 @@ export default function AccountPage() {
                   <span className="text-sm text-muted-foreground">
                     Daily Credits
                   </span>
-                  <Button
-                    onClick={handleClaimDaily}
-                    disabled={claimingDaily || balance?.can_claim_daily === false}
-                    size="sm"
-                    className="rounded-full"
-                  >
-                    {claimingDaily
-                      ? "Claiming..."
-                      : balance?.can_claim_daily === false && balance?.next_claim_at
-                        ? `Claim in ${getTimeUntil(balance.next_claim_at)}`
-                        : "Claim"}
-                  </Button>
+                  <div className="flex flex-col items-center">
+                    <Button
+                      onClick={handleClaimDaily}
+                      disabled={claimingDaily || balance?.can_claim_daily === false}
+                      size="sm"
+                      className="rounded-full"
+                    >
+                      {claimingDaily ? "Claiming..." : "Claim daily credits"}
+                    </Button>
+                    {!claimingDaily && balance?.can_claim_daily === false && balance?.next_claim_at && (
+                      <span className="text-[11px] text-muted-foreground mt-0.5">
+                        in {getTimeUntil(balance.next_claim_at)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
