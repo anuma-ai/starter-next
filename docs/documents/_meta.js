@@ -1,8 +1,8 @@
 export default {
   README: "Getting Started",
-  useChatStorage: "Sending Messages",
-  useChat: "Memory Retrieval",
-  useTools: "Managing Tools",
-  useModels: "Fetching Models",
-  useOCR: "Extracting Text from Images",
+  messages: "Sending Messages",
+  memory: "Memory Retrieval",
+  tools: "Managing Tools",
+  models: "Fetching Models",
+  ocr: "Extracting Text from Images",
 };
