@@ -1,15 +1,98 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useSubscription, useCredits } from "@reverbia/sdk/react";
+import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 
 export default function AccountPage() {
   const router = useRouter();
-  const { user } = usePrivy();
+  const { user, authenticated } = usePrivy();
+  const { identityToken } = useIdentityToken();
 
   const linkedAccounts = user?.linkedAccounts || [];
+
+  const getToken = useCallback(async () => {
+    return identityToken ?? null;
+  }, [identityToken]);
+
+  const {
+    status,
+    isLoading,
+    error,
+    refetch,
+    openCustomerPortal,
+    cancelSubscription,
+    renewSubscription,
+  } = useSubscription({
+    getToken,
+    baseUrl: process.env.NEXT_PUBLIC_API_URL,
+    onError: (err) => console.error("Subscription error:", err),
+  });
+
+  const {
+    balance,
+    claimDailyCredits,
+  } = useCredits({
+    getToken,
+  });
+
+  const [claimingDaily, setClaimingDaily] = useState(false);
+
+  useEffect(() => {
+    if (authenticated && identityToken) {
+      refetch();
+    }
+  }, [authenticated, identityToken, refetch]);
+
+  const handleManageBilling = async () => {
+    const url = await openCustomerPortal({
+      returnUrl: window.location.href,
+    });
+    if (url) window.location.href = url;
+  };
+
+  const handleCancel = async () => {
+    const result = await cancelSubscription();
+    if (result) {
+      refetch();
+    }
+  };
+
+  const handleRenew = async () => {
+    const result = await renewSubscription();
+    if (result) {
+      refetch();
+    }
+  };
+
+  const handleClaimDaily = async () => {
+    setClaimingDaily(true);
+    try {
+      await claimDailyCredits();
+    } finally {
+      setClaimingDaily(false);
+    }
+  };
+
+  const getTimeUntil = (isoDate: string) => {
+    const diffMs = new Date(isoDate).getTime() - Date.now();
+    if (diffMs <= 0) return "now";
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.ceil((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+    return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   return (
     <div className="flex flex-1 flex-col p-8 pt-16 md:pt-8 bg-sidebar dark:bg-background border-l border-border dark:border-l-0">
@@ -23,7 +106,9 @@ export default function AccountPage() {
           >
             <ChevronLeft className="size-5" />
           </Button>
-          <h1 className="text-lg font-semibold w-full text-center">Account</h1>
+          <h1 className="text-lg font-semibold w-full text-center">
+            Account & Billing
+          </h1>
         </div>
 
         <div className="space-y-4">
@@ -108,6 +193,85 @@ export default function AccountPage() {
                 );
               })}
             </div>
+          )}
+
+          {isLoading ? (
+            <div className="rounded-xl bg-white dark:bg-card p-4">
+              <p className="text-sm text-muted-foreground">
+                Loading subscription...
+              </p>
+            </div>
+          ) : error ? (
+            <div className="rounded-xl bg-white dark:bg-card p-4">
+              <p className="text-sm text-destructive">
+                Failed to load subscription: {error.message}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="rounded-xl bg-white dark:bg-card p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Tier</span>
+                  <span className="text-sm font-medium capitalize">
+                    {balance?.subscription_tier || "Free"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Credits
+                  </span>
+                  <span className="text-sm font-medium">
+                    {balance?.available_credits ?? "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Daily Credits
+                  </span>
+                  <Button
+                    onClick={handleClaimDaily}
+                    disabled={claimingDaily || balance?.can_claim_daily === false}
+                    size="sm"
+                    className="rounded-full"
+                  >
+                    {claimingDaily
+                      ? "Claiming..."
+                      : balance?.can_claim_daily === false && balance?.next_claim_at
+                        ? `Claim in ${getTimeUntil(balance.next_claim_at)}`
+                        : "Claim"}
+                  </Button>
+                </div>
+              </div>
+
+              {status?.plan && status.plan !== "free" && (
+                <div className="rounded-xl bg-white dark:bg-card p-4 space-y-3">
+                  <Button
+                    onClick={handleManageBilling}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Manage Payment Methods
+                  </Button>
+                  {status.cancel_at_period_end ? (
+                    <Button
+                      onClick={handleRenew}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Resume Subscription
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleCancel}
+                      variant="outline"
+                      className="w-full text-destructive hover:text-destructive"
+                    >
+                      Cancel Subscription
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
