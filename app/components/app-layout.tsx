@@ -83,6 +83,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     getProjectConversations,
     getMessages,
     updateConversationProject,
+    encryptionReady,
   } = chatState;
 
   // Apps hook - needs createConversation to create associated conversations
@@ -200,8 +201,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     ? pathname.split("/")[2]
     : null;
 
-  // Show loading state while auth is initializing or user is not authenticated
-  if (!ready || !authenticated) {
+  // Show loading state while auth is initializing, user is not authenticated,
+  // or encryption is still being set up (to prevent flash of encrypted content)
+  if (!ready || !authenticated || !encryptionReady) {
     return (
       <div className="flex h-screen items-center justify-center">
         <RotatingLines
@@ -236,6 +238,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           getProjectConversations={getProjectConversations}
           getMessages={getMessages}
           updateConversationProject={updateConversationProject}
+          encryptionReady={encryptionReady}
           onDeleteConversation={deleteConversation}
           apps={apps}
           appsReady={appsReady}

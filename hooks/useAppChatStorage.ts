@@ -205,6 +205,12 @@ export function useAppChatStorage({
   //#endregion hookInit
 
   const refreshConversations = useCallback(async () => {
+    // Don't load conversations while encryption is initializing
+    // (message content used for titles would be encrypted)
+    if (walletAddress && !encryptionReady) {
+      return;
+    }
+
     const list = await getConversations();
     // Load first message for each conversation to use as title
     const conversationsWithTitles = await Promise.all(
@@ -235,11 +241,11 @@ export function useAppChatStorage({
       })
     );
     setConversations(conversationsWithTitles.filter(Boolean));
-  }, [getConversations, getMessages]);
+  }, [getConversations, getMessages, walletAddress, encryptionReady]);
 
   useEffect(() => {
     refreshConversations();
-  }, [refreshConversations, conversationId]);
+  }, [refreshConversations, conversationId, encryptionReady]);
 
   // Keep ref in sync with conversationId for use in callbacks
   useEffect(() => {
@@ -293,6 +299,12 @@ export function useAppChatStorage({
 
   useEffect(() => {
     if (conversationId) {
+      // Don't load messages while encryption is still initializing
+      // (they'd come back as encrypted strings like enc:v2:...)
+      if (walletAddress && !encryptionReady) {
+        return;
+      }
+
       // Check if we need to reload due to wallet/encryption state change
       // If wallet address changed, we should reload to get files from OPFS
       const walletChanged =
