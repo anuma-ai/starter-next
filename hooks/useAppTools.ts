@@ -169,6 +169,7 @@ export function getDisabledTools(): string[] {
  * Wraps the SDK's useTools hook and adds local tool modes management
  * via localStorage.
  */
+  //#region hookInit
 export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
   const [toolModes, setToolModesState] = useState<ToolModes>({});
   const [semanticSearchEnabled, setSemanticSearchEnabledState] = useState(true);
@@ -198,7 +199,9 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
     description: tool.description || "",
     parameters: tool.parameters || { type: "object", properties: {}, required: [] },
   }));
+  //#endregion hookInit
 
+  //#region toolModes
   // Set mode for a specific tool
   const setToolMode = useCallback((toolName: string, mode: ToolMode) => {
     setToolModesState((prev) => {
@@ -224,12 +227,15 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
   const enabledTools = Object.entries(toolModes)
     .filter(([_, mode]) => mode === 'enable')
     .map(([name]) => name);
+  //#endregion toolModes
 
+  //#region semanticSearch
   // Toggle semantic search
   const toggleSemanticSearch = useCallback((enabled: boolean) => {
     setSemanticSearchEnabledState(enabled);
     setSemanticSearchEnabled(enabled);
   }, []);
+  //#endregion semanticSearch
 
   return {
     tools,
