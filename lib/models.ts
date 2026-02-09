@@ -1,6 +1,6 @@
 export type ModelVariant = {
   modelId: string;
-  apiType: "completions" | "responses" | "messages";
+  apiType: "completions" | "responses";
   useReasoning?: boolean;
 };
 
@@ -27,8 +27,8 @@ export const MODELS: ModelConfig[] = [
   {
     id: "claude",
     name: "Claude Opus 4.5",
-    fast: { modelId: "anthropic/claude-opus-4-5-20251101", apiType: "messages" },
-    thinking: { modelId: "anthropic/claude-opus-4-5-20251101", apiType: "messages", useReasoning: true },
+    fast: { modelId: "anthropic/claude-opus-4-5-20251101", apiType: "responses" },
+    thinking: { modelId: "anthropic/claude-opus-4-5-20251101", apiType: "responses", useReasoning: true },
   },
   {
     id: "grok",
