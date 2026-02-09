@@ -414,14 +414,20 @@ const ChatBotDemo = () => {
     [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled, pathname, router, conversationId, createConversation]
   );
 
+  // On direct URL load (e.g. /c/abc123), messages start empty while the conversation
+  // syncs from the URL. Detect this to avoid flashing the centered empty-chat prompt.
+  const isConversationUrl = pathname.startsWith("/c/");
+  const isAwaitingMessages = isConversationUrl && messages.length === 0;
+  const showEmptyState = messages.length === 0 && !isAwaitingMessages;
+
   return (
     <div
-      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${messages.length === 0 ? "justify-center" : ""
+      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${showEmptyState ? "justify-center" : ""
         }`}
       style={patternStyle}
     >
       <div
-        className={`min-h-0 flex-1 px-4 overflow-y-auto ${messages.length === 0 ? "hidden" : ""
+        className={`min-h-0 flex-1 px-4 overflow-y-auto ${showEmptyState ? "hidden" : ""
           }`}
       >
         <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
