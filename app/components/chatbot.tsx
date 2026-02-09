@@ -6,6 +6,7 @@ import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon, Alert02Icon } from "@hugeicons/core-free-icons";
 import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon } from "lucide-react";
+import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 
 import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
@@ -103,7 +104,10 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
               >
                 {selectedModel === model.id && <CheckIcon className="size-4" />}
                 <span className={selectedModel !== model.id ? "pl-6" : ""}>
-                  {model.name}
+                  <span className="inline-flex items-center gap-2">
+                    <ModelIcon modelId={model.id} className="size-4" />
+                    {model.name}
+                  </span>
                 </span>
               </DropdownMenuItem>
             ))}
