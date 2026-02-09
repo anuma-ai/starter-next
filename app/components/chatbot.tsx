@@ -4,8 +4,8 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Zip02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon, BrainIcon } from "lucide-react";
+import { Zip02Icon, Alert02Icon } from "@hugeicons/core-free-icons";
+import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 
 import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
@@ -497,9 +497,9 @@ const ChatBotDemo = () => {
                         {showError && (
                           <Message from={message.role}>
                             <MessageContent>
-                              <div className="flex items-center gap-2 text-destructive">
-                                <AlertCircleIcon className="size-4 flex-shrink-0" />
-                                <span>{error || "Something went wrong. Please try again."}</span>
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
+                                <span>Couldn&apos;t get a response: {error || "Something went wrong. Please try again."}</span>
                               </div>
                             </MessageContent>
                           </Message>
@@ -631,6 +631,13 @@ const ChatBotDemo = () => {
                         onOpen={thinkingPanel.openPanel}
                       />
                     );
+                  case "error":
+                    return (
+                      <div key={`${message.id}-${i}`} className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
+                        <span>Couldn&apos;t get a response: {part.error}</span>
+                      </div>
+                    );
                   case "image":
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
@@ -654,6 +661,13 @@ const ChatBotDemo = () => {
           {isSubmitting && !isLoading && messages.at(-1)?.role === "user" && (
             <div className="flex items-center gap-2 text-muted-foreground text-sm h-5 mt-4">
               <span className="inline-block size-3 rounded-full bg-foreground flex-shrink-0 animate-[scale-pulse_1.5s_ease-in-out_infinite]" />
+            </div>
+          )}
+          {/* Standalone error when API fails before an assistant message is created */}
+          {error && !isLoading && !isSubmitting && messages.at(-1)?.role === "user" && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4">
+              <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
+              <span>Couldn&apos;t get a response: {error}</span>
             </div>
           )}
         </div>

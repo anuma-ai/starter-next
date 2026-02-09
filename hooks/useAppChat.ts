@@ -254,6 +254,12 @@ export function useAppChat({
           onThinking,
         });
 
+        // Check if the SDK returned an error in the result object
+        if (response?.error) {
+          setError(response.error);
+          return { ...response, conversationId: effectiveConversationId };
+        }
+
         // Auto-refresh tools if server tools changed
         // Both Responses API and Completions API formats include tools_checksum
         const toolsChecksum = (response?.data as { tools_checksum?: string })?.tools_checksum;
