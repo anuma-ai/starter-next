@@ -43,6 +43,7 @@ export default function AccountPage() {
 
   const [claimingDaily, setClaimingDaily] = useState(false);
   const [estimatedMessages, setEstimatedMessages] = useState<number | null>(null);
+  const [estimatedDays, setEstimatedDays] = useState<number | null>(null);
 
   useEffect(() => {
     if (authenticated && identityToken) {
@@ -55,7 +56,7 @@ export default function AccountPage() {
 
     const collection = database.get("history");
     collection.query().fetch().then((messages: any[]) => {
-      const costs: number[] = [];
+      const entries: { costMicroUsd: number; createdAt: number }[] = [];
       for (const msg of messages) {
         if (msg._getRaw("role") !== "assistant") continue;
         const raw = msg._getRaw("usage");
@@ -63,18 +64,32 @@ export default function AccountPage() {
         try {
           const usage = typeof raw === "string" ? JSON.parse(raw) : raw;
           if (usage?.costMicroUsd > 0) {
-            costs.push(usage.costMicroUsd);
+            entries.push({
+              costMicroUsd: usage.costMicroUsd,
+              createdAt: msg._getRaw("created_at"),
+            });
           }
         } catch {}
       }
-      if (costs.length === 0) {
+      if (entries.length === 0) {
         setEstimatedMessages(null);
+        setEstimatedDays(null);
         return;
       }
-      const avgCostMicroUsd = costs.reduce((a, b) => a + b, 0) / costs.length;
+
+      const totalCostMicroUsd = entries.reduce((a, b) => a + b.costMicroUsd, 0);
+      const avgCostMicroUsd = totalCostMicroUsd / entries.length;
       // 1 credit = $0.01 = 10,000 micro-USD
-      const est = Math.floor((balance.available_credits! * 10000) / avgCostMicroUsd);
-      setEstimatedMessages(est);
+      const availableMicroUsd = balance.available_credits! * 10000;
+      setEstimatedMessages(Math.floor(availableMicroUsd / avgCostMicroUsd));
+
+      // Days estimate: total spend over date range → daily rate
+      const timestamps = entries.map((e) => e.createdAt);
+      const earliest = Math.min(...timestamps);
+      const latest = Math.max(...timestamps);
+      const spanDays = Math.max((latest - earliest) / (1000 * 60 * 60 * 24), 1);
+      const dailySpendMicroUsd = totalCostMicroUsd / spanDays;
+      setEstimatedDays(Math.floor(availableMicroUsd / dailySpendMicroUsd));
     });
   }, [database, balance?.available_credits]);
 
@@ -253,9 +268,13 @@ export default function AccountPage() {
                   </span>
                   <span className="text-sm font-medium">
                     {balance?.available_credits ?? "—"}
-                    {estimatedMessages !== null && (
+                    {(estimatedMessages !== null || estimatedDays !== null) && (
                       <span className="text-muted-foreground font-normal">
-                        {" "}(~ {estimatedMessages} messages)
+                        {" "}(~{" "}
+                        {estimatedMessages !== null && `${estimatedMessages} messages`}
+                        {estimatedMessages !== null && estimatedDays !== null && ", "}
+                        {estimatedDays !== null && `${estimatedDays} days`}
+                        )
                       </span>
                     )}
                   </span>
