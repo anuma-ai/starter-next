@@ -470,18 +470,16 @@ const ChatBotDemo = () => {
                       !streamingText &&
                       !error;
 
-                    // Show error when there's an error or empty response
+                    // Show error when there's a transient error from the current request
                     // Only for the last assistant message when not loading
-                    // Don't show error for optimistic empty messages (no content at all means waiting for response)
-                    const hasAnyContent = message.parts?.some((p: any) =>
-                      p.text || p.image_url || p.url || p.filename
-                    );
+                    // Stored errors are rendered via the "error" part type instead
                     const showError =
                       message.role === "assistant" &&
                       isLastAssistantMessage &&
                       !isLoading &&
                       !isSubmitting &&
-                      (error || (hasAnyContent && !part.text && !streamingText));
+                      !streamingText &&
+                      error;
 
                     // For user messages, just render the message
                     if (message.role === "user") {
