@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { useSubscription, useCredits } from "@reverbia/sdk/react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
+import { useDatabase } from "@/app/providers";
 
 export default function AccountPage() {
   const router = useRouter();
   const { user, authenticated } = usePrivy();
   const { identityToken } = useIdentityToken();
+  const database = useDatabase();
 
   const linkedAccounts = user?.linkedAccounts || [];
 
@@ -40,12 +42,41 @@ export default function AccountPage() {
   });
 
   const [claimingDaily, setClaimingDaily] = useState(false);
+  const [estimatedMessages, setEstimatedMessages] = useState<number | null>(null);
 
   useEffect(() => {
     if (authenticated && identityToken) {
       refetch();
     }
   }, [authenticated, identityToken, refetch]);
+
+  useEffect(() => {
+    if (!database || balance?.available_credits == null) return;
+
+    const collection = database.get("history");
+    collection.query().fetch().then((messages: any[]) => {
+      const costs: number[] = [];
+      for (const msg of messages) {
+        if (msg._getRaw("role") !== "assistant") continue;
+        const raw = msg._getRaw("usage");
+        if (!raw) continue;
+        try {
+          const usage = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (usage?.costMicroUsd > 0) {
+            costs.push(usage.costMicroUsd);
+          }
+        } catch {}
+      }
+      if (costs.length === 0) {
+        setEstimatedMessages(null);
+        return;
+      }
+      const avgCostMicroUsd = costs.reduce((a, b) => a + b, 0) / costs.length;
+      // 1 credit = $0.01 = 10,000 micro-USD
+      const est = Math.floor((balance.available_credits! * 10000) / avgCostMicroUsd);
+      setEstimatedMessages(est);
+    });
+  }, [database, balance?.available_credits]);
 
   const handleManageBilling = async () => {
     const url = await openCustomerPortal({
@@ -222,6 +253,11 @@ export default function AccountPage() {
                   </span>
                   <span className="text-sm font-medium">
                     {balance?.available_credits ?? "—"}
+                    {estimatedMessages !== null && (
+                      <span className="text-muted-foreground font-normal">
+                        {" "}(~ {estimatedMessages} messages)
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
