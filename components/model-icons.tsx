@@ -1,4 +1,4 @@
-import { SiOpenai, SiAnthropic } from "@icons-pack/react-simple-icons";
+import { SiOpenai, SiClaude } from "@icons-pack/react-simple-icons";
 
 function AnumaIcon({ className }: { className?: string }) {
   return (
@@ -31,7 +31,7 @@ function GrokIcon({ className }: { className?: string }) {
 export function ModelIcon({ modelId, className = "size-4" }: { modelId: string; className?: string }) {
   if (modelId === "anuma") return <AnumaIcon className={className} />;
   if (modelId === "gpt" || modelId.includes("openai")) return <SiOpenai color="black" className={className} />;
-  if (modelId === "claude" || modelId.includes("anthropic")) return <SiAnthropic color="black" className={className} />;
+  if (modelId === "claude" || modelId.includes("anthropic")) return <SiClaude color="black" className={className} />;
   if (modelId === "grok" || modelId.includes("grok")) return <GrokIcon className={className + " scale-125"} />;
   return null;
 }
