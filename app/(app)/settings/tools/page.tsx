@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { SearchInput } from "@/components/ui/search-input";
-import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
+import { usePrivy, useIdentityToken, getIdentityToken } from "@privy-io/react-auth";
 import { useAppTools, type ToolParameter } from "@/hooks/useAppTools";
 import {
   HoverCard,
@@ -133,8 +133,8 @@ export default function ToolsPage() {
   const { identityToken } = useIdentityToken();
 
   const getToken = useCallback(async () => {
-    return identityToken ?? null;
-  }, [identityToken]);
+    return getIdentityToken();
+  }, []);
 
   const { tools, isLoading, error, checksum, refetch, setToolMode, getMode, semanticSearchEnabled, toggleSemanticSearch } =
     useAppTools({

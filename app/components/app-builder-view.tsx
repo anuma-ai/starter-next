@@ -38,7 +38,7 @@ import {
   type PromptInputMessage,
 } from "@/components/chat/prompt-input";
 import { Reasoning } from "@/components/chat/reasoning";
-import { useIdentityToken } from "@privy-io/react-auth";
+import { getIdentityToken } from "@privy-io/react-auth";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
 import { useApps } from "@/hooks/useApps";
@@ -132,7 +132,6 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const thinkingPanel = useThinkingPanel();
   const chatState = useChatContext();
   const { state: sidebarState } = useSidebar();
-  const { identityToken } = useIdentityToken();
 
   const {
     messages,
@@ -502,12 +501,13 @@ ${diffSummary}`;
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const token = await getIdentityToken();
 
       const response = await fetch(`${apiUrl}/api/v1/responses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(identityToken && { Authorization: `Bearer ${identityToken}` }),
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({
           model: "openai/gpt-4o-mini",
@@ -541,7 +541,7 @@ ${diffSummary}`;
       console.error("[AppBuilder] Error generating commit message:", error);
       return null;
     }
-  }, [gitStatus.files, getFile, identityToken]);
+  }, [gitStatus.files, getFile]);
 
   // Download project as ZIP
   const handleDownloadZip = useCallback(async () => {
