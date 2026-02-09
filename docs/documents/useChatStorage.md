@@ -31,6 +31,8 @@ const {
   baseUrl: process.env.NEXT_PUBLIC_API_URL,
   // Enable encrypted file storage in OPFS when wallet is connected
   walletAddress,
+  signMessage: signMessageProp,
+  embeddedWalletSigner,
 });
 ```
 

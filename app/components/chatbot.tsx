@@ -228,6 +228,17 @@ const ChatBotDemo = () => {
     createConversation,
   } = chatState;
 
+  // Buffer previous messages to prevent flash of empty content when switching conversations.
+  // Shows old messages until new ones arrive, but allows genuine empty state for new chats.
+  const prevMessagesRef = useRef(messages);
+  if (messages.length > 0) {
+    prevMessagesRef.current = messages;
+  }
+  const displayMessages = messages.length > 0 ? messages : (
+    // Only use buffered messages if we're in a conversation (not new chat)
+    currentConversationId ? prevMessagesRef.current : messages
+  );
+
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
     // Reset determination state when conversation changes
@@ -414,11 +425,12 @@ const ChatBotDemo = () => {
     [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled, pathname, router, conversationId, createConversation]
   );
 
-  // On direct URL load (e.g. /c/abc123), messages start empty while the conversation
-  // syncs from the URL. Detect this to avoid flashing the centered empty-chat prompt.
-  const isConversationUrl = pathname.startsWith("/c/");
-  const isAwaitingMessages = isConversationUrl && messages.length === 0;
-  const showEmptyState = messages.length === 0 && !isAwaitingMessages;
+  // Detect when we expect messages but don't have them yet (to avoid flashing the
+  // centered empty-chat prompt). This covers:
+  // - Direct URL load: pathname is /c/... but messages haven't loaded yet
+  // - Switching conversations: conversationId is set but messages haven't arrived yet
+  const expectsMessages = pathname.startsWith("/c/") || !!currentConversationId;
+  const showEmptyState = displayMessages.length === 0 && !expectsMessages;
 
   return (
     <div
@@ -431,18 +443,20 @@ const ChatBotDemo = () => {
           }`}
       >
         <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
-          {messages.map((message: any) => (
+          {displayMessages.map((message: any) => (
             <div key={message.id}>
               {message.parts.map((part: any, i: number) => {
                 switch (part.type) {
                   case "text": {
                     const isLastAssistantMessage =
                       message.role === "assistant" &&
-                      message.id === messages.at(-1)?.id;
+                      message.id === displayMessages.at(-1)?.id;
 
-                    // Always use StreamingMessage for the last assistant message to avoid
-                    // flash when switching components after streaming completes
-                    const useStreaming = isLastAssistantMessage;
+                    // Only use StreamingMessage when actively streaming.
+                    // Streamdown (used by StreamingMessage) defers its first render via
+                    // startTransition, causing a blank frame on mount. Using MessageResponse
+                    // for loaded messages avoids this flash on conversation switch.
+                    const useStreaming = isLastAssistantMessage && isLoading;
 
                     // Show reasoning after streaming starts (or completes) if there was thinking
                     // Only for assistant messages
@@ -665,7 +679,7 @@ const ChatBotDemo = () => {
       </div>
 
       <div
-        className={`min-w-0 px-10 pb-4 pt-2 ${messages.length === 0 ? "w-full" : "sticky bottom-0"
+        className={`min-w-0 px-10 pb-4 pt-2 ${displayMessages.length === 0 ? "w-full" : "sticky bottom-0"
           }`}
       >
         <div className="mx-auto w-full min-w-0 max-w-3xl overflow-hidden">
