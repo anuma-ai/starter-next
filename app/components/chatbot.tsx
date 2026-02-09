@@ -4,8 +4,8 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Zip02Icon, Alert02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon } from "lucide-react";
+import { Zip02Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 
@@ -102,13 +102,9 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
                 key={model.id}
                 onClick={() => onSelectModel(model.id)}
               >
-                {selectedModel === model.id && <CheckIcon className="size-4" />}
-                <span className={selectedModel !== model.id ? "pl-6" : ""}>
-                  <span className="inline-flex items-center gap-2">
-                    <ModelIcon modelId={model.id} className="size-4" />
-                    {model.name}
-                  </span>
-                </span>
+                <ModelIcon modelId={model.id} className="size-4" />
+                {model.name}
+                <HugeiconsIcon icon={Tick02Icon} className={`size-4 ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>

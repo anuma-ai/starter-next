@@ -3,7 +3,9 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { MenuSquareIcon, Cancel01Icon } from "hugeicons-react";
-import { ImageIcon, CheckIcon, CpuIcon, AlertCircleIcon, CodeIcon, PlayIcon, TerminalIcon, ChevronDownIcon, ChevronUpIcon, FolderIcon, GitBranchIcon } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Tick02Icon } from "@hugeicons/core-free-icons";
+import { ImageIcon, CpuIcon, AlertCircleIcon, CodeIcon, PlayIcon, TerminalIcon, ChevronDownIcon, ChevronUpIcon, FolderIcon, GitBranchIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import {
   SandpackProvider,
@@ -112,13 +114,9 @@ const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
                 key={model.id}
                 onClick={() => onSelectModel(model.id)}
               >
-                {selectedModel === model.id && <CheckIcon className="size-4" />}
-                <span className={selectedModel !== model.id ? "pl-6" : ""}>
-                  <span className="inline-flex items-center gap-2">
-                    <ModelIcon modelId={model.id} className="size-4" />
-                    {model.name}
-                  </span>
-                </span>
+                <ModelIcon modelId={model.id} className="size-4" />
+                {model.name}
+                <HugeiconsIcon icon={Tick02Icon} className={`size-4 ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>
