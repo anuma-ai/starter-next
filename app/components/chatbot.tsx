@@ -228,17 +228,6 @@ const ChatBotDemo = () => {
     createConversation,
   } = chatState;
 
-  // Buffer previous messages to prevent flash of empty content when switching conversations.
-  // Shows old messages until new ones arrive, but allows genuine empty state for new chats.
-  const prevMessagesRef = useRef(messages);
-  if (messages.length > 0) {
-    prevMessagesRef.current = messages;
-  }
-  const displayMessages = messages.length > 0 ? messages : (
-    // Only use buffered messages if we're in a conversation (not new chat)
-    currentConversationId ? prevMessagesRef.current : messages
-  );
-
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
     // Reset determination state when conversation changes
@@ -430,7 +419,7 @@ const ChatBotDemo = () => {
   // - Direct URL load: pathname is /c/... but messages haven't loaded yet
   // - Switching conversations: conversationId is set but messages haven't arrived yet
   const expectsMessages = pathname.startsWith("/c/") || !!currentConversationId;
-  const showEmptyState = displayMessages.length === 0 && !expectsMessages;
+  const showEmptyState = messages.length === 0 && !expectsMessages;
 
   return (
     <div
@@ -443,14 +432,14 @@ const ChatBotDemo = () => {
           }`}
       >
         <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
-          {displayMessages.map((message: any) => (
+          {messages.map((message: any) => (
             <div key={message.id}>
               {message.parts.map((part: any, i: number) => {
                 switch (part.type) {
                   case "text": {
                     const isLastAssistantMessage =
                       message.role === "assistant" &&
-                      message.id === displayMessages.at(-1)?.id;
+                      message.id === messages.at(-1)?.id;
 
                     // Only use StreamingMessage when actively streaming.
                     // Streamdown (used by StreamingMessage) defers its first render via
@@ -679,7 +668,7 @@ const ChatBotDemo = () => {
       </div>
 
       <div
-        className={`min-w-0 px-10 pb-4 pt-2 ${displayMessages.length === 0 ? "w-full" : "sticky bottom-0"
+        className={`min-w-0 px-10 pb-4 pt-2 ${messages.length === 0 ? "w-full" : "sticky bottom-0"
           }`}
       >
         <div className="mx-auto w-full min-w-0 max-w-3xl overflow-hidden">

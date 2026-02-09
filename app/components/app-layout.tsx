@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useTransition } from "react";
+import { useCallback, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import {
@@ -96,8 +96,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     deleteApp,
   } = useApps(createConversation, deleteConversation);
 
-  const [, startTransition] = useTransition();
-
   const handleNewConversation = useCallback(async () => {
     // Apply global theme immediately before navigation to prevent flash
     applyTheme(getStoredThemeId());
@@ -109,15 +107,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [createConversation, router]);
 
   const handleSelectConversation = useCallback(
-    (id: string) => {
-      // Wrap in startTransition so React keeps showing the old conversation
-      // until messages are loaded and state is fully updated (prevents flash)
-      startTransition(async () => {
-        await setConversationId(id);
-        router.push(`/c/${id}`);
-      });
+    async (id: string) => {
+      // Load messages and update state first, then navigate
+      // This ensures messages are ready before URL changes
+      await setConversationId(id);
+      router.push(`/c/${id}`);
     },
-    [setConversationId, router, startTransition]
+    [setConversationId, router]
   );
 
   const handleViewChange = useCallback(
