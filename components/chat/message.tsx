@@ -271,7 +271,7 @@ export const MessageResponse = memo(
     return (
       <div
         className={cn(
-          "size-full [&>p]:my-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+          "size-full [&_p]:my-4 [&>*:first-child>*:first-child]:mt-0 [&>*:last-child>*:last-child]:mb-0",
           "[&_img]:max-w-full [&_img]:max-h-80 [&_img]:rounded-lg [&_img]:my-4",
           className
         )}
