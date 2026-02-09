@@ -45,6 +45,19 @@ import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 
+function getErrorTitle(error: string): string {
+  const e = error.toLowerCase();
+  if (e.includes("timeout") || e.includes("etimedout")) return "Request timed out";
+  if (e.includes("rate limit") || e.includes("429")) return "Rate limit exceeded";
+  if (e.includes("authenticat") || e.includes("unauthorized") || e.includes("401")) return "Authentication error";
+  if (e.includes("payment") || e.includes("402") || e.includes("out of credits")) return "Out of credits";
+  if (e.includes("connect") || e.includes("econnrefused") || e.includes("econnreset") || e.includes("fetch failed")) return "Connection error";
+  if (e.includes("invalid request") || e.includes("bad request") || e.includes("400")) return "Invalid request";
+  if (e.includes("500") || e.includes("server") || e.includes("internal")) return "Server error";
+  if (e.includes("502") || e.includes("503") || e.includes("504")) return "Service unavailable";
+  return "Something went wrong";
+}
+
 type PromptMenuProps = {
   selectedModel: string;
   onSelectModel: (modelId: string) => void;
@@ -499,7 +512,7 @@ const ChatBotDemo = () => {
                             <MessageContent>
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
-                                <span>Couldn&apos;t get a response: {error || "Something went wrong. Please try again."}</span>
+                                <span>{getErrorTitle(error || "")}</span>
                               </div>
                             </MessageContent>
                           </Message>
@@ -635,7 +648,7 @@ const ChatBotDemo = () => {
                     return (
                       <div key={`${message.id}-${i}`} className="flex items-center gap-2 text-muted-foreground text-sm">
                         <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
-                        <span>Couldn&apos;t get a response: {part.error}</span>
+                        <span>{getErrorTitle(part.error)}</span>
                       </div>
                     );
                   case "image":
@@ -667,7 +680,7 @@ const ChatBotDemo = () => {
           {error && !isLoading && !isSubmitting && messages.at(-1)?.role === "user" && (
             <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4">
               <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
-              <span>Couldn&apos;t get a response: {error}</span>
+              <span>{getErrorTitle(error)}</span>
             </div>
           )}
         </div>
