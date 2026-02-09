@@ -4,8 +4,9 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Zip02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, AlertCircleIcon, BrainIcon } from "lucide-react";
+import { Zip02Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon } from "lucide-react";
+import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 
 import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
@@ -44,6 +45,19 @@ import { useThinkingPanel } from "./thinking-panel-provider";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
+
+function getErrorTitle(error: string): string {
+  const e = error.toLowerCase();
+  if (e.includes("timeout") || e.includes("etimedout")) return "Request timed out";
+  if (e.includes("rate limit") || e.includes("429")) return "Rate limit exceeded";
+  if (e.includes("authenticat") || e.includes("unauthorized") || e.includes("401")) return "Authentication error";
+  if (e.includes("payment") || e.includes("402") || e.includes("out of credits")) return "Out of credits";
+  if (e.includes("connect") || e.includes("econnrefused") || e.includes("econnreset") || e.includes("fetch failed")) return "Connection error";
+  if (e.includes("invalid request") || e.includes("bad request") || e.includes("400")) return "Invalid request";
+  if (e.includes("500") || e.includes("server") || e.includes("internal")) return "Server error";
+  if (e.includes("502") || e.includes("503") || e.includes("504")) return "Service unavailable";
+  return "Something went wrong";
+}
 
 type PromptMenuProps = {
   selectedModel: string;
@@ -88,10 +102,9 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
                 key={model.id}
                 onClick={() => onSelectModel(model.id)}
               >
-                {selectedModel === model.id && <CheckIcon className="size-4" />}
-                <span className={selectedModel !== model.id ? "pl-6" : ""}>
-                  {model.name}
-                </span>
+                <ModelIcon modelId={model.id} className="size-4" />
+                {model.name}
+                <HugeiconsIcon icon={Tick02Icon} className={`size-4 ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>
@@ -457,18 +470,16 @@ const ChatBotDemo = () => {
                       !streamingText &&
                       !error;
 
-                    // Show error when there's an error or empty response
+                    // Show error when there's a transient error from the current request
                     // Only for the last assistant message when not loading
-                    // Don't show error for optimistic empty messages (no content at all means waiting for response)
-                    const hasAnyContent = message.parts?.some((p: any) =>
-                      p.text || p.image_url || p.url || p.filename
-                    );
+                    // Stored errors are rendered via the "error" part type instead
                     const showError =
                       message.role === "assistant" &&
                       isLastAssistantMessage &&
                       !isLoading &&
                       !isSubmitting &&
-                      (error || (hasAnyContent && !part.text && !streamingText));
+                      !streamingText &&
+                      error;
 
                     // For user messages, just render the message
                     if (message.role === "user") {
@@ -497,9 +508,9 @@ const ChatBotDemo = () => {
                         {showError && (
                           <Message from={message.role}>
                             <MessageContent>
-                              <div className="flex items-center gap-2 text-destructive">
-                                <AlertCircleIcon className="size-4 flex-shrink-0" />
-                                <span>{error || "Something went wrong. Please try again."}</span>
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
+                                <span>{getErrorTitle(error || "")}</span>
                               </div>
                             </MessageContent>
                           </Message>
@@ -631,6 +642,13 @@ const ChatBotDemo = () => {
                         onOpen={thinkingPanel.openPanel}
                       />
                     );
+                  case "error":
+                    return (
+                      <div key={`${message.id}-${i}`} className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
+                        <span>{getErrorTitle(part.error)}</span>
+                      </div>
+                    );
                   case "image":
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
@@ -654,6 +672,13 @@ const ChatBotDemo = () => {
           {isSubmitting && !isLoading && messages.at(-1)?.role === "user" && (
             <div className="flex items-center gap-2 text-muted-foreground text-sm h-5 mt-4">
               <span className="inline-block size-3 rounded-full bg-foreground flex-shrink-0 animate-[scale-pulse_1.5s_ease-in-out_infinite]" />
+            </div>
+          )}
+          {/* Standalone error when API fails before an assistant message is created */}
+          {error && !isLoading && !isSubmitting && messages.at(-1)?.role === "user" && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4">
+              <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
+              <span>{getErrorTitle(error)}</span>
             </div>
           )}
         </div>
@@ -695,7 +720,7 @@ const ChatBotDemo = () => {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
                   authenticated
-                    ? `Ask ${MODELS.find((m) => m.id === selectedModel)?.name ?? "AI"}${thinkingEnabled ? " (thinking)" : ""} anything`
+                    ? `Ask ${MODELS.find((m) => m.id === selectedModel)?.name ?? "AI"}${thinkingEnabled ? " (thinking)" : ""}`
                     : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
                 }
                 value={input}

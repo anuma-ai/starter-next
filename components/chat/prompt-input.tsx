@@ -589,7 +589,7 @@ export const PromptInput = ({
                     </div>
                   </div>
                   <div className="text-center">
-                    <h3 className="text-xl font-semibold">Add anything</h3>
+                    <h3 className="text-xl font-semibold">Add files</h3>
                     <p className="mt-1 text-muted-foreground">
                       Drop any file here to add it to the conversation
                     </p>

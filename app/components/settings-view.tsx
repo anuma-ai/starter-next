@@ -151,21 +151,10 @@ export function SettingsView() {
               onClick={() => router.push("/settings/account")}
               className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
             >
-              <span className="text-base">Account</span>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
-            </button>
-            <button
-              onClick={() => router.push("/settings/billing")}
-              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
-            >
               <div className="space-y-0.5 text-left">
-                <span className="text-base">Billing</span>
+                <span className="text-base">Account & Billing</span>
                 <p className="text-sm text-muted-foreground">
-                  Manage your subscription and payment methods
+                  Manage your account, subscription, and credits
                 </p>
               </div>
               <HugeiconsIcon
