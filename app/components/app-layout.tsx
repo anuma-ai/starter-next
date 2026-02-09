@@ -20,6 +20,7 @@ import { getProjectTheme } from "@/lib/project-theme";
 import { useApps } from "@/hooks/useApps";
 import { RotatingLines } from "react-loader-spinner";
 
+
 type AppLayoutProps = {
   children: React.ReactNode;
 };

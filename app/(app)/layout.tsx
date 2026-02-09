@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { ChatProvider } from "../components/chat-provider";
-import { RotatingLines } from "react-loader-spinner";
 
 const AppLayout = dynamic(
   () =>
@@ -11,18 +10,7 @@ const AppLayout = dynamic(
     })),
   {
     ssr: false,
-    loading: () => (
-      <div className="flex h-screen items-center justify-center">
-        <RotatingLines
-          visible={true}
-          width="32"
-          strokeColor="grey"
-          strokeWidth="5"
-          animationDuration="0.75"
-          ariaLabel="loading"
-        />
-      </div>
-    ),
+    loading: () => null,
   }
 );
 
