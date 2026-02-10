@@ -85,8 +85,6 @@
     "typescript": "^5"
   },
   "pnpm": {
-    "overrides": {
-      "@reverbia/sdk": "file:../ai-sdk"
-    }
+    "overrides": {}
   }
 }
