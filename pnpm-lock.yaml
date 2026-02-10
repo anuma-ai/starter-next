@@ -87,8 +87,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.13)(react@19.2.4)
       '@reverbia/sdk':
-        specifier: file:../ai-sdk
-        version: file:../ai-sdk(@nozbe/watermelondb@0.28.0)(@privy-io/react-auth@3.13.1(@solana-program/system@0.10.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)))(@solana-program/token@0.9.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)))(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10))(@solana/sysvars@5.5.1(typescript@5.9.3))(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.20(react@19.2.4))(@types/react@19.2.13)(bufferutil@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.4))(utf-8-validate@5.0.10)(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)
+        specifier: 1.0.0-next.20260210041158
+        version: 1.0.0-next.20260210041158(@nozbe/watermelondb@0.28.0)(@privy-io/react-auth@3.13.1(@solana-program/system@0.10.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)))(@solana-program/token@0.9.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)))(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10))(@solana/sysvars@5.5.1(typescript@5.9.3))(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.20(react@19.2.4))(@types/react@19.2.13)(bufferutil@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.4))(utf-8-validate@5.0.10)(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1764,11 +1764,11 @@ packages:
   '@reown/appkit@1.8.9':
     resolution: {integrity: sha512-e3N2DAzf3Xv3jnoD8IsUo0/Yfwuhk7npwJBe1+9rDJIRwgPsyYcCLD4gKPDFC5IUIfOLqK7YtGOh9oPEUnIWpw==}
 
-  '@reverbia/portal@1.0.0-next.20260205014312':
-    resolution: {integrity: sha512-oyUsXg1JDMTgLqfpxHeE3abQrVXVOHPXWJ0jR9wi5CUeQXkclYx9jF6JYgIBfHFYrxeEINY4ng3eIneydZED9A==}
+  '@reverbia/portal@1.0.0-next.20260207155946':
+    resolution: {integrity: sha512-Oi9VSAyVzqwjYOYa2usdI0y/ot1XUbSixBxM2FDilWscR+hGCflXcDdqKDT2F+1mvJwoAr0M5hpn+M/q44+OVw==}
 
-  '@reverbia/sdk@file:../ai-sdk':
-    resolution: {directory: ../ai-sdk, type: directory}
+  '@reverbia/sdk@1.0.0-next.20260210041158':
+    resolution: {integrity: sha512-erlDscDTJ2ejvRGnKylpjVqvaHs/9Bjr7AJ3P3HLKd2PyCCF5DSazzBnMZdQkdBMnWx5mogdbZ4QCfpl0iVIvg==}
     peerDependencies:
       '@nozbe/watermelondb': ^0.28.0
       '@privy-io/react-auth': ^3.7.0
@@ -9083,11 +9083,11 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reverbia/portal@1.0.0-next.20260205014312': {}
+  '@reverbia/portal@1.0.0-next.20260207155946': {}
 
-  '@reverbia/sdk@file:../ai-sdk(@nozbe/watermelondb@0.28.0)(@privy-io/react-auth@3.13.1(@solana-program/system@0.10.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)))(@solana-program/token@0.9.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)))(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10))(@solana/sysvars@5.5.1(typescript@5.9.3))(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.20(react@19.2.4))(@types/react@19.2.13)(bufferutil@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.4))(utf-8-validate@5.0.10)(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)':
+  '@reverbia/sdk@1.0.0-next.20260210041158(@nozbe/watermelondb@0.28.0)(@privy-io/react-auth@3.13.1(@solana-program/system@0.10.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)))(@solana-program/token@0.9.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)))(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10))(@solana/sysvars@5.5.1(typescript@5.9.3))(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.20(react@19.2.4))(@types/react@19.2.13)(bufferutil@4.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.4))(utf-8-validate@5.0.10)(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6)':
     dependencies:
-      '@reverbia/portal': 1.0.0-next.20260205014312
+      '@reverbia/portal': 1.0.0-next.20260207155946
       ai: 5.0.93(zod@4.3.6)
       jszip: 3.10.1
       mammoth: 1.11.0
