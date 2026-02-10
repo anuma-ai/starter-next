@@ -9,7 +9,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { useIdentityToken, usePrivy, useWallets, getIdentityToken as fetchIdentityToken } from "@privy-io/react-auth";
+import { useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 import { useAppChat } from "@/hooks/useAppChat";
 import {
@@ -272,8 +272,35 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
+  // Privy's standalone getIdentityToken() calls /api/v1/users/me on EVERY
+  // invocation. Instead of calling it, we reuse the token that the
+  // useIdentityToken() hook already fetched (single API call) and let
+  // callers wait for it when it hasn't arrived yet.
+  const identityTokenRef = useRef(identityToken);
+  const tokenWaitersRef = useRef<Array<(token: string | null) => void>>([]);
+
+  useEffect(() => {
+    identityTokenRef.current = identityToken;
+    if (identityToken && tokenWaitersRef.current.length > 0) {
+      for (const resolve of tokenWaitersRef.current) resolve(identityToken);
+      tokenWaitersRef.current = [];
+    }
+  }, [identityToken]);
+
   const getIdentityToken = useCallback(async (): Promise<string | null> => {
-    return fetchIdentityToken();
+    if (identityTokenRef.current) return identityTokenRef.current;
+    // Wait for the useIdentityToken() hook to provide the token rather
+    // than calling fetchIdentityToken() which hits /api/v1/users/me again
+    return new Promise((resolve) => {
+      tokenWaitersRef.current.push(resolve);
+      // Safety timeout so callers don't hang forever if auth fails
+      setTimeout(() => {
+        tokenWaitersRef.current = tokenWaitersRef.current.filter(
+          (r) => r !== resolve
+        );
+        resolve(identityTokenRef.current);
+      }, 10_000);
+    });
   }, []);
 
   // Calendar token state (triggers re-render when updated)
@@ -405,6 +432,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     temperature,
     maxOutputTokens,
     walletAddress,
+    signMessage,
+    embeddedWalletSigner,
     encryptionReady,
     // Use semantic search to find relevant tools based on prompt similarity
     // Apply user's tool mode preferences: enable (always include), disable (always exclude), auto (semantic search)

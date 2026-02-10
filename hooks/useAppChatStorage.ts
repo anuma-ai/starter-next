@@ -59,6 +59,10 @@ type UseChatStorageProps = {
   onStreamingData?: (chunk: string, accumulated: string) => void;
   /** Wallet address to enable encrypted file storage in OPFS */
   walletAddress?: string;
+  /** Sign a message with the user's wallet */
+  signMessage?: (message: string) => Promise<string>;
+  /** Sign a message silently using the embedded wallet (no confirmation modal) */
+  embeddedWalletSigner?: (message: string) => Promise<string>;
   /** System prompt for the AI (added as system role message) */
   systemPrompt?: string;
   /** Whether encryption is ready (from chat provider) */
@@ -157,6 +161,8 @@ export function useAppChatStorage({
   getToken,
   onStreamingData,
   walletAddress,
+  signMessage: signMessageProp,
+  embeddedWalletSigner,
   systemPrompt,
   encryptionReady,
 }: UseChatStorageProps) {
@@ -197,10 +203,18 @@ export function useAppChatStorage({
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
     // Enable encrypted file storage in OPFS when wallet is connected
     walletAddress,
+    signMessage: signMessageProp,
+    embeddedWalletSigner,
   });
   //#endregion hookInit
 
   const refreshConversations = useCallback(async () => {
+    // Don't load conversations while encryption is initializing
+    // (message content used for titles would be encrypted)
+    if (walletAddress && !encryptionReady) {
+      return;
+    }
+
     const list = await getConversations();
     // Load first message for each conversation to use as title
     const conversationsWithTitles = await Promise.all(
@@ -231,11 +245,11 @@ export function useAppChatStorage({
       })
     );
     setConversations(conversationsWithTitles.filter(Boolean));
-  }, [getConversations, getMessages]);
+  }, [getConversations, getMessages, walletAddress, encryptionReady]);
 
   useEffect(() => {
     refreshConversations();
-  }, [refreshConversations, conversationId]);
+  }, [refreshConversations, conversationId, encryptionReady]);
 
   // Keep ref in sync with conversationId for use in callbacks
   useEffect(() => {
@@ -289,6 +303,12 @@ export function useAppChatStorage({
 
   useEffect(() => {
     if (conversationId) {
+      // Don't load messages while encryption is still initializing
+      // (they'd come back as encrypted strings like enc:v2:...)
+      if (walletAddress && !encryptionReady) {
+        return;
+      }
+
       // Check if we need to reload due to wallet/encryption state change
       // If wallet address changed, we should reload to get files from OPFS
       const walletChanged =

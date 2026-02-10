@@ -41,7 +41,7 @@ import {
   type PromptInputMessage,
 } from "@/components/chat/prompt-input";
 import { Reasoning } from "@/components/chat/reasoning";
-import { getIdentityToken } from "@privy-io/react-auth";
+import { useIdentityToken } from "@privy-io/react-auth";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
 import { useApps } from "@/hooks/useApps";
@@ -132,6 +132,7 @@ type AppBuilderViewProps = {
 
 export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const thinkingPanel = useThinkingPanel();
+  const { identityToken } = useIdentityToken();
   const chatState = useChatContext();
   const { state: sidebarState } = useSidebar();
 
@@ -503,7 +504,7 @@ ${diffSummary}`;
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const token = await getIdentityToken();
+      const token = identityToken;
 
       const response = await fetch(`${apiUrl}/api/v1/responses`, {
         method: "POST",

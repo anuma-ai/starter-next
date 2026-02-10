@@ -18,7 +18,7 @@ export function ConversationsView() {
     }
     const query = searchQuery.toLowerCase();
     return conversations.filter((conv) => {
-      const title = conv.title || `Chat ${conv.id?.slice(0, 8) || ""}`;
+      const title = (!conv.title?.startsWith("enc:") && conv.title) || `Chat ${conv.id?.slice(0, 8) || ""}`;
       return title.toLowerCase().includes(query);
     });
   }, [conversations, searchQuery]);
@@ -64,7 +64,7 @@ export function ConversationsView() {
                   className="flex w-full items-center justify-between gap-3 px-4 py-3 hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <span className="truncate">
-                    {conv.title || `Chat ${conv.id?.slice(0, 8) || ""}`}
+                    {(!conv.title?.startsWith("enc:") && conv.title) || `Chat ${conv.id?.slice(0, 8) || ""}`}
                   </span>
                   {formattedDate && (
                     <span className="text-sm text-muted-foreground shrink-0">

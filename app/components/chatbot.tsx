@@ -2,9 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Zip02Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
@@ -73,7 +72,7 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <PromptInputButton>
-          <MenuSquareIcon className="size-4" strokeWidth={2} />
+          <HugeiconsIcon icon={DashboardSquare01Icon} className="size-5" />
         </PromptInputButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="overflow-hidden">
@@ -428,14 +427,21 @@ const ChatBotDemo = () => {
     [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled, pathname, router, conversationId, createConversation]
   );
 
+  // Detect when we expect messages but don't have them yet (to avoid flashing the
+  // centered empty-chat prompt). This covers:
+  // - Direct URL load: pathname is /c/... but messages haven't loaded yet
+  // - Switching conversations: conversationId is set but messages haven't arrived yet
+  const expectsMessages = pathname.startsWith("/c/") || !!currentConversationId;
+  const showEmptyState = messages.length === 0 && !expectsMessages;
+
   return (
     <div
-      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${messages.length === 0 ? "justify-center" : ""
+      className={`relative flex min-h-0 min-w-0 flex-1 flex-col bg-background ${showEmptyState ? "justify-center" : ""
         }`}
       style={patternStyle}
     >
       <div
-        className={`min-h-0 flex-1 px-4 overflow-y-auto ${messages.length === 0 ? "hidden" : ""
+        className={`min-h-0 flex-1 px-4 overflow-y-auto ${showEmptyState ? "hidden" : ""
           }`}
       >
         <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
@@ -448,9 +454,11 @@ const ChatBotDemo = () => {
                       message.role === "assistant" &&
                       message.id === messages.at(-1)?.id;
 
-                    // Always use StreamingMessage for the last assistant message to avoid
-                    // flash when switching components after streaming completes
-                    const useStreaming = isLastAssistantMessage;
+                    // Only use StreamingMessage when actively streaming.
+                    // Streamdown (used by StreamingMessage) defers its first render via
+                    // startTransition, causing a blank frame on mount. Using MessageResponse
+                    // for loaded messages avoids this flash on conversation switch.
+                    const useStreaming = isLastAssistantMessage && isLoading;
 
                     // Show reasoning after streaming starts (or completes) if there was thinking
                     // Only for assistant messages

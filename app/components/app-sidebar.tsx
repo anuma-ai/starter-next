@@ -87,6 +87,7 @@ type AppSidebarProps = {
   getProjectConversations: (projectId: string) => Promise<StoredConversation[]>;
   getMessages: (conversationId: string) => Promise<StoredMessage[]>;
   updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
+  encryptionReady: boolean;
   onDeleteConversation: (conversationId: string) => Promise<void>;
   // Apps
   apps: StoredApp[];
@@ -435,7 +436,7 @@ function SortableConversationItem({
           className="text-sm cursor-grab"
         >
           <span className="truncate">
-            {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
+            {conversation.displayTitle || (!conversation.title?.startsWith("enc:") && conversation.title) || `Chat ${conversation.conversationId.slice(0, 8)}`}
           </span>
         </SidebarMenuButton>
         {showMenu && (
@@ -480,7 +481,7 @@ function ConversationItemOverlay({
       <SidebarMenuItem>
         <SidebarMenuButton className="text-sm cursor-grabbing !bg-transparent hover:!bg-transparent">
           <span className="truncate">
-            {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
+            {conversation.displayTitle || (!conversation.title?.startsWith("enc:") && conversation.title) || `Chat ${conversation.conversationId.slice(0, 8)}`}
           </span>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -506,6 +507,7 @@ export function AppSidebar({
   getProjectConversations,
   getMessages,
   updateConversationProject,
+  encryptionReady,
   onDeleteConversation,
   apps,
   appsReady,
@@ -561,6 +563,7 @@ export function AppSidebar({
   // Track initial mount to skip animations when restoring state from localStorage
   // Use a ref for the actual tracking, and state to trigger re-renders
   const hasInitialConversationsLoaded = useRef(false);
+  const hasReenrichedAfterEncryption = useRef(false);
   const [skipInitialAnimations, setSkipInitialAnimations] = useState(true);
   // Track project icons (loaded from project theme settings)
   const [projectIcons, setProjectIcons] = useState<Record<string, string | undefined>>({});
@@ -759,16 +762,19 @@ export function AppSidebar({
         }
 
         // Fall back to extracting title from first message
-        try {
-          const msgs = await getMessages(conv.conversationId);
-          const firstUserMessage = msgs.find((m) => m.role === "user");
-          if (firstUserMessage?.content) {
-            const text = firstUserMessage.content.slice(0, 30);
-            const displayTitle = text.length >= 30 ? `${text}...` : text;
-            return { ...conv, displayTitle };
+        // Skip if encryption isn't ready — content would be encrypted strings
+        if (encryptionReady) {
+          try {
+            const msgs = await getMessages(conv.conversationId);
+            const firstUserMessage = msgs.find((m) => m.role === "user");
+            if (firstUserMessage?.content) {
+              const text = firstUserMessage.content.slice(0, 30);
+              const displayTitle = text.length >= 30 ? `${text}...` : text;
+              return { ...conv, displayTitle };
+            }
+          } catch {
+            // Ignore errors, use default title
           }
-        } catch {
-          // Ignore errors, use default title
         }
         return conv;
       })
@@ -790,18 +796,26 @@ export function AppSidebar({
   };
 
   // Load conversations for all projects on initial mount to show chevrons correctly
+  // Also re-enrich when encryptionReady changes (to decrypt titles)
   useEffect(() => {
     const loadAllProjectConversations = async () => {
       if (!projectsReady || orderedProjects.length === 0) return;
 
+      // Determine if this run should re-enrich for encryption
+      const shouldReenrichForEncryption = encryptionReady && !hasReenrichedAfterEncryption.current;
+
       const updates: Record<string, ConversationWithTitle[]> = {};
       for (const project of orderedProjects) {
-        // Skip if already loaded
-        if (projectConversations[project.projectId]) continue;
+        // Skip if already loaded, unless encryption just became ready for the first time
+        if (projectConversations[project.projectId] && !shouldReenrichForEncryption) continue;
 
         const convs = await getProjectConversations(project.projectId);
         const enrichedConvs = await enrichConversationsWithTitles(convs);
         updates[project.projectId] = enrichedConvs;
+      }
+
+      if (shouldReenrichForEncryption) {
+        hasReenrichedAfterEncryption.current = true;
       }
 
       if (Object.keys(updates).length > 0) {
@@ -811,7 +825,7 @@ export function AppSidebar({
 
     loadAllProjectConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectsReady, orderedProjects.length]);
+  }, [projectsReady, orderedProjects.length, encryptionReady]);
 
   // Refresh expanded project conversations when project conversations version changes
   // Also auto-expand the project when a new conversation is added to it

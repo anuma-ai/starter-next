@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { useSubscription, useCredits } from "@reverbia/sdk/react";
-import { usePrivy, useIdentityToken, getIdentityToken } from "@privy-io/react-auth";
+import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 
 export default function AccountPage() {
@@ -16,9 +16,7 @@ export default function AccountPage() {
 
   const linkedAccounts = user?.linkedAccounts || [];
 
-  const getToken = useCallback(async () => {
-    return getIdentityToken();
-  }, []);
+  const getToken = useCallback(async () => identityToken, [identityToken]);
 
   const {
     status,

@@ -23,6 +23,10 @@ type UseAppChatProps = {
   store?: boolean;
   // Wallet address for encrypted file storage
   walletAddress?: string;
+  // Sign a message with the user's wallet
+  signMessage?: (message: string) => Promise<string>;
+  // Sign a message silently using the embedded wallet
+  embeddedWalletSigner?: (message: string) => Promise<string>;
   // Whether encryption is ready (for reloading files after encryption initializes)
   encryptionReady?: boolean;
   // Server-side tools (tool names or dynamic filter function)
@@ -45,6 +49,8 @@ export function useAppChat({
   temperature,
   maxOutputTokens,
   walletAddress,
+  signMessage,
+  embeddedWalletSigner,
   encryptionReady,
   serverTools,
   clientTools,
@@ -146,6 +152,8 @@ export function useAppChat({
     onStreamingData: handleStreamingData,
     // Enable encrypted file storage in OPFS when wallet is connected
     walletAddress,
+    signMessage,
+    embeddedWalletSigner,
     // Re-load messages when encryption becomes ready (to decrypt file attachments)
     encryptionReady,
     // System prompt with memory retrieval instructions
