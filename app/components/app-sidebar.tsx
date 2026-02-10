@@ -436,7 +436,7 @@ function SortableConversationItem({
           className="text-sm cursor-grab"
         >
           <span className="truncate">
-            {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
+            {conversation.displayTitle || (!conversation.title?.startsWith("enc:") && conversation.title) || `Chat ${conversation.conversationId.slice(0, 8)}`}
           </span>
         </SidebarMenuButton>
         {showMenu && (
@@ -481,7 +481,7 @@ function ConversationItemOverlay({
       <SidebarMenuItem>
         <SidebarMenuButton className="text-sm cursor-grabbing !bg-transparent hover:!bg-transparent">
           <span className="truncate">
-            {conversation.displayTitle || conversation.title || `Chat ${conversation.conversationId.slice(0, 8)}`}
+            {conversation.displayTitle || (!conversation.title?.startsWith("enc:") && conversation.title) || `Chat ${conversation.conversationId.slice(0, 8)}`}
           </span>
         </SidebarMenuButton>
       </SidebarMenuItem>
