@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ChevronLeft } from "lucide-react";
-import { useIdentityToken } from "@privy-io/react-auth";
+import { useIdentityToken, getIdentityToken } from "@privy-io/react-auth";
 import {
   getDatabaseStats,
   clearAndSeedLongMemEval,
@@ -42,8 +42,8 @@ export default function SeedPage() {
   const [generateEmbeddings, setGenerateEmbeddings] = useState(true);
 
   const getToken = useCallback(
-    () => Promise.resolve(identityToken ?? null),
-    [identityToken]
+    () => getIdentityToken(),
+    []
   );
 
   useEffect(() => {

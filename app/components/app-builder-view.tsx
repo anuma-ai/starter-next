@@ -3,7 +3,10 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { MenuSquareIcon, Cancel01Icon } from "hugeicons-react";
-import { ImageIcon, CheckIcon, CpuIcon, AlertCircleIcon, CodeIcon, PlayIcon, TerminalIcon, ChevronDownIcon, ChevronUpIcon, FolderIcon, GitBranchIcon } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Tick02Icon } from "@hugeicons/core-free-icons";
+import { ImageIcon, CpuIcon, AlertCircleIcon, CodeIcon, PlayIcon, TerminalIcon, ChevronDownIcon, ChevronUpIcon, FolderIcon, GitBranchIcon } from "lucide-react";
+import { ModelIcon } from "@/components/model-icons";
 import {
   SandpackProvider,
   SandpackPreview,
@@ -38,7 +41,7 @@ import {
   type PromptInputMessage,
 } from "@/components/chat/prompt-input";
 import { Reasoning } from "@/components/chat/reasoning";
-import { useIdentityToken } from "@privy-io/react-auth";
+import { getIdentityToken } from "@privy-io/react-auth";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
 import { useApps } from "@/hooks/useApps";
@@ -111,10 +114,9 @@ const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
                 key={model.id}
                 onClick={() => onSelectModel(model.id)}
               >
-                {selectedModel === model.id && <CheckIcon className="size-4" />}
-                <span className={selectedModel !== model.id ? "pl-6" : ""}>
-                  {model.name}
-                </span>
+                <ModelIcon modelId={model.id} className="size-4" />
+                {model.name}
+                <HugeiconsIcon icon={Tick02Icon} className={`size-4 ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>
@@ -132,7 +134,6 @@ export function AppBuilderView({ appId }: AppBuilderViewProps) {
   const thinkingPanel = useThinkingPanel();
   const chatState = useChatContext();
   const { state: sidebarState } = useSidebar();
-  const { identityToken } = useIdentityToken();
 
   const {
     messages,
@@ -502,12 +503,13 @@ ${diffSummary}`;
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const token = await getIdentityToken();
 
       const response = await fetch(`${apiUrl}/api/v1/responses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(identityToken && { Authorization: `Bearer ${identityToken}` }),
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({
           model: "openai/gpt-4o-mini",
@@ -541,7 +543,7 @@ ${diffSummary}`;
       console.error("[AppBuilder] Error generating commit message:", error);
       return null;
     }
-  }, [gitStatus.files, getFile, identityToken]);
+  }, [gitStatus.files, getFile]);
 
   // Download project as ZIP
   const handleDownloadZip = useCallback(async () => {

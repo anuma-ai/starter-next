@@ -2,6 +2,8 @@
 
 ## Documents
 
-- [useChatStorage](documents/useChatStorage.md)
-- [useModels](documents/useModels.md)
-- [useOCR](documents/useOCR.md)
+- [memory](documents/memory.md)
+- [messages](documents/messages.md)
+- [models](documents/models.md)
+- [ocr](documents/ocr.md)
+- [tools](documents/tools.md)

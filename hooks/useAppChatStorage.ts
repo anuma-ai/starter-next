@@ -41,6 +41,10 @@ type MessagePart =
     url: string;
     mediaType: string;
     filename: string;
+  }
+  | {
+    type: "error";
+    error: string;
   };
 
 type Message = {
@@ -366,6 +370,12 @@ export function useAppChatStorage({
             // SDK stores thinking/reasoning in the 'thinking' field
             if (msg.thinking) {
               parts.push({ type: "reasoning" as const, text: msg.thinking });
+            }
+
+            // If an assistant message has an error, surface it as an error part
+            // (SDK sets error on both user and assistant messages; only show it on assistant)
+            if (msg.error && msg.role === "assistant") {
+              parts.push({ type: "error" as const, error: msg.error });
             }
 
             // For assistant messages, SDK resolves image placeholders to markdown in content
@@ -1014,6 +1024,11 @@ export function useAppChatStorage({
           const parts: MessagePart[] = [];
           if (msg.thinking) {
             parts.push({ type: "reasoning" as const, text: msg.thinking });
+          }
+
+          // If an assistant message has an error, surface it as an error part
+          if (msg.error && msg.role === "assistant") {
+            parts.push({ type: "error" as const, error: msg.error });
           }
 
           // For assistant messages, SDK resolves image placeholders to markdown in content

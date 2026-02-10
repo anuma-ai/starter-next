@@ -4,8 +4,10 @@ import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react
 import { useRouter } from "next/navigation";
 import { MenuSquareIcon } from "hugeicons-react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Setting07Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import { Setting07Icon, Delete02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { ImageIcon, CheckIcon, CpuIcon, PaletteIcon, BrainIcon } from "lucide-react";
+
+import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 import {
   DropdownMenu,
@@ -82,10 +84,9 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
                 key={model.id}
                 onClick={() => onSelectModel(model.id)}
               >
-                {selectedModel === model.id && <CheckIcon className="size-4" />}
-                <span className={selectedModel !== model.id ? "pl-6" : ""}>
-                  {model.name}
-                </span>
+                <ModelIcon modelId={model.id} className="size-4" />
+                {model.name}
+                <HugeiconsIcon icon={Tick02Icon} className={`size-4 ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>
@@ -556,7 +557,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={
                     authenticated
-                      ? `Ask ${MODELS.find((m) => m.id === selectedModel)?.name ?? "AI"} anything${thinkingEnabled ? " (thinking)" : ""}`
+                      ? `Ask ${MODELS.find((m) => m.id === selectedModel)?.name ?? "AI"}${thinkingEnabled ? " (thinking)" : ""}`
                       : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
                   }
                   value={input}

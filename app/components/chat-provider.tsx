@@ -9,7 +9,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
+import { useIdentityToken, usePrivy, useWallets, getIdentityToken as fetchIdentityToken } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 import { useAppChat } from "@/hooks/useAppChat";
 import {
@@ -273,8 +273,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getIdentityToken = useCallback(async (): Promise<string | null> => {
-    return identityToken ?? null;
-  }, [identityToken]);
+    return fetchIdentityToken();
+  }, []);
 
   // Calendar token state (triggers re-render when updated)
   const [calendarToken, setCalendarToken] = useState<string | null>(() =>

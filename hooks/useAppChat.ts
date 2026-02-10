@@ -59,13 +59,16 @@ export function useAppChat({
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  //#region memorySettings
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryLimit, setMemoryLimit] = useState(5);
   const [memoryThreshold, setMemoryThreshold] = useState(0.2);
+  //#endregion memorySettings
   const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingTextRef = useRef<string>("");
 
+  //#region memorySettingsLoader
   // Load memory settings from localStorage
   useEffect(() => {
     const savedEnabled = localStorage.getItem("chat_memoryEnabled");
@@ -110,6 +113,7 @@ export function useAppChat({
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
+  //#endregion memorySettingsLoader
 
   // Callback to handle streaming data from chat storage
   const handleStreamingData = useCallback(
@@ -210,6 +214,7 @@ export function useAppChat({
         const effectiveServerTools = options?.serverTools || serverTools;
         const baseClientTools = options?.clientTools || clientTools || [];
 
+        //#region memoryToolCreation
         // Ensure we have a conversation ID BEFORE creating the memory tool
         // This is critical for excludeConversationId to work on new conversations
         let effectiveConversationId = options?.conversationId || conversationId;
@@ -233,6 +238,7 @@ export function useAppChat({
               ...baseClientTools,
             ]
           : baseClientTools;
+        //#endregion memoryToolCreation
         const effectiveToolChoice = options?.toolChoice || toolChoice;
         const response = await baseSendMessage(text, {
           model: effectiveModel,
@@ -255,6 +261,12 @@ export function useAppChat({
           ...(options?.isFirstMessage !== undefined && { isFirstMessage: options.isFirstMessage }),
           onThinking,
         });
+
+        // Check if the SDK returned an error in the result object
+        if (response?.error) {
+          setError(response.error);
+          return { ...response, conversationId: effectiveConversationId };
+        }
 
         // Auto-refresh tools if server tools changed
         // Both Responses API and Completions API formats include tools_checksum

@@ -1,44 +1,26 @@
-import { Database } from "@nozbe/watermelondb";
 import LokiJSAdapter from "@nozbe/watermelondb/adapters/lokijs";
-import { sdkSchema, sdkMigrations, sdkModelClasses } from "@reverbia/sdk/react";
-
-let database: Database | null = null;
+import {
+  DatabaseManager,
+  webPlatformStorage,
+} from "@reverbia/sdk/react";
 
 /**
  * Database Setup
  *
- * This module sets up the WatermelonDB database with the SDK's unified schema.
- * The schema includes all data models for persisting conversations, memories,
- * projects, and settings.
+ * Uses the SDK's DatabaseManager to manage per-wallet WatermelonDB instances.
+ * Each wallet address gets its own isolated database. The manager handles
+ * singleton caching, automatic switching, and destructive schema migrations.
  */
-export function getDatabase(): Database {
-  if (database) {
-    return database;
-  }
-
-  const adapter = new LokiJSAdapter({
-    dbName: "reverbia-ai-examples",
-    schema: sdkSchema,
-    migrations: sdkMigrations,
-    useWebWorker: false,
-    useIncrementalIndexedDB: true,
-  });
-
-  database = new Database({
-    adapter,
-    modelClasses: sdkModelClasses,
-  });
-
-  return database;
-}
-
-/**
- * Reset the database (for testing or clearing data)
- */
-export async function resetDatabase(): Promise<void> {
-  if (database) {
-    await database.write(async () => {
-      await database!.unsafeResetDatabase();
-    });
-  }
-}
+export const dbManager = new DatabaseManager({
+  dbNamePrefix: "reverbia-ai-examples",
+  createAdapter: (dbName, schema, migrations) =>
+    new LokiJSAdapter({
+      schema,
+      migrations,
+      dbName,
+      useWebWorker: false,
+      useIncrementalIndexedDB: true,
+    }),
+  storage: webPlatformStorage,
+  onDestructiveMigration: () => window.location.reload(),
+});

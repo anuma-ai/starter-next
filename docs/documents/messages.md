@@ -678,6 +678,11 @@ const handleSwitchConversation = useCallback(
           parts.push({ type: "reasoning" as const, text: msg.thinking });
         }
 
+        // If an assistant message has an error, surface it as an error part
+        if (msg.error && msg.role === "assistant") {
+          parts.push({ type: "error" as const, error: msg.error });
+        }
+
         // For assistant messages, SDK resolves image placeholders to markdown in content
         const textContent = msg.content;
         if (textContent) {
