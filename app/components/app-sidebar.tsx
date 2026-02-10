@@ -563,6 +563,7 @@ export function AppSidebar({
   // Track initial mount to skip animations when restoring state from localStorage
   // Use a ref for the actual tracking, and state to trigger re-renders
   const hasInitialConversationsLoaded = useRef(false);
+  const hasReenrichedAfterEncryption = useRef(false);
   const [skipInitialAnimations, setSkipInitialAnimations] = useState(true);
   // Track project icons (loaded from project theme settings)
   const [projectIcons, setProjectIcons] = useState<Record<string, string | undefined>>({});
@@ -800,14 +801,21 @@ export function AppSidebar({
     const loadAllProjectConversations = async () => {
       if (!projectsReady || orderedProjects.length === 0) return;
 
+      // Determine if this run should re-enrich for encryption
+      const shouldReenrichForEncryption = encryptionReady && !hasReenrichedAfterEncryption.current;
+
       const updates: Record<string, ConversationWithTitle[]> = {};
       for (const project of orderedProjects) {
-        // Skip if already loaded, unless encryption just became ready
-        if (projectConversations[project.projectId] && !encryptionReady) continue;
+        // Skip if already loaded, unless encryption just became ready for the first time
+        if (projectConversations[project.projectId] && !shouldReenrichForEncryption) continue;
 
         const convs = await getProjectConversations(project.projectId);
         const enrichedConvs = await enrichConversationsWithTitles(convs);
         updates[project.projectId] = enrichedConvs;
+      }
+
+      if (shouldReenrichForEncryption) {
+        hasReenrichedAfterEncryption.current = true;
       }
 
       if (Object.keys(updates).length > 0) {
