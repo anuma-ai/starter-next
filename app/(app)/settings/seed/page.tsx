@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ChevronLeft } from "lucide-react";
-import { useIdentityToken, getIdentityToken } from "@privy-io/react-auth";
+import { useIdentityToken } from "@privy-io/react-auth";
 import {
   getDatabaseStats,
   clearAndSeedLongMemEval,
@@ -41,10 +41,7 @@ export default function SeedPage() {
   const [maxMessages, setMaxMessages] = useState(100);
   const [generateEmbeddings, setGenerateEmbeddings] = useState(true);
 
-  const getToken = useCallback(
-    () => getIdentityToken(),
-    []
-  );
+  const getToken = useCallback(async () => identityToken, [identityToken]);
 
   useEffect(() => {
     refreshStats();

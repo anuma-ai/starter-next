@@ -5,16 +5,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { useModels } from "@reverbia/sdk/react";
-import { usePrivy, useIdentityToken, getIdentityToken } from "@privy-io/react-auth";
+import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 
 export default function ModelsPage() {
   const router = useRouter();
   const { authenticated } = usePrivy();
   const { identityToken } = useIdentityToken();
 
-  const getToken = useCallback(async () => {
-    return getIdentityToken();
-  }, []);
+  const getToken = useCallback(async () => identityToken, [identityToken]);
 
   const { models, isLoading, error, refetch } = useModels({
     getToken,
