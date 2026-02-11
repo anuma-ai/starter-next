@@ -782,6 +782,48 @@ const ChatBotDemo = () => {
     }
   }, [voiceChatMode, isVoiceActive, stopVoiceChunk, cleanupVoice, startVoiceChatRecording]);
 
+  // Stop recording, transcribe, submit combined text, enter voice chat mode
+  const handleVoiceChat = useCallback(async () => {
+    if (!isVoiceActive) return;
+
+    // Stop recording
+    voiceActiveRef.current = false;
+    setIsVoiceClosing(true);
+    setVoiceLevel(0);
+
+    if (voiceMonitorRef.current) {
+      clearInterval(voiceMonitorRef.current);
+      voiceMonitorRef.current = null;
+    }
+
+    setTimeout(() => {
+      setIsVoiceActive(false);
+      setIsVoiceClosing(false);
+    }, 200);
+
+    // Transcribe final chunk
+    const recording = await stopVoiceChunk();
+    if (recording && recording.duration > 500) {
+      try {
+        const { text } = await transcribe(recording);
+        const cleaned = text?.replace(/\[.*?\]|\(.*?\)/g, "").trim();
+        if (cleaned) {
+          voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
+        }
+      } catch { }
+    }
+
+    cleanupVoice();
+
+    const finalText = voiceTextRef.current.trim();
+    voiceTextRef.current = "";
+
+    if (finalText) {
+      setInput("");
+      onSubmit({ text: finalText, files: [] });
+    }
+  }, [isVoiceActive, stopVoiceChunk, transcribe, cleanupVoice, setInput, onSubmit]);
+
   // Auto-start voice chat after AI response completes (handles remount after navigation)
   const wasLoadingRef = useRef(false);
   useEffect(() => {
@@ -1139,13 +1181,16 @@ const ChatBotDemo = () => {
                   </PromptInputButton>
                 )
               )}
-              {voiceEnabled && !input && !isVoiceActive && !voiceChatMode && !isLoading && authenticated ? (
-                <PromptInputButton
-                  onClick={handleVoiceChatToggle}
-                  disabled={isLoading || !authenticated}
+              {isVoiceActive && !voiceChatMode ? (
+                <button
+                  type="button"
+                  onClick={handleVoiceChat}
+                  disabled={isVoiceClosing}
+                  className={`flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer origin-right ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-50" : "animate-in fade-in zoom-in-50 duration-200 origin-right"}`}
                 >
-                  <AudioLinesIcon className="size-4" />
-                </PromptInputButton>
+                  <AudioLinesIcon className="size-3.5" />
+                  Chat
+                </button>
               ) : (
                 <PromptInputSubmit
                   disabled={
