@@ -959,6 +959,7 @@ const ChatBotDemo = () => {
                   <PromptInputButton
                     onClick={handleVoiceToggle}
                     disabled={isLoading || !authenticated}
+                    className="animate-in fade-in zoom-in-50 duration-200"
                   >
                     <HugeiconsIcon icon={Mic02Icon} className="size-5" />
                   </PromptInputButton>
