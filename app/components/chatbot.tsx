@@ -158,15 +158,21 @@ const ChatBotDemo = () => {
 
   // Voice input
   const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const {
-    startRecording,
-    stopRecording,
-    transcribe,
-    preloadModel,
-    isRecording,
-    isTranscribing,
-    isModelLoaded,
-  } = useVoice();
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
+  const [voiceLevel, setVoiceLevel] = useState(0);
+  const { transcribe, preloadModel, isModelLoaded } = useVoice();
+
+  const voiceStreamRef = useRef<MediaStream | null>(null);
+  const voiceRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceChunksRef = useRef<Blob[]>([]);
+  const voiceStartRef = useRef(0);
+  const voiceActiveRef = useRef(false);
+  const voiceTextRef = useRef("");
+  const voiceAudioCtxRef = useRef<AudioContext | null>(null);
+  const voiceMonitorRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceSilenceRef = useRef<number | null>(null);
+  const voiceProcessingRef = useRef(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("voice_enabled");
@@ -178,6 +184,42 @@ const ChatBotDemo = () => {
       preloadModel();
     }
   }, [voiceEnabled, isModelLoaded, preloadModel]);
+
+  const startVoiceChunk = useCallback((stream: MediaStream) => {
+    const mimeType = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : "audio/webm";
+    const recorder = new MediaRecorder(stream, { mimeType });
+    voiceChunksRef.current = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) voiceChunksRef.current.push(e.data);
+    };
+    recorder.start();
+    voiceStartRef.current = Date.now();
+    voiceRecorderRef.current = recorder;
+  }, []);
+
+  const stopVoiceChunk = useCallback((): Promise<{ blob: Blob; duration: number; mimeType: string } | null> => {
+    return new Promise((resolve) => {
+      const recorder = voiceRecorderRef.current;
+      if (!recorder || recorder.state === "inactive") {
+        resolve(null);
+        return;
+      }
+      recorder.onstop = () => {
+        if (voiceChunksRef.current.length === 0) {
+          resolve(null);
+          return;
+        }
+        const mimeType = recorder.mimeType || "audio/webm";
+        const blob = new Blob(voiceChunksRef.current, { type: mimeType });
+        const duration = Date.now() - voiceStartRef.current;
+        voiceChunksRef.current = [];
+        resolve({ blob, duration, mimeType });
+      };
+      recorder.stop();
+    });
+  }, []);
 
   // Get conversationId early to determine if this is a new chat
   const { conversationId: currentConversationId } = chatState;
@@ -467,18 +509,119 @@ const ChatBotDemo = () => {
     [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled, pathname, router, conversationId, createConversation]
   );
 
+  const processVoiceChunk = useCallback(async (stream: MediaStream) => {
+    if (voiceProcessingRef.current) return;
+    voiceProcessingRef.current = true;
+    const recording = await stopVoiceChunk();
+    // Restart recording immediately so no audio is lost during transcription
+    if (voiceActiveRef.current) {
+      startVoiceChunk(stream);
+    }
+    if (recording && recording.duration > 500) {
+      try {
+        const { text } = await transcribe(recording);
+        const cleaned = text?.replace(/\[.*?\]|\(.*?\)/g, "").trim();
+        if (cleaned) {
+          voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
+          setInput(voiceTextRef.current);
+        }
+      } catch {}
+    }
+    voiceProcessingRef.current = false;
+  }, [stopVoiceChunk, transcribe, setInput, startVoiceChunk]);
+
+  const cleanupVoice = useCallback(() => {
+    if (voiceMonitorRef.current) {
+      clearInterval(voiceMonitorRef.current);
+      voiceMonitorRef.current = null;
+    }
+    voiceStreamRef.current?.getTracks().forEach((t) => t.stop());
+    voiceStreamRef.current = null;
+    voiceAudioCtxRef.current?.close();
+    voiceAudioCtxRef.current = null;
+  }, []);
+
   const handleVoiceToggle = useCallback(async () => {
-    if (isRecording) {
-      const recording = await stopRecording();
-      const { text } = await transcribe(recording);
-      const cleaned = text?.replace(/\[.*?\]/g, "").trim();
-      if (cleaned) {
-        onSubmit({ text: cleaned, files: [] });
+    if (isVoiceActive) {
+      // Stop
+      voiceActiveRef.current = false;
+      setIsVoiceActive(false);
+      setIsVoiceProcessing(true);
+      setVoiceLevel(0);
+
+      if (voiceMonitorRef.current) {
+        clearInterval(voiceMonitorRef.current);
+        voiceMonitorRef.current = null;
+      }
+
+      // Transcribe final chunk
+      const recording = await stopVoiceChunk();
+      if (recording && recording.duration > 500) {
+        try {
+          const { text } = await transcribe(recording);
+          const cleaned = text?.replace(/\[.*?\]|\(.*?\)/g, "").trim();
+          if (cleaned) {
+            voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
+          }
+        } catch {}
+      }
+
+      cleanupVoice();
+
+      const finalText = voiceTextRef.current.trim();
+      voiceTextRef.current = "";
+      setIsVoiceProcessing(false);
+      if (finalText) {
+        setInput(finalText);
       }
     } else {
-      await startRecording();
+      // Start
+      voiceTextRef.current = "";
+      setInput("");
+      voiceActiveRef.current = true;
+      setIsVoiceActive(true);
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceStreamRef.current = stream;
+
+      // Audio analysis for silence detection
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      voiceAudioCtxRef.current = audioCtx;
+
+      startVoiceChunk(stream);
+
+      // Monitor audio levels for silence
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      voiceSilenceRef.current = null;
+
+      voiceMonitorRef.current = setInterval(() => {
+        if (!voiceActiveRef.current) return;
+        analyser.getByteTimeDomainData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const v = (dataArray[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+        setVoiceLevel(Math.min(rms * 10, 1));
+
+        if (rms < 0.02) {
+          if (voiceSilenceRef.current === null) {
+            voiceSilenceRef.current = Date.now();
+          } else if (Date.now() - voiceSilenceRef.current > 1200 && !voiceProcessingRef.current) {
+            voiceSilenceRef.current = null;
+            processVoiceChunk(stream);
+          }
+        } else {
+          voiceSilenceRef.current = null;
+        }
+      }, 100);
     }
-  }, [isRecording, stopRecording, transcribe, startRecording, onSubmit]);
+  }, [isVoiceActive, stopVoiceChunk, transcribe, setInput, startVoiceChunk, processVoiceChunk, cleanupVoice]);
 
   // Detect when we expect messages but don't have them yet (to avoid flashing the
   // centered empty-chat prompt). This covers:
@@ -789,17 +932,35 @@ const ChatBotDemo = () => {
                 className="flex-1 px-2"
               />
               {voiceEnabled && (
-                <PromptInputButton
-                  onClick={handleVoiceToggle}
-                  disabled={isTranscribing || isLoading || !authenticated}
-                  className={isRecording ? "text-red-500 animate-pulse" : ""}
-                >
-                  {isTranscribing ? (
+                isVoiceActive ? (
+                  <button
+                    type="button"
+                    onClick={handleVoiceToggle}
+                    className="flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer"
+                  >
+                    <div className="flex items-center gap-0.5 h-4">
+                      {[0.6, 1, 0.6].map((scale, i) => (
+                        <div
+                          key={i}
+                          className="w-0.5 rounded-full bg-current transition-all duration-100"
+                          style={{ height: `${Math.max(4, voiceLevel * scale * 16)}px` }}
+                        />
+                      ))}
+                    </div>
+                    Stop
+                  </button>
+                ) : isVoiceProcessing ? (
+                  <PromptInputButton disabled>
                     <Loader2Icon className="size-4 animate-spin" />
-                  ) : (
+                  </PromptInputButton>
+                ) : (
+                  <PromptInputButton
+                    onClick={handleVoiceToggle}
+                    disabled={isLoading || !authenticated}
+                  >
                     <HugeiconsIcon icon={Mic02Icon} className="size-5" />
-                  )}
-                </PromptInputButton>
+                  </PromptInputButton>
+                )
               )}
               <PromptInputSubmit
                 disabled={
