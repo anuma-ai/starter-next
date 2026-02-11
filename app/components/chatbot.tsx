@@ -3,14 +3,14 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon } from "lucide-react";
+import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon, Mic02Icon } from "@hugeicons/core-free-icons";
+import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, Loader2Icon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 
 import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
 import { MODELS, getModelConfig } from "@/lib/models";
-import { useFiles } from "@reverbia/sdk/react";
+import { useFiles, useVoice } from "@reverbia/sdk/react";
 import { useDatabase } from "@/app/providers";
 import {
   DropdownMenu,
@@ -155,6 +155,29 @@ const ChatBotDemo = () => {
     database,
     walletAddress,
   });
+
+  // Voice input
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const {
+    startRecording,
+    stopRecording,
+    transcribe,
+    preloadModel,
+    isRecording,
+    isTranscribing,
+    isModelLoaded,
+  } = useVoice();
+
+  useEffect(() => {
+    const saved = localStorage.getItem("voice_enabled");
+    setVoiceEnabled(saved === "true");
+  }, []);
+
+  useEffect(() => {
+    if (voiceEnabled && !isModelLoaded) {
+      preloadModel();
+    }
+  }, [voiceEnabled, isModelLoaded, preloadModel]);
 
   // Get conversationId early to determine if this is a new chat
   const { conversationId: currentConversationId } = chatState;
@@ -443,6 +466,19 @@ const ChatBotDemo = () => {
     },
     [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled, pathname, router, conversationId, createConversation]
   );
+
+  const handleVoiceToggle = useCallback(async () => {
+    if (isRecording) {
+      const recording = await stopRecording();
+      const { text } = await transcribe(recording);
+      const cleaned = text?.replace(/\[.*?\]/g, "").trim();
+      if (cleaned) {
+        onSubmit({ text: cleaned, files: [] });
+      }
+    } else {
+      await startRecording();
+    }
+  }, [isRecording, stopRecording, transcribe, startRecording, onSubmit]);
 
   // Detect when we expect messages but don't have them yet (to avoid flashing the
   // centered empty-chat prompt). This covers:
@@ -752,6 +788,19 @@ const ChatBotDemo = () => {
                 value={input}
                 className="flex-1 px-2"
               />
+              {voiceEnabled && (
+                <PromptInputButton
+                  onClick={handleVoiceToggle}
+                  disabled={isTranscribing || isLoading || !authenticated}
+                  className={isRecording ? "text-red-500 animate-pulse" : ""}
+                >
+                  {isTranscribing ? (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  ) : (
+                    <HugeiconsIcon icon={Mic02Icon} className="size-5" />
+                  )}
+                </PromptInputButton>
+              )}
               <PromptInputSubmit
                 disabled={
                   !input ||
