@@ -525,7 +525,7 @@ const ChatBotDemo = () => {
           voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
           setInput(voiceTextRef.current);
         }
-      } catch {}
+      } catch { }
     }
     voiceProcessingRef.current = false;
   }, [stopVoiceChunk, transcribe, setInput, startVoiceChunk]);
@@ -563,7 +563,7 @@ const ChatBotDemo = () => {
           if (cleaned) {
             voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
           }
-        } catch {}
+        } catch { }
       }
 
       cleanupVoice();
@@ -936,7 +936,8 @@ const ChatBotDemo = () => {
                   <button
                     type="button"
                     onClick={handleVoiceToggle}
-                    className="flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer"
+                    className="flex items-center gap-1.5 rounded-[20px] bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer"
+                    style={{ cornerShape: "squircle" } as React.CSSProperties}
                   >
                     <div className="flex items-center gap-0.5 h-4">
                       {[0.6, 1, 0.6].map((scale, i) => (
