@@ -1144,12 +1144,44 @@ const ChatBotDemo = () => {
                 className="flex-1 px-2"
               />
               {voiceEnabled && (
-                isVoiceActive ? (
+                isVoiceActive && !voiceChatMode ? (
+                  <div className={`flex items-center origin-right ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-50" : "animate-in fade-in zoom-in-50 duration-200 origin-right"}`}>
+                    <button
+                      type="button"
+                      onClick={handleVoiceToggle}
+                      disabled={isVoiceClosing}
+                      className="flex items-center gap-1.5 rounded-l-xl bg-black dark:bg-white text-white dark:text-black pl-3 pr-2.5 h-8 text-xs font-medium cursor-pointer"
+                      style={{ cornerShape: "squircle" } as React.CSSProperties}
+                    >
+                      <div className="flex items-center gap-0.5 h-4">
+                        {[0.6, 1, 0.6].map((scale, i) => (
+                          <div
+                            key={i}
+                            className="w-0.5 rounded-full bg-current transition-all duration-100"
+                            style={{ height: `${Math.max(4, voiceLevel * scale * 16)}px` }}
+                          />
+                        ))}
+                      </div>
+                      Stop
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleVoiceChat}
+                      disabled={isVoiceClosing}
+                      className="flex items-center gap-1.5 rounded-r-xl bg-black dark:bg-white text-white dark:text-black pl-2.5 pr-3 h-8 text-xs font-medium cursor-pointer ml-[2px]"
+                      style={{ cornerShape: "squircle" } as React.CSSProperties}
+                    >
+                      <AudioLinesIcon className="size-3.5" />
+                      Chat
+                    </button>
+                  </div>
+                ) : isVoiceActive && voiceChatMode ? (
                   <button
                     type="button"
-                    onClick={voiceChatMode ? handleVoiceChatToggle : handleVoiceToggle}
+                    onClick={handleVoiceChatToggle}
                     disabled={isVoiceClosing}
-                    className={`flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer origin-right ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-50" : "animate-in fade-in zoom-in-50 duration-200 origin-right"}`}
+                    className={`flex items-center gap-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black px-3 h-8 text-xs font-medium cursor-pointer origin-right ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-50" : "animate-in fade-in zoom-in-50 duration-200 origin-right"}`}
+                    style={{ cornerShape: "squircle" } as React.CSSProperties}
                   >
                     <div className="flex items-center gap-0.5 h-4">
                       {[0.6, 1, 0.6].map((scale, i) => (
@@ -1166,7 +1198,8 @@ const ChatBotDemo = () => {
                   <button
                     type="button"
                     onClick={handleVoiceChatToggle}
-                    className="flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer origin-right animate-in fade-in zoom-in-50 duration-200 origin-right"
+                    className="flex items-center gap-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black px-3 h-8 text-xs font-medium cursor-pointer origin-right animate-in fade-in zoom-in-50 duration-200 origin-right"
+                    style={{ cornerShape: "squircle" } as React.CSSProperties}
                   >
                     <span className="inline-block size-2 rounded-full bg-current animate-pulse" />
                     Stop
@@ -1181,17 +1214,7 @@ const ChatBotDemo = () => {
                   </PromptInputButton>
                 )
               )}
-              {isVoiceActive && !voiceChatMode ? (
-                <button
-                  type="button"
-                  onClick={handleVoiceChat}
-                  disabled={isVoiceClosing}
-                  className={`flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer origin-right ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-50" : "animate-in fade-in zoom-in-50 duration-200 origin-right"}`}
-                >
-                  <AudioLinesIcon className="size-3.5" />
-                  Chat
-                </button>
-              ) : (
+              {!(isVoiceActive && !voiceChatMode) && (
                 <PromptInputSubmit
                   disabled={
                     !input ||
