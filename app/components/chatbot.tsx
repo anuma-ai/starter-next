@@ -564,7 +564,7 @@ const ChatBotDemo = () => {
     voiceAudioCtxRef.current = null;
   }, []);
 
-  // Voice chat: stop recording, transcribe, auto-submit, and flag for restart
+  // Voice chat: stop recording, transcribe, auto-submit, and restart after AI responds
   const voiceChatAutoSend = useCallback(async () => {
     if (voiceProcessingRef.current) return;
     voiceProcessingRef.current = true;
@@ -599,16 +599,26 @@ const ChatBotDemo = () => {
       setIsVoiceActive(false);
       setVoiceLevel(0);
 
-      // Reset processing flag BEFORE calling onSubmit so the next
-      // recording cycle (started by wasLoadingRef effect) isn't blocked
       voiceProcessingRef.current = false;
 
       if (finalText && voiceChatModeRef.current) {
         setInput("");
-        onSubmit({ text: finalText, files: [] });
+        // Await onSubmit so we know when the AI finishes responding
+        await onSubmit({ text: finalText, files: [] });
+        // After AI responds, restart recording if still in voice chat mode
+        if (voiceChatModeRef.current && !voiceActiveRef.current) {
+          startVoiceChatRecordingRef.current?.();
+        }
+      } else if (voiceChatModeRef.current) {
+        // No text captured (silence) — restart recording immediately
+        startVoiceChatRecordingRef.current?.();
       }
     } catch {
       voiceProcessingRef.current = false;
+      // On error, restart recording if still in voice chat mode
+      if (voiceChatModeRef.current && !voiceActiveRef.current) {
+        startVoiceChatRecordingRef.current?.();
+      }
     }
   }, [stopVoiceChunk, transcribe, setInput, onSubmit]);
 
@@ -623,43 +633,49 @@ const ChatBotDemo = () => {
     voiceActiveRef.current = true;
     setIsVoiceActive(true);
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    voiceStreamRef.current = stream;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceStreamRef.current = stream;
 
-    const audioCtx = new AudioContext();
-    const source = audioCtx.createMediaStreamSource(stream);
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 512;
-    source.connect(analyser);
-    voiceAudioCtxRef.current = audioCtx;
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      voiceAudioCtxRef.current = audioCtx;
 
-    startVoiceChunk(stream);
+      startVoiceChunk(stream);
 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    voiceSilenceRef.current = null;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      voiceSilenceRef.current = null;
 
-    voiceMonitorRef.current = setInterval(() => {
-      if (!voiceActiveRef.current || !voiceChatModeRef.current) return;
-      analyser.getByteTimeDomainData(dataArray);
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) {
-        const v = (dataArray[i] - 128) / 128;
-        sum += v * v;
-      }
-      const rms = Math.sqrt(sum / dataArray.length);
-      setVoiceLevel(Math.min(rms * 10, 1));
-
-      if (rms < 0.02) {
-        if (voiceSilenceRef.current === null) {
-          voiceSilenceRef.current = Date.now();
-        } else if (Date.now() - voiceSilenceRef.current > 2000 && !voiceProcessingRef.current) {
-          voiceSilenceRef.current = null;
-          voiceChatAutoSendRef.current?.();
+      voiceMonitorRef.current = setInterval(() => {
+        if (!voiceActiveRef.current || !voiceChatModeRef.current) return;
+        analyser.getByteTimeDomainData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const v = (dataArray[i] - 128) / 128;
+          sum += v * v;
         }
-      } else {
-        voiceSilenceRef.current = null;
-      }
-    }, 100);
+        const rms = Math.sqrt(sum / dataArray.length);
+        setVoiceLevel(Math.min(rms * 10, 1));
+
+        if (rms < 0.02) {
+          if (voiceSilenceRef.current === null) {
+            voiceSilenceRef.current = Date.now();
+          } else if (Date.now() - voiceSilenceRef.current > 2000 && !voiceProcessingRef.current) {
+            voiceSilenceRef.current = null;
+            voiceChatAutoSendRef.current?.();
+          }
+        } else {
+          voiceSilenceRef.current = null;
+        }
+      }, 100);
+    } catch {
+      // getUserMedia or AudioContext failed — reset so future attempts aren't blocked
+      voiceActiveRef.current = false;
+      setIsVoiceActive(false);
+    }
   }, [setInput, startVoiceChunk]);
 
   // Keep ref in sync so useEffect can call it
@@ -831,13 +847,15 @@ const ChatBotDemo = () => {
   // Auto-start voice chat after AI response completes (handles remount after navigation)
   const wasLoadingRef = useRef(false);
   useEffect(() => {
-    if (wasLoadingRef.current && !isLoading && voiceEnabled && isModelLoaded && !isVoiceActive) {
+    if (wasLoadingRef.current && !isLoading && voiceEnabled && isModelLoaded && !voiceActiveRef.current) {
       voiceChatModeRef.current = true;
       setVoiceChatMode(true);
       startVoiceChatRecordingRef.current?.();
     }
     wasLoadingRef.current = isLoading;
-  }, [isLoading, voiceEnabled, isModelLoaded, isVoiceActive]);
+    // Note: uses voiceActiveRef (not isVoiceActive state) to avoid spurious runs
+    // that reset wasLoadingRef when voice active state changes while isLoading is false
+  }, [isLoading, voiceEnabled, isModelLoaded]);
 
   // Fallback: if wasLoadingRef misses the isLoading transition (e.g. React batches
   // true→false), this delayed effect catches it for existing chats.
