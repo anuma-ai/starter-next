@@ -845,6 +845,9 @@ const ChatBotDemo = () => {
       setIsVoiceClosing(false);
     }, 200);
 
+    // Sync with what the user actually sees in the input field (they may have edited it)
+    voiceTextRef.current = inputRef.current;
+
     // Transcribe final chunk
     const recording = await stopVoiceChunk();
     if (recording && recording.duration > 500) {
