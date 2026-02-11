@@ -316,6 +316,9 @@ const ChatBotDemo = () => {
     createConversation,
   } = chatState;
 
+  const inputRef = useRef(input);
+  inputRef.current = input;
+
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
     // Reset determination state when conversation changes
@@ -540,6 +543,8 @@ const ChatBotDemo = () => {
         const { text } = await transcribe(recording);
         const cleaned = text?.replace(/\[.*?\]|\(.*?\)/g, "").trim();
         if (cleaned) {
+          // Sync with what the user actually sees in the input field
+          voiceTextRef.current = inputRef.current;
           voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
           setInput(voiceTextRef.current);
         }
@@ -699,9 +704,8 @@ const ChatBotDemo = () => {
         setInput(finalText);
       }
     } else {
-      // Start
-      voiceTextRef.current = "";
-      setInput("");
+      // Start – preserve any text the user already typed / edited
+      voiceTextRef.current = inputRef.current;
       voiceActiveRef.current = true;
       setIsVoiceActive(true);
 
