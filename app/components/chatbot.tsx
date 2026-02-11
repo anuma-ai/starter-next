@@ -1239,7 +1239,7 @@ const ChatBotDemo = () => {
                   </PromptInputButton>
                 )
               )}
-              {!(isVoiceActive && !voiceChatMode) && (
+              {!isVoiceActive && !voiceChatMode && (
                 <PromptInputSubmit
                   disabled={
                     !input ||
