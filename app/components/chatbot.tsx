@@ -839,6 +839,19 @@ const ChatBotDemo = () => {
     wasLoadingRef.current = isLoading;
   }, [isLoading, voiceEnabled, isModelLoaded, isVoiceActive]);
 
+  // Fallback: if wasLoadingRef misses the isLoading transition (e.g. React batches
+  // true→false), this delayed effect catches it for existing chats.
+  useEffect(() => {
+    if (!isLoading && voiceChatModeRef.current && voiceEnabled && isModelLoaded && !voiceActiveRef.current) {
+      const timer = setTimeout(() => {
+        if (voiceChatModeRef.current && !voiceActiveRef.current) {
+          startVoiceChatRecordingRef.current?.();
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, voiceEnabled, isModelLoaded]);
+
   // Detect when we expect messages but don't have them yet (to avoid flashing the
   // centered empty-chat prompt). This covers:
   // - Direct URL load: pathname is /c/... but messages haven't loaded yet
@@ -1205,7 +1218,15 @@ const ChatBotDemo = () => {
                     className="flex items-center gap-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black px-3 h-8 text-xs font-medium cursor-pointer origin-right animate-in fade-in zoom-in-50 duration-200 origin-right"
                     style={{ cornerShape: "squircle" } as React.CSSProperties}
                   >
-                    <span className="inline-block size-2 rounded-full bg-current animate-pulse" />
+                    <div className="flex items-center gap-0.5 h-4 animate-pulse">
+                      {[0.6, 1, 0.6].map((scale, i) => (
+                        <div
+                          key={i}
+                          className="w-0.5 rounded-full bg-current"
+                          style={{ height: `${4 * scale}px` }}
+                        />
+                      ))}
+                    </div>
                     Stop
                   </button>
                 ) : (
