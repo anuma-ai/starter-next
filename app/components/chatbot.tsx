@@ -159,7 +159,7 @@ const ChatBotDemo = () => {
   // Voice input
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
-
+  const [isVoiceClosing, setIsVoiceClosing] = useState(false);
   const [voiceLevel, setVoiceLevel] = useState(0);
   const { transcribe, preloadModel, isModelLoaded } = useVoice();
 
@@ -543,10 +543,9 @@ const ChatBotDemo = () => {
 
   const handleVoiceToggle = useCallback(async () => {
     if (isVoiceActive) {
-      // Stop
+      // Stop — start exit animation immediately
       voiceActiveRef.current = false;
-      setIsVoiceActive(false);
-
+      setIsVoiceClosing(true);
       setVoiceLevel(0);
 
       if (voiceMonitorRef.current) {
@@ -554,7 +553,13 @@ const ChatBotDemo = () => {
         voiceMonitorRef.current = null;
       }
 
-      // Transcribe final chunk
+      // Hide button after animation completes
+      setTimeout(() => {
+        setIsVoiceActive(false);
+        setIsVoiceClosing(false);
+      }, 200);
+
+      // Transcribe final chunk in background
       const recording = await stopVoiceChunk();
       if (recording && recording.duration > 500) {
         try {
@@ -936,7 +941,8 @@ const ChatBotDemo = () => {
                   <button
                     type="button"
                     onClick={handleVoiceToggle}
-                    className="flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer"
+                    disabled={isVoiceClosing}
+                    className={`flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-75" : "animate-in fade-in zoom-in-75 duration-200"}`}
                   >
                     <div className="flex items-center gap-0.5 h-4">
                       {[0.6, 1, 0.6].map((scale, i) => (
