@@ -148,6 +148,16 @@ const handleSendMessage = useCallback(
         currentAssistantMessageIdRef.current || `assistant-${Date.now()}`;
     }
 
+    // Set a temporary title from the user's first message so the sidebar
+    // shows something meaningful while the LLM-generated title loads
+    if (isFirstMessage && explicitConversationId) {
+      const tempTitle = (displayText || text).slice(0, 30);
+      storeConversationTitle(
+        explicitConversationId,
+        tempTitle.length >= 30 ? `${tempTitle}...` : tempTitle
+      );
+    }
+
     // Reset streaming text accumulator
     streamingTextRef.current = "";
 

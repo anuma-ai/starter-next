@@ -257,6 +257,7 @@ export type PromptInputProps = Omit<
     code: "max_files" | "max_file_size" | "accept";
     message: string;
   }) => void;
+  onFilesChange?: (files: (FileUIPart & { id: string })[]) => void;
   onSubmit: (
     message: PromptInputMessage,
     event: FormEvent<HTMLFormElement>
@@ -271,6 +272,7 @@ export const PromptInput = ({
   maxFiles,
   maxFileSize,
   onError,
+  onFilesChange,
   onSubmit,
   children,
   ...props
@@ -495,6 +497,10 @@ export const PromptInput = ({
     }),
     [files, add, remove, clear, openFileDialog]
   );
+
+  useEffect(() => {
+    onFilesChange?.(files);
+  }, [files, onFilesChange]);
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
