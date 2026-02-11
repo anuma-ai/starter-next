@@ -193,7 +193,21 @@ const ChatBotDemo = () => {
     }
   }, [voiceEnabled, isModelLoaded, preloadModel]);
 
-
+  // Clean up voice resources on unmount to prevent mic/AudioContext/interval leaks
+  useEffect(() => {
+    return () => {
+      voiceActiveRef.current = false;
+      voiceChatModeRef.current = false;
+      if (voiceMonitorRef.current) {
+        clearInterval(voiceMonitorRef.current);
+        voiceMonitorRef.current = null;
+      }
+      voiceStreamRef.current?.getTracks().forEach((t) => t.stop());
+      voiceStreamRef.current = null;
+      voiceAudioCtxRef.current?.close();
+      voiceAudioCtxRef.current = null;
+    };
+  }, []);
 
   const startVoiceChunk = useCallback((stream: MediaStream) => {
     const mimeType = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
