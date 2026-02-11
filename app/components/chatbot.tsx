@@ -316,6 +316,23 @@ const ChatBotDemo = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [thinkingEnabled, setThinkingEnabled] = useState(false);
   const thinkingStartTimeRef = useRef<number | null>(null);
+  const thinkingEnabledBeforeAutoRef = useRef<boolean | null>(null);
+
+  const handleFilesChange = useCallback(
+    (files: { mediaType?: string }[]) => {
+      const hasFiles = files.length > 0;
+      if (hasFiles && !thinkingEnabled) {
+        thinkingEnabledBeforeAutoRef.current = false;
+        setThinkingEnabled(true);
+        localStorage.setItem("chat_thinkingEnabled", "true");
+      } else if (!hasFiles && thinkingEnabledBeforeAutoRef.current === false) {
+        thinkingEnabledBeforeAutoRef.current = null;
+        setThinkingEnabled(false);
+        localStorage.setItem("chat_thinkingEnabled", "false");
+      }
+    },
+    [thinkingEnabled]
+  );
 
   useEffect(() => {
     const unsubscribe = subscribeToThinking((text: string) => {
@@ -701,6 +718,7 @@ const ChatBotDemo = () => {
             accept="image/*,application/pdf,.xlsx,.xls,.docx,.zip,application/zip"
             globalDrop
             multiple
+            onFilesChange={handleFilesChange}
             onSubmit={onSubmit}
           >
             <div
