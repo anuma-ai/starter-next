@@ -708,6 +708,13 @@ const ChatBotDemo = () => {
         voiceMonitorRef.current = null;
       }
 
+      // Snapshot current resources before async work so cleanup targets
+      // these specific instances, not resources from a new recording session
+      const stream = voiceStreamRef.current;
+      const audioCtx = voiceAudioCtxRef.current;
+      voiceStreamRef.current = null;
+      voiceAudioCtxRef.current = null;
+
       // Hide button after animation completes
       setTimeout(() => {
         setIsVoiceActive(false);
@@ -726,7 +733,9 @@ const ChatBotDemo = () => {
         } catch { }
       }
 
-      cleanupVoice();
+      // Clean up the snapshotted resources (safe even if a new session started)
+      stream?.getTracks().forEach((t) => t.stop());
+      audioCtx?.close();
 
       const finalText = voiceTextRef.current.trim();
       voiceTextRef.current = "";
