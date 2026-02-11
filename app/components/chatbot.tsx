@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon, Mic02Icon } from "@hugeicons/core-free-icons";
+import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, AudioLinesIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
@@ -1235,7 +1235,7 @@ const ChatBotDemo = () => {
                     disabled={isLoading || !authenticated}
                     className="animate-in fade-in zoom-in-50 duration-200"
                   >
-                    <HugeiconsIcon icon={Mic02Icon} className="size-5" />
+                    <AudioLinesIcon className="size-5" />
                   </PromptInputButton>
                 )
               )}
