@@ -942,7 +942,7 @@ const ChatBotDemo = () => {
                     type="button"
                     onClick={handleVoiceToggle}
                     disabled={isVoiceClosing}
-                    className={`flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-75" : "animate-in fade-in zoom-in-75 duration-200"}`}
+                    className={`flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer origin-right ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-50" : "animate-in fade-in zoom-in-50 duration-200 origin-right"}`}
                   >
                     <div className="flex items-center gap-0.5 h-4">
                       {[0.6, 1, 0.6].map((scale, i) => (
