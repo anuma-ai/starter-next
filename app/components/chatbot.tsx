@@ -510,8 +510,9 @@ const ChatBotDemo = () => {
       // Step 3: Send to API (skip adding user message to UI again since we already did)
       // Get the resolved model config based on thinking toggle
       const modelConfig = getModelConfig(selectedModel, thinkingEnabled);
-      // Enter voice chat mode so recording auto-starts after AI responds
-      const shouldRestartVoice = voiceEnabled && isModelLoaded;
+      // Continue voice chat loop only if already in voice chat mode
+      // (don't activate it for typed submissions)
+      const shouldRestartVoice = voiceChatModeRef.current && voiceEnabled && isModelLoaded;
       if (shouldRestartVoice) {
         voiceChatModeRef.current = true;
         setVoiceChatMode(true);
