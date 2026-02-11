@@ -4,13 +4,13 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon } from "lucide-react";
+import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, AudioLinesIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 
 import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
 import { MODELS, getModelConfig } from "@/lib/models";
-import { useFiles } from "@reverbia/sdk/react";
+import { useFiles, useVoice } from "@reverbia/sdk/react";
 import { useDatabase } from "@/app/providers";
 import {
   DropdownMenu,
@@ -156,6 +156,95 @@ const ChatBotDemo = () => {
     walletAddress,
   });
 
+  // Voice input
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [isVoiceClosing, setIsVoiceClosing] = useState(false);
+  const [voiceLevel, setVoiceLevel] = useState(0);
+  const { transcribe, preloadModel, isModelLoaded } = useVoice();
+
+  const voiceStreamRef = useRef<MediaStream | null>(null);
+  const voiceRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceChunksRef = useRef<Blob[]>([]);
+  const voiceStartRef = useRef(0);
+  const voiceActiveRef = useRef(false);
+  const voiceTextRef = useRef("");
+  const voiceAudioCtxRef = useRef<AudioContext | null>(null);
+  const voiceMonitorRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceSilenceRef = useRef<number | null>(null);
+  const voiceProcessingRef = useRef(false);
+
+  // Voice chat mode (continuous conversation loop)
+  const [voiceChatMode, setVoiceChatMode] = useState(false);
+  const voiceChatModeRef = useRef(false);
+  const startVoiceChatRecordingRef = useRef<(() => Promise<void>) | null>(null);
+  const voiceChatAutoSendRef = useRef<(() => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("voice_enabled");
+    setVoiceEnabled(saved === "true");
+    // Clean up any stale flag from previous sessions
+    sessionStorage.removeItem("voiceChatPending");
+  }, []);
+
+  useEffect(() => {
+    if (voiceEnabled && !isModelLoaded) {
+      preloadModel();
+    }
+  }, [voiceEnabled, isModelLoaded, preloadModel]);
+
+  // Clean up voice resources on unmount to prevent mic/AudioContext/interval leaks
+  useEffect(() => {
+    return () => {
+      voiceActiveRef.current = false;
+      voiceChatModeRef.current = false;
+      if (voiceMonitorRef.current) {
+        clearInterval(voiceMonitorRef.current);
+        voiceMonitorRef.current = null;
+      }
+      voiceStreamRef.current?.getTracks().forEach((t) => t.stop());
+      voiceStreamRef.current = null;
+      voiceAudioCtxRef.current?.close();
+      voiceAudioCtxRef.current = null;
+    };
+  }, []);
+
+  const startVoiceChunk = useCallback((stream: MediaStream) => {
+    const mimeType = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : "audio/webm";
+    const recorder = new MediaRecorder(stream, { mimeType });
+    voiceChunksRef.current = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) voiceChunksRef.current.push(e.data);
+    };
+    recorder.start();
+    voiceStartRef.current = Date.now();
+    voiceRecorderRef.current = recorder;
+  }, []);
+
+  const stopVoiceChunk = useCallback((): Promise<{ blob: Blob; duration: number; mimeType: string } | null> => {
+    return new Promise((resolve) => {
+      const recorder = voiceRecorderRef.current;
+      if (!recorder || recorder.state === "inactive") {
+        resolve(null);
+        return;
+      }
+      recorder.onstop = () => {
+        if (voiceChunksRef.current.length === 0) {
+          resolve(null);
+          return;
+        }
+        const mimeType = recorder.mimeType || "audio/webm";
+        const blob = new Blob(voiceChunksRef.current, { type: mimeType });
+        const duration = Date.now() - voiceStartRef.current;
+        voiceChunksRef.current = [];
+        resolve({ blob, duration, mimeType });
+      };
+      recorder.stop();
+    });
+  }, []);
+
   // Get conversationId early to determine if this is a new chat
   const { conversationId: currentConversationId } = chatState;
 
@@ -240,6 +329,9 @@ const ChatBotDemo = () => {
     getConversation,
     createConversation,
   } = chatState;
+
+  const inputRef = useRef(input);
+  inputRef.current = input;
 
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
@@ -418,6 +510,14 @@ const ChatBotDemo = () => {
       // Step 3: Send to API (skip adding user message to UI again since we already did)
       // Get the resolved model config based on thinking toggle
       const modelConfig = getModelConfig(selectedModel, thinkingEnabled);
+      // Continue voice chat loop only if already in voice chat mode
+      // (don't activate it for typed submissions)
+      const shouldRestartVoice = voiceChatModeRef.current && voiceEnabled && isModelLoaded;
+      if (shouldRestartVoice) {
+        voiceChatModeRef.current = true;
+        setVoiceChatMode(true);
+      }
+
       await handleSubmit(
         {
           ...message,
@@ -440,9 +540,362 @@ const ChatBotDemo = () => {
           conversationId: targetConversationId ?? undefined,
         }
       );
+
     },
-    [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled, pathname, router, conversationId, createConversation]
+    [handleSubmit, addMessageOptimistically, setInput, selectedModel, thinkingEnabled, pathname, router, conversationId, createConversation, voiceEnabled, isModelLoaded]
   );
+
+  const processVoiceChunk = useCallback(async (stream: MediaStream) => {
+    if (voiceProcessingRef.current) return;
+    voiceProcessingRef.current = true;
+    const recording = await stopVoiceChunk();
+    // Restart recording immediately so no audio is lost during transcription
+    if (voiceActiveRef.current) {
+      startVoiceChunk(stream);
+    }
+    if (recording && recording.duration > 500) {
+      try {
+        const { text } = await transcribe(recording);
+        const cleaned = text?.replace(/\[.*?\]|\(.*?\)/g, "").trim();
+        if (cleaned) {
+          // Sync with what the user actually sees in the input field
+          voiceTextRef.current = inputRef.current;
+          voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
+          setInput(voiceTextRef.current);
+        }
+      } catch { }
+    }
+    voiceProcessingRef.current = false;
+  }, [stopVoiceChunk, transcribe, setInput, startVoiceChunk]);
+
+  const cleanupVoice = useCallback(() => {
+    if (voiceMonitorRef.current) {
+      clearInterval(voiceMonitorRef.current);
+      voiceMonitorRef.current = null;
+    }
+    voiceStreamRef.current?.getTracks().forEach((t) => t.stop());
+    voiceStreamRef.current = null;
+    voiceAudioCtxRef.current?.close();
+    voiceAudioCtxRef.current = null;
+  }, []);
+
+  // Voice chat: stop recording, transcribe, auto-submit, and restart after AI responds
+  const voiceChatAutoSend = useCallback(async () => {
+    if (voiceProcessingRef.current) return;
+    voiceProcessingRef.current = true;
+
+    try {
+      const recording = await stopVoiceChunk();
+
+      if (recording && recording.duration > 500) {
+        try {
+          const { text } = await transcribe(recording);
+          const cleaned = text?.replace(/\[.*?\]|\(.*?\)/g, "").trim();
+          if (cleaned) {
+            voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
+          }
+        } catch { }
+      }
+
+      // Clean up current recording session
+      if (voiceMonitorRef.current) {
+        clearInterval(voiceMonitorRef.current);
+        voiceMonitorRef.current = null;
+      }
+      voiceStreamRef.current?.getTracks().forEach((t) => t.stop());
+      voiceStreamRef.current = null;
+      voiceAudioCtxRef.current?.close();
+      voiceAudioCtxRef.current = null;
+
+      const finalText = voiceTextRef.current.trim();
+      voiceTextRef.current = "";
+
+      voiceActiveRef.current = false;
+      setIsVoiceActive(false);
+      setVoiceLevel(0);
+
+      voiceProcessingRef.current = false;
+
+      if (finalText && voiceChatModeRef.current) {
+        setInput("");
+        // Await onSubmit so we know when the AI finishes responding
+        await onSubmit({ text: finalText, files: [] });
+        // After AI responds, restart recording if still in voice chat mode
+        if (voiceChatModeRef.current && !voiceActiveRef.current) {
+          startVoiceChatRecordingRef.current?.();
+        }
+      } else if (voiceChatModeRef.current) {
+        // No text captured (silence) — restart recording immediately
+        startVoiceChatRecordingRef.current?.();
+      }
+    } catch {
+      voiceProcessingRef.current = false;
+      // On error, restart recording if still in voice chat mode
+      if (voiceChatModeRef.current && !voiceActiveRef.current) {
+        startVoiceChatRecordingRef.current?.();
+      }
+    }
+  }, [stopVoiceChunk, transcribe, setInput, onSubmit]);
+
+  // Keep ref in sync so interval always calls latest version
+  voiceChatAutoSendRef.current = voiceChatAutoSend;
+
+  // Voice chat: start recording with 2s silence threshold for auto-send
+  const startVoiceChatRecording = useCallback(async () => {
+    if (voiceActiveRef.current) return; // Already recording
+    voiceTextRef.current = "";
+    setInput("");
+    voiceActiveRef.current = true;
+    setIsVoiceActive(true);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceStreamRef.current = stream;
+
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      voiceAudioCtxRef.current = audioCtx;
+
+      startVoiceChunk(stream);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      voiceSilenceRef.current = null;
+
+      voiceMonitorRef.current = setInterval(() => {
+        if (!voiceActiveRef.current || !voiceChatModeRef.current) return;
+        analyser.getByteTimeDomainData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const v = (dataArray[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+        setVoiceLevel(Math.min(rms * 10, 1));
+
+        if (rms < 0.02) {
+          if (voiceSilenceRef.current === null) {
+            voiceSilenceRef.current = Date.now();
+          } else if (Date.now() - voiceSilenceRef.current > 2000 && !voiceProcessingRef.current) {
+            voiceSilenceRef.current = null;
+            voiceChatAutoSendRef.current?.();
+          }
+        } else {
+          voiceSilenceRef.current = null;
+        }
+      }, 100);
+    } catch {
+      // getUserMedia or AudioContext failed — reset so future attempts aren't blocked
+      voiceActiveRef.current = false;
+      setIsVoiceActive(false);
+    }
+  }, [setInput, startVoiceChunk]);
+
+  // Keep ref in sync so useEffect can call it
+  startVoiceChatRecordingRef.current = startVoiceChatRecording;
+
+  const handleVoiceToggle = useCallback(async () => {
+    if (isVoiceActive) {
+      // Stop — start exit animation immediately
+      voiceActiveRef.current = false;
+      setIsVoiceClosing(true);
+      setVoiceLevel(0);
+
+      if (voiceMonitorRef.current) {
+        clearInterval(voiceMonitorRef.current);
+        voiceMonitorRef.current = null;
+      }
+
+      // Snapshot current resources before async work so cleanup targets
+      // these specific instances, not resources from a new recording session
+      const stream = voiceStreamRef.current;
+      const audioCtx = voiceAudioCtxRef.current;
+      voiceStreamRef.current = null;
+      voiceAudioCtxRef.current = null;
+
+      // Hide button after animation completes
+      setTimeout(() => {
+        setIsVoiceActive(false);
+        setIsVoiceClosing(false);
+      }, 200);
+
+      // Transcribe final chunk in background
+      const recording = await stopVoiceChunk();
+      if (recording && recording.duration > 500) {
+        try {
+          const { text } = await transcribe(recording);
+          const cleaned = text?.replace(/\[.*?\]|\(.*?\)/g, "").trim();
+          if (cleaned) {
+            voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
+          }
+        } catch { }
+      }
+
+      // Clean up the snapshotted resources (safe even if a new session started)
+      stream?.getTracks().forEach((t) => t.stop());
+      audioCtx?.close();
+
+      const finalText = voiceTextRef.current.trim();
+      voiceTextRef.current = "";
+
+      if (finalText) {
+        setInput(finalText);
+      }
+    } else {
+      // Start – preserve any text the user already typed / edited
+      voiceTextRef.current = inputRef.current;
+      voiceActiveRef.current = true;
+      setIsVoiceActive(true);
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceStreamRef.current = stream;
+
+      // Audio analysis for silence detection
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      voiceAudioCtxRef.current = audioCtx;
+
+      startVoiceChunk(stream);
+
+      // Monitor audio levels for silence
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      voiceSilenceRef.current = null;
+
+      voiceMonitorRef.current = setInterval(() => {
+        if (!voiceActiveRef.current) return;
+        analyser.getByteTimeDomainData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const v = (dataArray[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+        setVoiceLevel(Math.min(rms * 10, 1));
+
+        if (rms < 0.02) {
+          if (voiceSilenceRef.current === null) {
+            voiceSilenceRef.current = Date.now();
+          } else if (Date.now() - voiceSilenceRef.current > 1200 && !voiceProcessingRef.current) {
+            voiceSilenceRef.current = null;
+            processVoiceChunk(stream);
+          }
+        } else {
+          voiceSilenceRef.current = null;
+        }
+      }, 100);
+    }
+  }, [isVoiceActive, stopVoiceChunk, transcribe, setInput, startVoiceChunk, processVoiceChunk, cleanupVoice]);
+
+  // Toggle voice chat mode on/off
+  const handleVoiceChatToggle = useCallback(async () => {
+    if (voiceChatMode) {
+      // Exit voice chat mode
+      voiceChatModeRef.current = false;
+      setVoiceChatMode(false);
+
+      // If currently recording, stop everything
+      if (isVoiceActive) {
+        voiceActiveRef.current = false;
+        setIsVoiceClosing(true);
+        setVoiceLevel(0);
+
+        if (voiceMonitorRef.current) {
+          clearInterval(voiceMonitorRef.current);
+          voiceMonitorRef.current = null;
+        }
+
+        setTimeout(() => {
+          setIsVoiceActive(false);
+          setIsVoiceClosing(false);
+        }, 200);
+
+        await stopVoiceChunk();
+        cleanupVoice();
+        voiceTextRef.current = "";
+      }
+    } else {
+      // Enter voice chat mode and start recording
+      voiceChatModeRef.current = true;
+      setVoiceChatMode(true);
+      await startVoiceChatRecording();
+    }
+  }, [voiceChatMode, isVoiceActive, stopVoiceChunk, cleanupVoice, startVoiceChatRecording]);
+
+  // Stop recording, transcribe, submit combined text, enter voice chat mode
+  const handleVoiceChat = useCallback(async () => {
+    if (!isVoiceActive) return;
+
+    // Stop recording
+    voiceActiveRef.current = false;
+    setIsVoiceClosing(true);
+    setVoiceLevel(0);
+
+    if (voiceMonitorRef.current) {
+      clearInterval(voiceMonitorRef.current);
+      voiceMonitorRef.current = null;
+    }
+
+    setTimeout(() => {
+      setIsVoiceActive(false);
+      setIsVoiceClosing(false);
+    }, 200);
+
+    // Sync with what the user actually sees in the input field (they may have edited it)
+    voiceTextRef.current = inputRef.current;
+
+    // Transcribe final chunk
+    const recording = await stopVoiceChunk();
+    if (recording && recording.duration > 500) {
+      try {
+        const { text } = await transcribe(recording);
+        const cleaned = text?.replace(/\[.*?\]|\(.*?\)/g, "").trim();
+        if (cleaned) {
+          voiceTextRef.current += (voiceTextRef.current ? " " : "") + cleaned;
+        }
+      } catch { }
+    }
+
+    cleanupVoice();
+
+    const finalText = voiceTextRef.current.trim();
+    voiceTextRef.current = "";
+
+    if (finalText) {
+      setInput("");
+      onSubmit({ text: finalText, files: [] });
+    }
+  }, [isVoiceActive, stopVoiceChunk, transcribe, cleanupVoice, setInput, onSubmit]);
+
+  // Auto-start voice chat after AI response completes (handles remount after navigation)
+  const wasLoadingRef = useRef(false);
+  useEffect(() => {
+    if (wasLoadingRef.current && !isLoading && voiceEnabled && isModelLoaded && !voiceActiveRef.current) {
+      voiceChatModeRef.current = true;
+      setVoiceChatMode(true);
+      startVoiceChatRecordingRef.current?.();
+    }
+    wasLoadingRef.current = isLoading;
+    // Note: uses voiceActiveRef (not isVoiceActive state) to avoid spurious runs
+    // that reset wasLoadingRef when voice active state changes while isLoading is false
+  }, [isLoading, voiceEnabled, isModelLoaded]);
+
+  // Fallback: if wasLoadingRef misses the isLoading transition (e.g. React batches
+  // true→false), this delayed effect catches it for existing chats.
+  useEffect(() => {
+    if (!isLoading && voiceChatModeRef.current && voiceEnabled && isModelLoaded && !voiceActiveRef.current) {
+      const timer = setTimeout(() => {
+        if (voiceChatModeRef.current && !voiceActiveRef.current) {
+          startVoiceChatRecordingRef.current?.();
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, voiceEnabled, isModelLoaded]);
 
   // Detect when we expect messages but don't have them yet (to avoid flashing the
   // centered empty-chat prompt). This covers:
@@ -752,14 +1205,96 @@ const ChatBotDemo = () => {
                 value={input}
                 className="flex-1 px-2"
               />
-              <PromptInputSubmit
-                disabled={
-                  !input ||
-                  isLoading ||
-                  !authenticated
-                }
-                status={status}
-              />
+              {voiceEnabled && (
+                isVoiceActive && !voiceChatMode ? (
+                  <div className={`flex items-center origin-right ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-50" : "animate-in fade-in zoom-in-50 duration-200 origin-right"}`}>
+                    <button
+                      type="button"
+                      onClick={handleVoiceToggle}
+                      disabled={isVoiceClosing}
+                      className="flex items-center gap-1.5 rounded-l-xl bg-black dark:bg-white text-white dark:text-black pl-3 pr-2.5 h-8 text-xs font-medium cursor-pointer"
+                      style={{ cornerShape: "squircle" } as React.CSSProperties}
+                    >
+                      <div className="flex items-center gap-0.5 h-4">
+                        {[0.6, 1, 0.6].map((scale, i) => (
+                          <div
+                            key={i}
+                            className="w-0.5 rounded-full bg-current transition-all duration-100"
+                            style={{ height: `${Math.max(4, voiceLevel * scale * 16)}px` }}
+                          />
+                        ))}
+                      </div>
+                      Stop
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleVoiceChat}
+                      disabled={isVoiceClosing}
+                      className="flex items-center gap-1.5 rounded-r-xl bg-black dark:bg-white text-white dark:text-black pl-2.5 pr-3 h-8 text-xs font-medium cursor-pointer ml-[2px]"
+                      style={{ cornerShape: "squircle" } as React.CSSProperties}
+                    >
+                      <AudioLinesIcon className="size-3.5" />
+                      Chat
+                    </button>
+                  </div>
+                ) : isVoiceActive && voiceChatMode ? (
+                  <button
+                    type="button"
+                    onClick={handleVoiceChatToggle}
+                    disabled={isVoiceClosing}
+                    className={`flex items-center gap-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black px-3 h-8 text-xs font-medium cursor-pointer origin-right ${isVoiceClosing ? "transition-all duration-200 opacity-0 scale-50" : "animate-in fade-in zoom-in-50 duration-200 origin-right"}`}
+                    style={{ cornerShape: "squircle" } as React.CSSProperties}
+                  >
+                    <div className="flex items-center gap-0.5 h-4">
+                      {[0.6, 1, 0.6].map((scale, i) => (
+                        <div
+                          key={i}
+                          className="w-0.5 rounded-full bg-current transition-all duration-100"
+                          style={{ height: `${Math.max(4, voiceLevel * scale * 16)}px` }}
+                        />
+                      ))}
+                    </div>
+                    Stop
+                  </button>
+                ) : voiceChatMode ? (
+                  <button
+                    type="button"
+                    onClick={handleVoiceChatToggle}
+                    className="flex items-center gap-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black px-3 h-8 text-xs font-medium cursor-pointer origin-right animate-in fade-in zoom-in-50 duration-200 origin-right"
+                    style={{ cornerShape: "squircle" } as React.CSSProperties}
+                  >
+                    <div className="flex items-center gap-0.5 h-4 animate-pulse">
+                      {[0.6, 1, 0.6].map((scale, i) => (
+                        <div
+                          key={i}
+                          className="w-0.5 rounded-full bg-current"
+                          style={{ height: `${4 * scale}px` }}
+                        />
+                      ))}
+                    </div>
+                    Stop
+                  </button>
+                ) : (
+                  <PromptInputButton
+                    onClick={handleVoiceToggle}
+                    disabled={isLoading || !authenticated}
+                    className="animate-in fade-in zoom-in-50 duration-200"
+                  >
+                    <AudioLinesIcon className="size-5" />
+                  </PromptInputButton>
+                )
+              )}
+              {!isVoiceActive && !voiceChatMode && (
+                <PromptInputSubmit
+                  disabled={
+                    !input ||
+                    isLoading ||
+                    !authenticated ||
+                    voiceChatMode
+                  }
+                  status={status}
+                />
+              )}
             </div>
           </PromptInput>
         </div>

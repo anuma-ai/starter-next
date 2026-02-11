@@ -97,6 +97,22 @@ export function SettingsView() {
               />
             </button>
             <button
+              onClick={() => router.push("/settings/voice")}
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <div className="space-y-0.5 text-left">
+                <span className="text-base">Voice</span>
+                <p className="text-sm text-muted-foreground">
+                  Enable on-device voice input and transcription
+                </p>
+              </div>
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={20}
+                className="text-muted-foreground"
+              />
+            </button>
+            <button
               onClick={() => router.push("/settings/tools")}
               className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
             >
