@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon, Mic02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, Loader2Icon } from "lucide-react";
+import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 
@@ -159,7 +159,7 @@ const ChatBotDemo = () => {
   // Voice input
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isVoiceActive, setIsVoiceActive] = useState(false);
-  const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
+
   const [voiceLevel, setVoiceLevel] = useState(0);
   const { transcribe, preloadModel, isModelLoaded } = useVoice();
 
@@ -546,7 +546,7 @@ const ChatBotDemo = () => {
       // Stop
       voiceActiveRef.current = false;
       setIsVoiceActive(false);
-      setIsVoiceProcessing(true);
+
       setVoiceLevel(0);
 
       if (voiceMonitorRef.current) {
@@ -570,7 +570,7 @@ const ChatBotDemo = () => {
 
       const finalText = voiceTextRef.current.trim();
       voiceTextRef.current = "";
-      setIsVoiceProcessing(false);
+
       if (finalText) {
         setInput(finalText);
       }
@@ -936,8 +936,7 @@ const ChatBotDemo = () => {
                   <button
                     type="button"
                     onClick={handleVoiceToggle}
-                    className="flex items-center gap-1.5 rounded-[20px] bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer"
-                    style={{ cornerShape: "squircle" } as React.CSSProperties}
+                    className="flex items-center gap-1.5 rounded-full bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 text-xs font-medium cursor-pointer"
                   >
                     <div className="flex items-center gap-0.5 h-4">
                       {[0.6, 1, 0.6].map((scale, i) => (
@@ -950,10 +949,6 @@ const ChatBotDemo = () => {
                     </div>
                     Stop
                   </button>
-                ) : isVoiceProcessing ? (
-                  <PromptInputButton disabled>
-                    <Loader2Icon className="size-4 animate-spin" />
-                  </PromptInputButton>
                 ) : (
                   <PromptInputButton
                     onClick={handleVoiceToggle}
