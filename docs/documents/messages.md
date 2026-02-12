@@ -49,43 +49,25 @@ empty assistant placeholder that will be filled as the response streams in.
 ```ts
 const addMessageOptimistically = useCallback(
   (text: string, files?: FileUIPart[], displayText?: string) => {
-    // Mark that we're sending a message to prevent DB reload from overwriting
     isSendingMessageRef.current = true;
 
-    // Create message parts: text first, then any files
+    // Build parts: text first, then images as image_url, other files as file
     const parts: MessagePart[] = [];
-
-    // Add text part if there's text
-    // Use displayText for UI (without OCR)
     const textForUI = displayText || text;
     if (textForUI) {
       parts.push({ type: "text", text: textForUI });
     }
+    files?.forEach((file) => {
+      parts.push(
+        file.mediaType?.startsWith("image/")
+          ? { type: "image_url", image_url: { url: file.url } }
+          : { type: "file", url: file.url, mediaType: file.mediaType || "", filename: file.filename || "" }
+      );
+    });
 
-    if (files && files.length > 0) {
-      files.forEach((file) => {
-        if (file.mediaType?.startsWith("image/")) {
-          parts.push({
-            type: "image_url",
-            image_url: { url: file.url },
-          });
-        } else {
-          parts.push({
-            type: "file",
-            url: file.url,
-            mediaType: file.mediaType || "",
-            filename: file.filename || "",
-          });
-        }
-      });
-    }
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      parts,
-    };
+    const userMessage: Message = { id: `user-${Date.now()}`, role: "user", parts };
 
-    // Create assistant placeholder message immediately for streaming
+    // Empty assistant placeholder — filled as the response streams in
     const assistantMessageId = `assistant-${Date.now()}`;
     currentAssistantMessageIdRef.current = assistantMessageId;
     const assistantMessage: Message = {
@@ -94,9 +76,7 @@ const addMessageOptimistically = useCallback(
       parts: [{ type: "text", text: "" }],
     };
 
-    // Add both messages to state immediately
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
-
     return assistantMessageId;
   },
   []
