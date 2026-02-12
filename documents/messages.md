@@ -21,14 +21,6 @@ empty assistant placeholder that will be filled as the response streams in.
 
 {@includeCode ../hooks/useAppChatStorage.ts#optimisticUpdate}
 
-## Send Setup
-
-The send handler destructures options, triggers the optimistic update, sets a
-temporary conversation title on the first message, and initializes streaming
-state.
-
-{@includeCode ../hooks/useAppChatStorage.ts#sendSetup}
-
 ## Building Content Parts
 
 Content parts are assembled for the SDK. Text is added first, then files are
@@ -40,9 +32,10 @@ storage.
 
 ## Calling sendMessage
 
-The SDK call passes the content parts, model configuration, and a streaming
-callback. Options like `temperature`, `reasoning`, `serverTools`, and
-`clientTools` are conditionally spread so only provided values are sent.
+The send handler destructures its options, triggers the optimistic update, then
+calls the SDK. Options like `temperature`, `reasoning`, `serverTools`, and
+`clientTools` are conditionally spread so only provided values are sent. The
+`onData` callback accumulates streamed text and notifies subscribers.
 
 {@includeCode ../hooks/useAppChatStorage.ts#sendCall}
 

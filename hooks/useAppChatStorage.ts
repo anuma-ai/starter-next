@@ -154,6 +154,108 @@ function extractTextFromResponse(data: any): string | null {
 }
 
 /**
+ * Safely parse JSON arguments from tool calls.
+ * Handles undefined, null, JSON strings, and already-parsed objects.
+ */
+function safeParseArgs(args: unknown): Record<string, unknown> {
+  if (args === undefined || args === null) {
+    return {};
+  }
+  if (typeof args === 'string' && args.trim()) {
+    try {
+      return JSON.parse(args);
+    } catch {
+      return {};
+    }
+  }
+  return (args as Record<string, unknown>) || {};
+}
+
+/**
+ * Extract tool calls from an API response, handling multiple formats:
+ * Responses API, Chat Completions API, and SDK-wrapped variants.
+ */
+function extractToolCalls(response: any): any[] {
+  if (!response) return [];
+  if (response.toolCalls) return response.toolCalls;
+  if (response.tool_calls) return response.tool_calls;
+  if (response.data?.output && Array.isArray(response.data.output)) {
+    return response.data.output.filter((item: any) => item.type === 'function_call');
+  }
+  if (response.data?.choices?.[0]?.message?.tool_calls) {
+    return response.data.choices[0].message.tool_calls;
+  }
+  if (response.output && Array.isArray(response.output)) {
+    return response.output.filter((item: any) => item.type === 'function_call');
+  }
+  if (response.choices?.[0]?.message?.tool_calls) {
+    return response.choices[0].message.tool_calls;
+  }
+  return [];
+}
+
+/**
+ * Resolve file references from a stored message into MessagePart[].
+ * Handles both old-style `files` array and new-style `fileIds`,
+ * decrypting from OPFS when a wallet is connected.
+ */
+async function resolveMessageFiles(msg: any, walletAddress?: string): Promise<MessagePart[]> {
+  const parts: MessagePart[] = [];
+  const storedFiles = msg.files || [];
+  const storedFileIds = msg.fileIds || [];
+
+  if (storedFiles.length > 0) {
+    for (const file of storedFiles) {
+      const mimeType = file.type || "";
+      let fileUrl = file.url || "";
+
+      if (!fileUrl && file.id && !file.sourceUrl && walletAddress && hasEncryptionKey(walletAddress)) {
+        try {
+          const encryptionKey = await getEncryptionKey(walletAddress);
+          const result = await readEncryptedFile(file.id, encryptionKey);
+          if (result) {
+            fileUrl = await blobToDataUrl(result.blob);
+          }
+        } catch {
+          // Failed to read file from OPFS
+        }
+      }
+
+      if (!fileUrl) continue;
+
+      if (mimeType.startsWith("image/")) {
+        parts.push({ type: "image_url" as const, image_url: { url: fileUrl } });
+      } else {
+        parts.push({ type: "file" as const, url: fileUrl, mediaType: mimeType, filename: file.name || "" });
+      }
+    }
+  }
+
+  if (storedFiles.length === 0 && storedFileIds.length > 0 && walletAddress && hasEncryptionKey(walletAddress)) {
+    for (const mediaId of storedFileIds) {
+      try {
+        const encryptionKey = await getEncryptionKey(walletAddress);
+        const result = await readEncryptedFile(mediaId, encryptionKey);
+        if (result) {
+          const fileUrl = await blobToDataUrl(result.blob);
+          const mimeType = result.metadata?.type || "application/octet-stream";
+
+          if (mimeType.startsWith("image/")) {
+            parts.push({ type: "image_url" as const, image_url: { url: fileUrl } });
+          } else {
+            parts.push({ type: "file" as const, url: fileUrl, mediaType: mimeType, filename: result.metadata?.name || mediaId });
+          }
+        }
+      } catch {
+        // Failed to read file from OPFS
+      }
+    }
+  }
+
+  return parts;
+}
+
+/**
  * useAppChatStorage Hook Example
  */
 export function useAppChatStorage({
@@ -697,74 +799,18 @@ export function useAppChatStorage({
       // Process tool calls if present and callback is provided
       // This implements a multi-turn tool calling loop
       if (onToolCall && clientTools && clientTools.length > 0) {
-        // Use 'any' type because response format varies across different API types
         let currentResponse: any = response;
-        let maxIterations = 10; // Prevent infinite loops
         let iteration = 0;
 
-        while (iteration < maxIterations) {
-          iteration++;
-          console.log(`[useAppChatStorage] Tool call iteration ${iteration}`);
-
-          // Check for tool calls in the response - handle various API response formats
-          let toolCalls: any[] = [];
-
-          if (currentResponse) {
-            // Direct toolCalls array
-            if (currentResponse.toolCalls) {
-              toolCalls = currentResponse.toolCalls;
-            }
-            // OpenAI format: tool_calls
-            else if (currentResponse.tool_calls) {
-              toolCalls = currentResponse.tool_calls;
-            }
-            // SDK wrapped format: response.data.output with function_call items (Responses API)
-            else if (currentResponse.data?.output && Array.isArray(currentResponse.data.output)) {
-              toolCalls = currentResponse.data.output.filter((item: any) => item.type === 'function_call');
-            }
-            // SDK wrapped format: response.data.choices with tool_calls (Completions API)
-            else if (currentResponse.data?.choices && currentResponse.data.choices[0]?.message?.tool_calls) {
-              toolCalls = currentResponse.data.choices[0].message.tool_calls;
-            }
-            // Responses API format: output array with function_call items
-            else if (currentResponse.output && Array.isArray(currentResponse.output)) {
-              toolCalls = currentResponse.output.filter((item: any) => item.type === 'function_call');
-            }
-            // Check for choices array (chat completions format)
-            else if (currentResponse.choices && currentResponse.choices[0]?.message?.tool_calls) {
-              toolCalls = currentResponse.choices[0].message.tool_calls;
-            }
-          }
-
-          console.log('[useAppChatStorage] Detected tool calls:', toolCalls.length, toolCalls);
-
-          // No more tool calls, we're done
-          if (toolCalls.length === 0) {
-            break;
-          }
+        while (iteration++ < 10) {
+          const toolCalls = extractToolCalls(currentResponse);
+          if (toolCalls.length === 0) break;
 
           // Execute all tool calls and collect results
           const toolResults: Array<{ call_id: string; output: string }> = [];
 
           for (const call of toolCalls) {
             try {
-              // Helper to safely parse JSON arguments
-              const safeParseArgs = (args: unknown): Record<string, unknown> => {
-                if (args === undefined || args === null) {
-                  return {};
-                }
-                if (typeof args === 'string' && args.trim()) {
-                  try {
-                    return JSON.parse(args);
-                  } catch {
-                    return {};
-                  }
-                }
-                return (args as Record<string, unknown>) || {};
-              };
-
-              // Parse the tool call - handle various formats
-              // Check for arguments in order: direct (Responses API) -> function.arguments (Chat Completions API)
               const rawArgs = call.arguments !== undefined ? call.arguments : call.function?.arguments;
               const toolCall: ToolCall = {
                 id: call.id || call.call_id || `call_${Date.now()}`,
@@ -772,19 +818,12 @@ export function useAppChatStorage({
                 arguments: safeParseArgs(rawArgs),
               };
 
-              console.log('[useAppChatStorage] Executing tool call:', toolCall);
-
-              // Execute the tool via callback
               const result = await onToolCall(toolCall, clientTools);
-              console.log('[useAppChatStorage] Tool result:', result);
-
-              // Collect result for sending back to AI
               toolResults.push({
                 call_id: toolCall.id,
                 output: JSON.stringify(result),
               });
             } catch (error) {
-              console.error('[useAppChatStorage] Error processing tool call:', error, call);
               toolResults.push({
                 call_id: call.id || call.call_id || `call_${Date.now()}`,
                 output: JSON.stringify({ error: String(error) }),
@@ -792,21 +831,16 @@ export function useAppChatStorage({
             }
           }
 
-          console.log('[useAppChatStorage] Sending tool results back to AI:', toolResults);
-
           // Format tool results as a context message for the AI
-          // Since the API is stateless, we send tool results through the SDK as a follow-up
           const toolResultsSummary = toolResults.map((tr) => {
             const toolName = toolCalls.find(c => (c.id || c.call_id) === tr.call_id)?.name || 'unknown';
             return `Tool "${toolName}" returned: ${tr.output}`;
           }).join('\n\n');
 
-          const continuationPrompt = `[Tool Execution Results]\nThe following tools were executed:\n\n${toolResultsSummary}\n\nBased on these results, continue with the task. If you need to call more tools (like read_file to see current content before updating, or update_file to make changes), do so now.`;
-
-          console.log('[useAppChatStorage] Sending continuation via SDK:', continuationPrompt.slice(0, 200) + '...');
+          const continuationPrompt = `[Tool Execution Results]\nThe following tools were executed:\n\n${toolResultsSummary}\n\nBased on these results, continue with the task.`;
 
           try {
-            // Use SDK to send continuation - this maintains conversation context
+            // Send results back via SDK to maintain conversation context
             currentResponse = await sendMessage({
               messages: [{ role: 'user' as const, content: [{ type: 'text', text: continuationPrompt }] }],
               model: model || 'openai/gpt-5.2-2025-12-11',
@@ -823,7 +857,6 @@ export function useAppChatStorage({
               ...(explicitConversationId && { conversationId: explicitConversationId }),
               onData: (chunk: string) => {
                 streamingTextRef.current += chunk;
-                // Only notify if viewing the streaming conversation
                 const isViewingStreamingConversation =
                   loadedConversationIdRef.current === streamingConversationIdRef.current;
                 if (onStreamingData && isViewingStreamingConversation) {
@@ -831,16 +864,9 @@ export function useAppChatStorage({
                 }
               },
             });
-
-            console.log('[useAppChatStorage] SDK continuation response:', currentResponse);
           } catch (error) {
-            console.error('[useAppChatStorage] Error sending tool results via SDK:', error);
             break;
           }
-        }
-
-        if (iteration >= maxIterations) {
-          console.warn('[useAppChatStorage] Max tool call iterations reached');
         }
       }
       //#endregion toolCalling
@@ -1034,7 +1060,6 @@ export function useAppChatStorage({
       }
 
       // Preload messages before switching to prevent flicker
-      // This ensures new messages are ready before we update state
       const msgs = await getMessages(id);
       const uiMessages: Message[] = await Promise.all(
         msgs.map(async (msg: any) => {
@@ -1042,91 +1067,16 @@ export function useAppChatStorage({
           if (msg.thinking) {
             parts.push({ type: "reasoning" as const, text: msg.thinking });
           }
-
-          // If an assistant message has an error, surface it as an error part
           if (msg.error && msg.role === "assistant") {
             parts.push({ type: "error" as const, error: msg.error });
           }
-
-          // For assistant messages, SDK resolves image placeholders to markdown in content
-          const textContent = msg.content;
-          if (textContent) {
-            parts.push({ type: "text" as const, text: textContent });
+          if (msg.content) {
+            parts.push({ type: "text" as const, text: msg.content });
           }
-
-          // SDK stores file metadata in two ways:
-          // 1. `files` - Old style with full FileMetadata (includes url, id, etc.)
-          // 2. `fileIds` - New style with just media IDs (for OPFS-stored files)
-          const storedFiles = msg.files || [];
-          const storedFileIds = msg.fileIds || [];
-
-          // Handle old-style files array
-          if (storedFiles.length > 0) {
-            for (const file of storedFiles) {
-              const mimeType = file.type || "";
-              let fileUrl = file.url || "";
-
-              // If no URL but file has an ID, try to read from OPFS (user uploads)
-              if (!fileUrl && file.id && !file.sourceUrl && walletAddress && hasEncryptionKey(walletAddress)) {
-                try {
-                  const encryptionKey = await getEncryptionKey(walletAddress);
-                  const result = await readEncryptedFile(file.id, encryptionKey);
-                  if (result) {
-                    fileUrl = await blobToDataUrl(result.blob);
-                  }
-                } catch (err) {
-                  console.error(`Failed to read file ${file.id} from OPFS:`, err);
-                }
-              }
-
-              if (!fileUrl) continue;
-
-              if (mimeType.startsWith("image/")) {
-                parts.push({
-                  type: "image_url" as const,
-                  image_url: { url: fileUrl },
-                });
-              } else {
-                parts.push({
-                  type: "file" as const,
-                  url: fileUrl,
-                  mediaType: mimeType,
-                  filename: file.name || "",
-                });
-              }
-            }
-          }
-
-          // Handle new-style fileIds (media IDs for OPFS-stored files)
-          if (storedFiles.length === 0 && storedFileIds.length > 0 && walletAddress && hasEncryptionKey(walletAddress)) {
-            for (const mediaId of storedFileIds) {
-              try {
-                const encryptionKey = await getEncryptionKey(walletAddress);
-                const result = await readEncryptedFile(mediaId, encryptionKey);
-                if (result) {
-                  const fileUrl = await blobToDataUrl(result.blob);
-                  const mimeType = result.metadata?.type || "application/octet-stream";
-
-                  if (mimeType.startsWith("image/")) {
-                    parts.push({
-                      type: "image_url" as const,
-                      image_url: { url: fileUrl },
-                    });
-                  } else {
-                    parts.push({
-                      type: "file" as const,
-                      url: fileUrl,
-                      mediaType: mimeType,
-                      filename: result.metadata?.name || mediaId,
-                    });
-                  }
-                }
-              } catch (err) {
-                console.error(`Failed to read file ${mediaId} from OPFS:`, err);
-              }
-            }
-          }
-
+          // Resolve file references from msg.files or msg.fileIds,
+          // decrypting from OPFS when wallet is connected
+          const fileParts = await resolveMessageFiles(msg, walletAddress);
+          parts.push(...fileParts);
           return {
             id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
             role: msg.role,
@@ -1135,9 +1085,7 @@ export function useAppChatStorage({
         })
       );
 
-      // Update ref first to prevent useEffect from re-loading
       loadedConversationIdRef.current = id;
-      // Direct state updates
       setMessages(uiMessages);
       setConversationId(id);
     },
@@ -1148,16 +1096,9 @@ export function useAppChatStorage({
   //#region deleteConversation
   const handleDeleteConversation = useCallback(
     async (id: string) => {
-      console.log("[useAppChatStorage] Deleting conversation:", id);
-      try {
-        const result = await deleteConversation(id);
-        console.log("[useAppChatStorage] Delete result:", result);
-        if (conversationId === id) {
-          setMessages([]);
-        }
-      } catch (error) {
-        console.error("[useAppChatStorage] Delete failed:", error);
-        throw error;
+      await deleteConversation(id);
+      if (conversationId === id) {
+        setMessages([]);
       }
     },
     [deleteConversation, conversationId]

@@ -89,7 +89,6 @@ const handleSwitchConversation = useCallback(
     }
 
     // Preload messages before switching to prevent flicker
-    // This ensures new messages are ready before we update state
     const msgs = await getMessages(id);
     const uiMessages: Message[] = await Promise.all(
       msgs.map(async (msg: any) => {
@@ -97,91 +96,16 @@ const handleSwitchConversation = useCallback(
         if (msg.thinking) {
           parts.push({ type: "reasoning" as const, text: msg.thinking });
         }
-
-        // If an assistant message has an error, surface it as an error part
         if (msg.error && msg.role === "assistant") {
           parts.push({ type: "error" as const, error: msg.error });
         }
-
-        // For assistant messages, SDK resolves image placeholders to markdown in content
-        const textContent = msg.content;
-        if (textContent) {
-          parts.push({ type: "text" as const, text: textContent });
+        if (msg.content) {
+          parts.push({ type: "text" as const, text: msg.content });
         }
-
-        // SDK stores file metadata in two ways:
-        // 1. `files` - Old style with full FileMetadata (includes url, id, etc.)
-        // 2. `fileIds` - New style with just media IDs (for OPFS-stored files)
-        const storedFiles = msg.files || [];
-        const storedFileIds = msg.fileIds || [];
-
-        // Handle old-style files array
-        if (storedFiles.length > 0) {
-          for (const file of storedFiles) {
-            const mimeType = file.type || "";
-            let fileUrl = file.url || "";
-
-            // If no URL but file has an ID, try to read from OPFS (user uploads)
-            if (!fileUrl && file.id && !file.sourceUrl && walletAddress && hasEncryptionKey(walletAddress)) {
-              try {
-                const encryptionKey = await getEncryptionKey(walletAddress);
-                const result = await readEncryptedFile(file.id, encryptionKey);
-                if (result) {
-                  fileUrl = await blobToDataUrl(result.blob);
-                }
-              } catch (err) {
-                console.error(`Failed to read file ${file.id} from OPFS:`, err);
-              }
-            }
-
-            if (!fileUrl) continue;
-
-            if (mimeType.startsWith("image/")) {
-              parts.push({
-                type: "image_url" as const,
-                image_url: { url: fileUrl },
-              });
-            } else {
-              parts.push({
-                type: "file" as const,
-                url: fileUrl,
-                mediaType: mimeType,
-                filename: file.name || "",
-              });
-            }
-          }
-        }
-
-        // Handle new-style fileIds (media IDs for OPFS-stored files)
-        if (storedFiles.length === 0 && storedFileIds.length > 0 && walletAddress && hasEncryptionKey(walletAddress)) {
-          for (const mediaId of storedFileIds) {
-            try {
-              const encryptionKey = await getEncryptionKey(walletAddress);
-              const result = await readEncryptedFile(mediaId, encryptionKey);
-              if (result) {
-                const fileUrl = await blobToDataUrl(result.blob);
-                const mimeType = result.metadata?.type || "application/octet-stream";
-
-                if (mimeType.startsWith("image/")) {
-                  parts.push({
-                    type: "image_url" as const,
-                    image_url: { url: fileUrl },
-                  });
-                } else {
-                  parts.push({
-                    type: "file" as const,
-                    url: fileUrl,
-                    mediaType: mimeType,
-                    filename: result.metadata?.name || mediaId,
-                  });
-                }
-              }
-            } catch (err) {
-              console.error(`Failed to read file ${mediaId} from OPFS:`, err);
-            }
-          }
-        }
-
+        // Resolve file references from msg.files or msg.fileIds,
+        // decrypting from OPFS when wallet is connected
+        const fileParts = await resolveMessageFiles(msg, walletAddress);
+        parts.push(...fileParts);
         return {
           id: msg.uniqueId ?? `msg-${Date.now()}-${Math.random()}`,
           role: msg.role,
@@ -190,9 +114,7 @@ const handleSwitchConversation = useCallback(
       })
     );
 
-    // Update ref first to prevent useEffect from re-loading
     loadedConversationIdRef.current = id;
-    // Direct state updates
     setMessages(uiMessages);
     setConversationId(id);
   },
@@ -205,16 +127,9 @@ const handleSwitchConversation = useCallback(
 ```ts
 const handleDeleteConversation = useCallback(
   async (id: string) => {
-    console.log("[useAppChatStorage] Deleting conversation:", id);
-    try {
-      const result = await deleteConversation(id);
-      console.log("[useAppChatStorage] Delete result:", result);
-      if (conversationId === id) {
-        setMessages([]);
-      }
-    } catch (error) {
-      console.error("[useAppChatStorage] Delete failed:", error);
-      throw error;
+    await deleteConversation(id);
+    if (conversationId === id) {
+      setMessages([]);
     }
   },
   [deleteConversation, conversationId]

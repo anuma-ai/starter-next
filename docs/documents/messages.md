@@ -99,69 +99,6 @@ const addMessageOptimistically = useCallback(
 );
 ```
 
-## Send Setup
-
-The send handler destructures options, triggers the optimistic update, sets a
-temporary conversation title on the first message, and initializes streaming
-state.
-
-```ts
-const {
-  model,
-  temperature,
-  maxOutputTokens,
-  store,
-  reasoning,
-  thinking,
-  onThinking,
-  files,
-  displayText,
-  skipOptimisticUpdate,
-  serverTools,
-  clientTools,
-  toolChoice,
-  apiType,
-  conversationId: explicitConversationId,
-  onToolCall,
-  isFirstMessage: isFirstMessageOption,
-} = options;
-
-// Determine if this is the first message for title generation
-// Prefer explicit option (for cases where caller adds messages before calling)
-// Fall back to checking messagesRef if no option provided
-const isFirstMessage = isFirstMessageOption ?? messagesRef.current.filter((m) => m.role === "user").length === 0;
-
-let assistantMessageId: string;
-
-// Add messages optimistically unless skipped
-if (!skipOptimisticUpdate) {
-  assistantMessageId = addMessageOptimistically(text, files, displayText);
-} else {
-  // Use the existing assistant message ID
-  assistantMessageId =
-    currentAssistantMessageIdRef.current || `assistant-${Date.now()}`;
-}
-
-// Set a temporary title from the user's first message so the sidebar
-// shows something meaningful while the LLM-generated title loads
-if (isFirstMessage && explicitConversationId) {
-  const tempTitle = (displayText || text).slice(0, 30);
-  storeConversationTitle(
-    explicitConversationId,
-    tempTitle.length >= 30 ? `${tempTitle}...` : tempTitle
-  );
-}
-
-// Reset streaming text accumulator
-streamingTextRef.current = "";
-
-// Mark this conversation as streaming so we can preserve state when switching
-if (explicitConversationId) {
-  streamingConversationIdRef.current = explicitConversationId;
-  setStreamingConversationIdState(explicitConversationId);
-}
-```
-
 ## Building Content Parts
 
 Content parts are assembled for the SDK. Text is added first, then files are
@@ -223,9 +160,10 @@ const sdkFiles = enrichedFiles.map((file) => ({
 
 ## Calling sendMessage
 
-The SDK call passes the content parts, model configuration, and a streaming
-callback. Options like `temperature`, `reasoning`, `serverTools`, and
-`clientTools` are conditionally spread so only provided values are sent.
+The send handler destructures its options, triggers the optimistic update, then
+calls the SDK. Options like `temperature`, `reasoning`, `serverTools`, and
+`clientTools` are conditionally spread so only provided values are sent. The
+`onData` callback accumulates streamed text and notifies subscribers.
 
 ```ts
 // Build messages array with optional system prompt
@@ -279,74 +217,18 @@ continuation message.
 // Process tool calls if present and callback is provided
 // This implements a multi-turn tool calling loop
 if (onToolCall && clientTools && clientTools.length > 0) {
-  // Use 'any' type because response format varies across different API types
   let currentResponse: any = response;
-  let maxIterations = 10; // Prevent infinite loops
   let iteration = 0;
 
-  while (iteration < maxIterations) {
-    iteration++;
-    console.log(`[useAppChatStorage] Tool call iteration ${iteration}`);
-
-    // Check for tool calls in the response - handle various API response formats
-    let toolCalls: any[] = [];
-
-    if (currentResponse) {
-      // Direct toolCalls array
-      if (currentResponse.toolCalls) {
-        toolCalls = currentResponse.toolCalls;
-      }
-      // OpenAI format: tool_calls
-      else if (currentResponse.tool_calls) {
-        toolCalls = currentResponse.tool_calls;
-      }
-      // SDK wrapped format: response.data.output with function_call items (Responses API)
-      else if (currentResponse.data?.output && Array.isArray(currentResponse.data.output)) {
-        toolCalls = currentResponse.data.output.filter((item: any) => item.type === 'function_call');
-      }
-      // SDK wrapped format: response.data.choices with tool_calls (Completions API)
-      else if (currentResponse.data?.choices && currentResponse.data.choices[0]?.message?.tool_calls) {
-        toolCalls = currentResponse.data.choices[0].message.tool_calls;
-      }
-      // Responses API format: output array with function_call items
-      else if (currentResponse.output && Array.isArray(currentResponse.output)) {
-        toolCalls = currentResponse.output.filter((item: any) => item.type === 'function_call');
-      }
-      // Check for choices array (chat completions format)
-      else if (currentResponse.choices && currentResponse.choices[0]?.message?.tool_calls) {
-        toolCalls = currentResponse.choices[0].message.tool_calls;
-      }
-    }
-
-    console.log('[useAppChatStorage] Detected tool calls:', toolCalls.length, toolCalls);
-
-    // No more tool calls, we're done
-    if (toolCalls.length === 0) {
-      break;
-    }
+  while (iteration++ < 10) {
+    const toolCalls = extractToolCalls(currentResponse);
+    if (toolCalls.length === 0) break;
 
     // Execute all tool calls and collect results
     const toolResults: Array<{ call_id: string; output: string }> = [];
 
     for (const call of toolCalls) {
       try {
-        // Helper to safely parse JSON arguments
-        const safeParseArgs = (args: unknown): Record<string, unknown> => {
-          if (args === undefined || args === null) {
-            return {};
-          }
-          if (typeof args === 'string' && args.trim()) {
-            try {
-              return JSON.parse(args);
-            } catch {
-              return {};
-            }
-          }
-          return (args as Record<string, unknown>) || {};
-        };
-
-        // Parse the tool call - handle various formats
-        // Check for arguments in order: direct (Responses API) -> function.arguments (Chat Completions API)
         const rawArgs = call.arguments !== undefined ? call.arguments : call.function?.arguments;
         const toolCall: ToolCall = {
           id: call.id || call.call_id || `call_${Date.now()}`,
@@ -354,19 +236,12 @@ if (onToolCall && clientTools && clientTools.length > 0) {
           arguments: safeParseArgs(rawArgs),
         };
 
-        console.log('[useAppChatStorage] Executing tool call:', toolCall);
-
-        // Execute the tool via callback
         const result = await onToolCall(toolCall, clientTools);
-        console.log('[useAppChatStorage] Tool result:', result);
-
-        // Collect result for sending back to AI
         toolResults.push({
           call_id: toolCall.id,
           output: JSON.stringify(result),
         });
       } catch (error) {
-        console.error('[useAppChatStorage] Error processing tool call:', error, call);
         toolResults.push({
           call_id: call.id || call.call_id || `call_${Date.now()}`,
           output: JSON.stringify({ error: String(error) }),
@@ -374,21 +249,16 @@ if (onToolCall && clientTools && clientTools.length > 0) {
       }
     }
 
-    console.log('[useAppChatStorage] Sending tool results back to AI:', toolResults);
-
     // Format tool results as a context message for the AI
-    // Since the API is stateless, we send tool results through the SDK as a follow-up
     const toolResultsSummary = toolResults.map((tr) => {
       const toolName = toolCalls.find(c => (c.id || c.call_id) === tr.call_id)?.name || 'unknown';
       return `Tool "${toolName}" returned: ${tr.output}`;
     }).join('\n\n');
 
-    const continuationPrompt = `[Tool Execution Results]\nThe following tools were executed:\n\n${toolResultsSummary}\n\nBased on these results, continue with the task. If you need to call more tools (like read_file to see current content before updating, or update_file to make changes), do so now.`;
-
-    console.log('[useAppChatStorage] Sending continuation via SDK:', continuationPrompt.slice(0, 200) + '...');
+    const continuationPrompt = `[Tool Execution Results]\nThe following tools were executed:\n\n${toolResultsSummary}\n\nBased on these results, continue with the task.`;
 
     try {
-      // Use SDK to send continuation - this maintains conversation context
+      // Send results back via SDK to maintain conversation context
       currentResponse = await sendMessage({
         messages: [{ role: 'user' as const, content: [{ type: 'text', text: continuationPrompt }] }],
         model: model || 'openai/gpt-5.2-2025-12-11',
@@ -405,7 +275,6 @@ if (onToolCall && clientTools && clientTools.length > 0) {
         ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
           streamingTextRef.current += chunk;
-          // Only notify if viewing the streaming conversation
           const isViewingStreamingConversation =
             loadedConversationIdRef.current === streamingConversationIdRef.current;
           if (onStreamingData && isViewingStreamingConversation) {
@@ -413,16 +282,9 @@ if (onToolCall && clientTools && clientTools.length > 0) {
           }
         },
       });
-
-      console.log('[useAppChatStorage] SDK continuation response:', currentResponse);
     } catch (error) {
-      console.error('[useAppChatStorage] Error sending tool results via SDK:', error);
       break;
     }
-  }
-
-  if (iteration >= maxIterations) {
-    console.warn('[useAppChatStorage] Max tool call iterations reached');
   }
 }
 ```
