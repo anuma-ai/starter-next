@@ -9,7 +9,12 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
+import {
+  useIdentityToken,
+  usePrivy,
+  useWallets,
+  getIdentityToken as fetchIdentityToken,
+} from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 import { useAppChat } from "@/hooks/useAppChat";
 import {
@@ -276,6 +281,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // invocation. Instead of calling it, we reuse the token that the
   // useIdentityToken() hook already fetched (single API call) and let
   // callers wait for it when it hasn't arrived yet.
+  // When the cached token is expired (e.g. after prolonged inactivity),
+  // we fall back to fetchIdentityToken() to force a session refresh.
   const identityTokenRef = useRef(identityToken);
   const tokenWaitersRef = useRef<Array<(token: string | null) => void>>([]);
 
@@ -288,7 +295,29 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, [identityToken]);
 
   const getIdentityToken = useCallback(async (): Promise<string | null> => {
-    if (identityTokenRef.current) return identityTokenRef.current;
+    const cached = identityTokenRef.current;
+    if (cached) {
+      // Check if the JWT is expired or about to expire (within 30s)
+      try {
+        const payload = JSON.parse(atob(cached.split(".")[1]));
+        if (payload.exp && payload.exp * 1000 > Date.now() + 30_000) {
+          return cached;
+        }
+      } catch {
+        // Fall through to refresh — atob may fail on base64url-encoded JWTs
+      }
+      // Token is expired — force refresh via Privy's standalone function
+      try {
+        const fresh = await fetchIdentityToken();
+        if (fresh) {
+          identityTokenRef.current = fresh;
+          return fresh;
+        }
+      } catch {
+        // Network error during refresh (e.g. unstable connectivity on
+        // idle-tab resume) — fall through to the waiter-based path below
+      }
+    }
     // Wait for the useIdentityToken() hook to provide the token rather
     // than calling fetchIdentityToken() which hits /api/v1/users/me again
     return new Promise((resolve) => {
