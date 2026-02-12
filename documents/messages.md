@@ -22,38 +22,38 @@ empty assistant placeholder that will be filled as the response streams in.
 
 ## Building Content Parts
 
-Content parts are assembled for the SDK. Text is added first, then files are
-enriched with stable IDs. Images become `image_url` parts, other files become
-`input_file` parts. File metadata is also passed to the SDK for encrypted OPFS
-storage.
+While the optimistic update builds parts for the UI, the API payload needs a
+different format. Text is the same, but files get stable IDs for matching during
+preprocessing and are split into `image_url` and `input_file` types. A separate
+`sdkFiles` array is also created so the SDK can encrypt and store files in OPFS.
 
 {@includeCode ../hooks/useAppChatStorage.ts#contentParts}
 
 ## Calling sendMessage
 
-The send handler destructures its options, triggers the optimistic update, then
-calls the SDK. Options like `temperature`, `reasoning`, `serverTools`, and
-`clientTools` are conditionally spread so only provided values are sent. The
-`onData` callback accumulates streamed text and notifies subscribers.
+The content parts and an optional system prompt are assembled into a messages
+array, then passed to `sendMessage`. The key options are `model`,
+`temperature`, `reasoning` (for extended thinking), and `serverTools` and
+`clientTools` (for tool use). Only provided options are included. The `onData`
+callback streams text chunks to the UI as they arrive.
 
 {@includeCode ../hooks/useAppChatStorage.ts#sendCall}
 
 ## Tool Calling
 
-When client tools are configured and the response contains tool calls, a
-multi-turn loop executes them. The loop detects tool calls across multiple API
-response formats (Responses API, Chat Completions API, SDK-wrapped formats),
-runs each tool via the `onToolCall` callback, and sends results back as a
-continuation message.
+When client tools are provided and the model returns tool calls, a loop
+executes them locally via the `onToolCall` callback and sends results back to
+the model. `extractToolCalls` normalizes across Responses API, Chat Completions
+API, and SDK-wrapped response formats. The loop runs up to 10 iterations to
+handle chained tool calls.
 
 {@includeCode ../hooks/useAppChatStorage.ts#toolCalling}
 
 ## Title Generation
 
-On the first message in a conversation, a temporary title is set from the
-user's text immediately so the sidebar shows something meaningful. After the
-response completes, an LLM-generated title replaces it asynchronously using
-`sendMessage` with `skipStorage: true`.
+After the first message, an LLM-generated title is created asynchronously
+using `sendMessage` with `skipStorage: true` so the request isn't saved as a
+conversation message.
 
 {@includeCode ../hooks/useAppChatStorage.ts#titleGeneration}
 
@@ -62,6 +62,6 @@ response completes, an LLM-generated title replaces it asynchronously using
 After streaming completes, the final accumulated text is synced to React state.
 If the user switched to a different conversation mid-stream, the update is
 skipped — the message is already saved to the database and will appear when
-they switch back. Streaming refs and caches are then cleared.
+they switch back.
 
 {@includeCode ../hooks/useAppChatStorage.ts#postStreamCleanup}

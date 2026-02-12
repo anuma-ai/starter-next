@@ -85,104 +85,81 @@ const addMessageOptimistically = useCallback(
 
 ## Building Content Parts
 
-Content parts are assembled for the SDK. Text is added first, then files are
-enriched with stable IDs. Images become `image_url` parts, other files become
-`input_file` parts. File metadata is also passed to the SDK for encrypted OPFS
-storage.
+While the optimistic update builds parts for the UI, the API payload needs a
+different format. Text is the same, but files get stable IDs for matching during
+preprocessing and are split into `image_url` and `input_file` types. A separate
+`sdkFiles` array is also created so the SDK can encrypt and store files in OPFS.
 
 ```ts
-// Build content parts for the messages array
-// The SDK extracts and stores the text from this array
-const contentParts: Array<{
-  type?: string;
-  text?: string;
-  image_url?: { url?: string };
-  file?: { file_id?: string; file_url?: string; filename?: string };
-}> = [];
-
-// Add text content - use clean text for storage, but we need OCR context for API
-// The SDK stores whatever is in messages, so we use displayText if available
+// Content parts are the API payload — separate from the optimistic UI parts above.
+// Text goes first, then files with stable IDs for matching during preprocessing.
+const contentParts: any[] = [];
 if (textForStorage) {
   contentParts.push({ type: "text", text: textForStorage });
 }
 
-// Process files: create stable IDs, add to contentParts, and prepare for SDK
-const fileEntries = files || [];
-const enrichedFiles = fileEntries.map((file) => ({
+// Assign each file a stable ID so the SDK can match them during preprocessing
+const enrichedFiles = (files || []).map((file) => ({
   ...file,
-  // Ensure each file has a stable ID (use existing or generate)
   stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
 }));
 
-// Add files to content parts
+// Images become image_url parts; other files become input_file parts
 enrichedFiles.forEach((file) => {
-  if (file.mediaType?.startsWith("image/")) {
-    contentParts.push({
-      type: "image_url",
-      image_url: { url: file.url },
-    });
-  } else {
-    contentParts.push({
-      type: "input_file",
-      file: {
-        file_id: file.stableId, // Use stable ID for matching during preprocessing
-        file_url: file.url,
-        filename: file.filename
-      },
-    });
-  }
+  contentParts.push(
+    file.mediaType?.startsWith("image/")
+      ? { type: "image_url", image_url: { url: file.url } }
+      : { type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } }
+  );
 });
-// Create SDK files - SDK handles encrypted storage automatically
+
+// SDK file metadata — the SDK encrypts and stores these in OPFS automatically
 const sdkFiles = enrichedFiles.map((file) => ({
   id: file.stableId,
   name: file.filename || file.stableId,
   type: file.mediaType || "application/octet-stream",
   size: 0,
-  url: file.url, // SDK will encrypt and store in OPFS
+  url: file.url,
 }));
 ```
 
 ## Calling sendMessage
 
-The send handler destructures its options, triggers the optimistic update, then
-calls the SDK. Options like `temperature`, `reasoning`, `serverTools`, and
-`clientTools` are conditionally spread so only provided values are sent. The
-`onData` callback accumulates streamed text and notifies subscribers.
+The content parts and an optional system prompt are assembled into a messages
+array, then passed to `sendMessage`. The key options are `model`,
+`temperature`, `reasoning` (for extended thinking), and `serverTools` and
+`clientTools` (for tool use). Only provided options are included. The `onData`
+callback streams text chunks to the UI as they arrive.
 
 ```ts
-// Build messages array with optional system prompt
-const messagesArray: Array<{ role: "system" | "user"; content: typeof contentParts }> = [];
+const messagesArray: any[] = [];
 if (systemPrompt) {
-  messagesArray.push({ role: "system" as const, content: [{ type: "text", text: systemPrompt }] });
+  messagesArray.push({ role: "system", content: [{ type: "text", text: systemPrompt }] });
 }
-messagesArray.push({ role: "user" as const, content: contentParts });
+messagesArray.push({ role: "user", content: contentParts });
 
+// Only provided options are sent — undefined values are omitted via conditional spread
 const response = await sendMessage({
   messages: messagesArray,
   model,
   includeHistory: true,
   ...(temperature !== undefined && { temperature }),
   ...(maxOutputTokens !== undefined && { maxOutputTokens }),
-  ...(store !== undefined && { store }),
   ...(reasoning && { reasoning }),
-  ...(thinking && { thinking }),
-  ...(onThinking && { onThinking }),
   ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
-  ...(memoryContext && { memoryContext }),
   ...(serverTools && (typeof serverTools === "function" || serverTools.length > 0) && { serverTools }),
   ...(clientTools && clientTools.length > 0 && { clientTools }),
+  ...(store !== undefined && { store }),
+  ...(thinking && { thinking }),
+  ...(onThinking && { onThinking }),
+  ...(memoryContext && { memoryContext }),
   ...(toolChoice && { toolChoice }),
   ...(apiType && { apiType }),
   ...(explicitConversationId && { conversationId: explicitConversationId }),
   onData: (chunk: string) => {
-    // Accumulate text
     streamingTextRef.current += chunk;
-
-    // Only notify subscribers if user is viewing the streaming conversation
-    // This prevents streaming content from conversation A appearing in conversation B
-    const isViewingStreamingConversation =
-      loadedConversationIdRef.current === streamingConversationIdRef.current;
-    if (onStreamingData && isViewingStreamingConversation) {
+    // Only notify if user is still viewing this conversation
+    if (onStreamingData && loadedConversationIdRef.current === streamingConversationIdRef.current) {
       onStreamingData(chunk, streamingTextRef.current);
     }
   },
@@ -191,40 +168,34 @@ const response = await sendMessage({
 
 ## Tool Calling
 
-When client tools are configured and the response contains tool calls, a
-multi-turn loop executes them. The loop detects tool calls across multiple API
-response formats (Responses API, Chat Completions API, SDK-wrapped formats),
-runs each tool via the `onToolCall` callback, and sends results back as a
-continuation message.
+When client tools are provided and the model returns tool calls, a loop
+executes them locally via the `onToolCall` callback and sends results back to
+the model. `extractToolCalls` normalizes across Responses API, Chat Completions
+API, and SDK-wrapped response formats. The loop runs up to 10 iterations to
+handle chained tool calls.
 
 ```ts
-// Process tool calls if present and callback is provided
-// This implements a multi-turn tool calling loop
+// Multi-turn tool calling loop (max 10 iterations)
 if (onToolCall && clientTools && clientTools.length > 0) {
   let currentResponse: any = response;
   let iteration = 0;
 
   while (iteration++ < 10) {
+    // extractToolCalls normalizes across Responses API, Chat Completions, and SDK formats
     const toolCalls = extractToolCalls(currentResponse);
     if (toolCalls.length === 0) break;
 
-    // Execute all tool calls and collect results
+    // Execute each tool and collect results
     const toolResults: Array<{ call_id: string; output: string }> = [];
-
     for (const call of toolCalls) {
       try {
-        const rawArgs = call.arguments !== undefined ? call.arguments : call.function?.arguments;
         const toolCall: ToolCall = {
           id: call.id || call.call_id || `call_${Date.now()}`,
           name: call.name || call.function?.name,
-          arguments: safeParseArgs(rawArgs),
+          arguments: safeParseArgs(call.arguments ?? call.function?.arguments),
         };
-
         const result = await onToolCall(toolCall, clientTools);
-        toolResults.push({
-          call_id: toolCall.id,
-          output: JSON.stringify(result),
-        });
+        toolResults.push({ call_id: toolCall.id, output: JSON.stringify(result) });
       } catch (error) {
         toolResults.push({
           call_id: call.id || call.call_id || `call_${Date.now()}`,
@@ -233,116 +204,70 @@ if (onToolCall && clientTools && clientTools.length > 0) {
       }
     }
 
-    // Format tool results as a context message for the AI
-    const toolResultsSummary = toolResults.map((tr) => {
-      const toolName = toolCalls.find(c => (c.id || c.call_id) === tr.call_id)?.name || 'unknown';
-      return `Tool "${toolName}" returned: ${tr.output}`;
+    // Send results back to the model as a continuation message
+    const summary = toolResults.map((tr) => {
+      const name = toolCalls.find(c => (c.id || c.call_id) === tr.call_id)?.name || 'unknown';
+      return `Tool "${name}" returned: ${tr.output}`;
     }).join('\n\n');
 
-    const continuationPrompt = `[Tool Execution Results]\nThe following tools were executed:\n\n${toolResultsSummary}\n\nBased on these results, continue with the task.`;
-
     try {
-      // Send results back via SDK to maintain conversation context
       currentResponse = await sendMessage({
-        messages: [{ role: 'user' as const, content: [{ type: 'text', text: continuationPrompt }] }],
+        messages: [{ role: 'user', content: [{ type: 'text', text: `[Tool Execution Results]\n\n${summary}\n\nBased on these results, continue with the task.` }] }],
         model: model || 'openai/gpt-5.2-2025-12-11',
-        maxOutputTokens: maxOutputTokens || 16000,
         includeHistory: true,
-        clientTools: clientTools?.map((t) => ({
-          type: t.type || 'function',
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters,
-        })),
-        toolChoice: 'auto',
-        ...(apiType && { apiType }),
+        clientTools, toolChoice: 'auto',
         ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
           streamingTextRef.current += chunk;
-          const isViewingStreamingConversation =
-            loadedConversationIdRef.current === streamingConversationIdRef.current;
-          if (onStreamingData && isViewingStreamingConversation) {
+          if (onStreamingData && loadedConversationIdRef.current === streamingConversationIdRef.current) {
             onStreamingData(chunk, streamingTextRef.current);
           }
         },
       });
-    } catch (error) {
-      break;
-    }
+    } catch { break; }
   }
 }
 ```
 
 ## Title Generation
 
-On the first message in a conversation, a temporary title is set from the
-user's text immediately so the sidebar shows something meaningful. After the
-response completes, an LLM-generated title replaces it asynchronously using
-`sendMessage` with `skipStorage: true`.
+After the first message, an LLM-generated title is created asynchronously
+using `sendMessage` with `skipStorage: true` so the request isn't saved as a
+conversation message.
 
 ```ts
-// Generate title for the first message only
-// Use isFirstMessage captured at the start of handleSendMessage
-// Use messageConversationId (the conversation this message was sent to), not the current viewing conversation
+// Generate an LLM title after the first message in a conversation.
+// Uses skipStorage so the title request isn't saved as a conversation message.
 if (isFirstMessage && messageConversationId) {
-  const userText = textForStorage || text;
-  const assistantText = finalText;
+  const context = [
+    { role: "user", text: (textForStorage || text).slice(0, 200) },
+    { role: "assistant", text: finalText.slice(0, 200) },
+  ].filter((m) => m.text).map((m) => `${m.role}: ${m.text}`).join("\n");
 
-  const conversationContext = [
-    { role: "user", text: userText.slice(0, 200) },
-    { role: "assistant", text: assistantText.slice(0, 200) },
-  ]
-    .filter((m) => m.text)
-    .map((m) => `${m.role}: ${m.text}`)
-    .join("\n");
-
-  // Generate title using sendMessage with skipStorage to avoid polluting the database
-  // Delay slightly to ensure main message is saved first
   setTimeout(async () => {
     try {
       const titleResponse = await sendMessage({
-        messages: [
-          {
-            role: "user" as const,
-            content: [
-              {
-                type: "text",
-                text: `Generate a short, descriptive title (3-6 words) for this conversation. Return ONLY the title, nothing else.\n\nConversation:\n${conversationContext}`,
-              },
-            ],
-          },
-        ],
+        messages: [{ role: "user", content: [{ type: "text",
+          text: `Generate a short, descriptive title (3-6 words) for this conversation. Return ONLY the title, nothing else.\n\nConversation:\n${context}` }] }],
         model: "openai/gpt-4o-mini",
         maxOutputTokens: 50,
         skipStorage: true,
         includeHistory: false,
       });
-
       if (titleResponse.error || !titleResponse.data) return;
 
-      // Extract title from response
       let newTitle = extractTextFromResponse(titleResponse.data);
-      if (newTitle) {
-        // Clean up the title - remove quotes, trim whitespace
-        newTitle = newTitle.replace(/^["']|["']$/g, "").trim();
-        // Limit to reasonable length
-        if (newTitle.length > 50) {
-          newTitle = newTitle.slice(0, 47) + "...";
-        }
-
-        // Use the conversation ID this message was sent to, not where user is currently viewing
-        storeConversationTitle(messageConversationId, newTitle);
-        setConversations((prevConversations) =>
-          prevConversations.map((conv) =>
-            conv.id === messageConversationId ||
-            conv.conversationId === messageConversationId
-              ? { ...conv, title: newTitle }
-              : conv
-          )
-        );
-      }
+      if (!newTitle) return;
+      newTitle = newTitle.replace(/^["']|["']$/g, "").trim().slice(0, 50);
+      storeConversationTitle(messageConversationId, newTitle);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === messageConversationId || c.conversationId === messageConversationId
+            ? { ...c, title: newTitle } : c
+        )
+      );
     } catch {
-      // Title generation is non-critical, silently fail
+      // Title generation is non-critical
     }
   }, 500);
 }
@@ -353,7 +278,7 @@ if (isFirstMessage && messageConversationId) {
 After streaming completes, the final accumulated text is synced to React state.
 If the user switched to a different conversation mid-stream, the update is
 skipped — the message is already saved to the database and will appear when
-they switch back. Streaming refs and caches are then cleared.
+they switch back.
 
 ```ts
 // Sync final streamed text to React state after streaming completes
