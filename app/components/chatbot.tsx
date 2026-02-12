@@ -183,8 +183,12 @@ const ChatBotDemo = () => {
   useEffect(() => {
     const saved = localStorage.getItem("voice_enabled");
     setVoiceEnabled(saved === "true");
-    // Clean up any stale flag from previous sessions
-    sessionStorage.removeItem("voiceChatPending");
+    // Restore voice chat mode if we navigated here from the home page mid-voice-chat
+    if (sessionStorage.getItem("voiceChatPending") === "true") {
+      sessionStorage.removeItem("voiceChatPending");
+      voiceChatModeRef.current = true;
+      setVoiceChatMode(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -510,12 +514,9 @@ const ChatBotDemo = () => {
       // Step 3: Send to API (skip adding user message to UI again since we already did)
       // Get the resolved model config based on thinking toggle
       const modelConfig = getModelConfig(selectedModel, thinkingEnabled);
-      // Continue voice chat loop only if already in voice chat mode
-      // (don't activate it for typed submissions)
-      const shouldRestartVoice = voiceChatModeRef.current && voiceEnabled && isModelLoaded;
-      if (shouldRestartVoice) {
-        voiceChatModeRef.current = true;
-        setVoiceChatMode(true);
+      // Persist voice chat mode across navigation (home → conversation page remount)
+      if (voiceChatModeRef.current && voiceEnabled && isModelLoaded) {
+        sessionStorage.setItem("voiceChatPending", "true");
       }
 
       await handleSubmit(
@@ -866,6 +867,9 @@ const ChatBotDemo = () => {
     voiceTextRef.current = "";
 
     if (finalText) {
+      // Enter voice chat mode so the auto-restart useEffect picks up after the response
+      voiceChatModeRef.current = true;
+      setVoiceChatMode(true);
       setInput("");
       onSubmit({ text: finalText, files: [] });
     }
@@ -874,7 +878,7 @@ const ChatBotDemo = () => {
   // Auto-start voice chat after AI response completes (handles remount after navigation)
   const wasLoadingRef = useRef(false);
   useEffect(() => {
-    if (wasLoadingRef.current && !isLoading && voiceEnabled && isModelLoaded && !voiceActiveRef.current) {
+    if (wasLoadingRef.current && !isLoading && voiceChatModeRef.current && voiceEnabled && isModelLoaded && !voiceActiveRef.current) {
       voiceChatModeRef.current = true;
       setVoiceChatMode(true);
       startVoiceChatRecordingRef.current?.();

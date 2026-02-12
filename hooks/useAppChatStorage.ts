@@ -793,8 +793,16 @@ export function useAppChatStorage({
             currentResponse = await sendMessage({
               messages: [{ role: 'user', content: [{ type: 'text', text: `[Tool Execution Results]\n\n${summary}\n\nBased on these results, continue with the task.` }] }],
               model: model || 'openai/gpt-5.2-2025-12-11',
+              maxOutputTokens: maxOutputTokens || 16000,
               includeHistory: true,
-              clientTools, toolChoice: 'auto',
+              clientTools: clientTools?.map((t) => ({
+                type: t.type || 'function',
+                name: t.name,
+                description: t.description,
+                parameters: t.parameters,
+              })),
+              toolChoice: 'auto',
+              ...(apiType && { apiType }),
               ...(explicitConversationId && { conversationId: explicitConversationId }),
               onData: (chunk: string) => {
                 streamingTextRef.current += chunk;
@@ -851,7 +859,8 @@ export function useAppChatStorage({
 
             let newTitle = extractTextFromResponse(titleResponse.data);
             if (!newTitle) return;
-            newTitle = newTitle.replace(/^["']|["']$/g, "").trim().slice(0, 50);
+            newTitle = newTitle.replace(/^["']|["']$/g, "").trim();
+            if (newTitle.length > 50) newTitle = newTitle.slice(0, 47) + "...";
             storeConversationTitle(messageConversationId, newTitle);
             setConversations((prev) =>
               prev.map((c) =>
