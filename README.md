@@ -17,14 +17,15 @@ organization, file handling, and memory-augmented responses.
 
 ## Features
 
-- AI chat interface with real-time streaming and multiple models (GPT-5.2, Grok,
-  Qwen, etc.)
+- AI chat interface with real-time streaming and multiple models (Anuma, GPT 5.2,
+  Claude Opus 4.5, Grok 4.1)
 - Memory system with semantic retrieval from past conversations
 - Conversation management with persistent storage
 - Projects to organize conversations with custom icons and themes
 - File management with encrypted storage
 - App builder for creating applications via AI prompts
 - Thinking mode with extended reasoning and token visibility
+- Voice input with on-device transcription
 - Server-side and client-side tool integration
 - Cloud backups to Google Drive and Dropbox
 - Light/dark themes with customizable accent colors
