@@ -6,6 +6,10 @@ streams responses from the API.
 
 ## Hook Initialization
 
+Pass the values from the Setup page into `useChatStorage`. The hook returns
+methods for sending messages, managing conversations, and working with files.
+See Setup for how to obtain `database`, `getToken`, and the wallet fields.
+
 {@includeCode ../hooks/useAppChatStorage.ts#hookInit}
 
 ## Optimistic UI Updates
