@@ -41,7 +41,7 @@ test.describe("Chat", () => {
 
     // Wait for the user message to appear in the chat
     // The message should be visible in the chat area
-    await expect(page.getByText(testPrompt)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("main").getByText(testPrompt)).toBeVisible({ timeout: 10000 });
 
     // Wait for a response to appear
     // Assistant messages have the class "is-assistant"
@@ -97,7 +97,7 @@ test.describe("Chat", () => {
     await page.getByRole("button", { name: "Submit" }).click();
 
     // Wait for the user message to appear
-    await expect(page.getByText("What's on this image?")).toBeVisible({
+    await expect(page.getByRole("main").getByText("What's on this image?")).toBeVisible({
       timeout: 10000,
     });
 
@@ -126,7 +126,7 @@ test.describe("Chat", () => {
   //   await page.getByRole("button", { name: "Submit" }).click();
 
   //   // Wait for the user message to appear
-  //   await expect(page.getByText(prompt)).toBeVisible({
+  //   await expect(page.getByRole("main").getByText(prompt)).toBeVisible({
   //     timeout: 10000,
   //   });
 
@@ -165,7 +165,7 @@ test.describe("Chat", () => {
     await page.getByRole("button", { name: "Submit" }).click();
 
     // Wait for the user message to appear
-    await expect(page.getByText(prompt)).toBeVisible({
+    await expect(page.getByRole("main").getByText(prompt)).toBeVisible({
       timeout: 10000,
     });
 
@@ -204,7 +204,7 @@ test.describe("Chat", () => {
     await page.getByRole("button", { name: "Submit" }).click();
 
     // Wait for the user message to appear
-    await expect(page.getByText(prompt)).toBeVisible({
+    await expect(page.getByRole("main").getByText(prompt)).toBeVisible({
       timeout: 10000,
     });
 
@@ -243,7 +243,7 @@ test.describe("Chat", () => {
     await page.getByRole("button", { name: "Submit" }).click();
 
     // Wait for the user message to appear
-    await expect(page.getByText(prompt)).toBeVisible({
+    await expect(page.getByRole("main").getByText(prompt)).toBeVisible({
       timeout: 10000,
     });
 

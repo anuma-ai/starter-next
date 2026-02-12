@@ -2,20 +2,17 @@
 
 The `useChatStorage` hook from `@reverbia/sdk/react` provides persistent chat
 storage with WatermelonDB. It manages conversations, message history, and
-handles syncing between local storage and the server.
-
-## Prerequisites
-
-- A WatermelonDB `Database` instance configured in your app
-- An authentication function that returns a valid token
+streams responses from the API.
 
 ## Hook Initialization
 
+Pass the values from the Setup page into `useChatStorage`. The hook returns
+methods for sending messages, managing conversations, and working with files.
+See Setup for how to obtain `database`, `getToken`, and the wallet fields.
+
 {@includeCode ../hooks/useAppChatStorage.ts#hookInit}
 
-## Sending Messages
-
-### Optimistic UI Updates
+## Optimistic UI Updates
 
 Add messages to the UI immediately before the API responds. This creates a
 snappy user experience by showing the user's message right away along with an
@@ -23,39 +20,54 @@ empty assistant placeholder that will be filled as the response streams in.
 
 {@includeCode ../hooks/useAppChatStorage.ts#optimisticUpdate}
 
-### Handling the Send
+## Building Content Parts
 
-The main handler builds content parts, stores files in IndexedDB for
-persistence, and calls the SDK's `sendMessage` with streaming support.
+While the optimistic update builds parts for the UI, the API payload needs a
+different format. Text is the same, but files are included as content parts
+in the messages array — images as `image_url`, other files as `input_file`.
+Each file gets a stable ID so the SDK can match it back to extracted text
+after file preprocessing (see `preprocessFiles` in the SDK docs). A separate
+`sdkFiles` array provides metadata so the SDK can encrypt and store files
+in OPFS.
 
-{@includeCode ../hooks/useAppChatStorage.ts#handleSend}
+{@includeCode ../hooks/useAppChatStorage.ts#contentParts}
 
-## Sending Images
+## Calling sendMessage
 
-Images can be sent alongside text messages. They're added to the UI immediately
-and sent to the API as `image_url` content parts.
+The content parts and an optional system prompt are assembled into a messages
+array, then passed to `sendMessage`. Each option is conditionally spread so
+only provided values are sent. The `onData` callback streams text chunks to
+the UI as they arrive. See `SendMessageWithStorageArgs` in the SDK docs for
+the full list of options.
 
-### Adding Images to UI
+{@includeCode ../hooks/useAppChatStorage.ts#sendCall}
 
-When building message parts for optimistic UI updates, images are converted to
-`image_url` parts while other files become `file` parts.
+## Tool Calling
 
-{@includeCode ../hooks/useAppChatStorage.ts#imagePartsUI}
+When client tools are provided and the model returns tool calls, a loop
+executes them locally via the `onToolCall` callback and sends results back to
+the model. The loop runs up to 10 iterations to handle chained tool calls.
+`extractToolCalls` and `safeParseArgs` are app-level helpers that normalize
+tool call formats across the Responses API, Chat Completions API, and
+SDK-wrapped responses.
 
-### Building Image Content for API
+{@includeCode ../hooks/useAppChatStorage.ts#toolCalling}
 
-The content array sent to the API uses the same structure, with images as
-`image_url` and other files as `input_file`.
+## Title Generation
 
-{@includeCode ../hooks/useAppChatStorage.ts#imageContentParts}
+After the first message, an LLM-generated title is created asynchronously
+using `sendMessage` with `skipStorage: true` so the title request isn't saved
+as a conversation message. `extractTextFromResponse` and
+`storeConversationTitle` are app-level helpers — the SDK provides
+`updateConversationTitle` on the hook result for the same purpose.
 
-### Persisting Files
+{@includeCode ../hooks/useAppChatStorage.ts#titleGeneration}
 
-Files are stored in IndexedDB for persistence across sessions. The SDK receives
-file metadata without the data URL (which would be stripped anyway).
+## Post-Stream Cleanup
 
-{@includeCode ../hooks/useAppChatStorage.ts#fileStorage}
+After streaming completes, the final accumulated text is synced to React state.
+If the user switched to a different conversation mid-stream, the update is
+skipped — the message is already saved to the database and will appear when
+they switch back.
 
-## Conversation Management
-
-{@includeCode ../hooks/useAppChatStorage.ts#conversationManagement}
+{@includeCode ../hooks/useAppChatStorage.ts#postStreamCleanup}
