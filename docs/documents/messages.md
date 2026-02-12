@@ -139,7 +139,6 @@ if (systemPrompt) {
 }
 messagesArray.push({ role: "user", content: contentParts });
 
-// Only provided options are sent — undefined values are omitted via conditional spread
 const response = await sendMessage({
   messages: messagesArray,
   model,
