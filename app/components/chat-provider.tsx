@@ -304,7 +304,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           return cached;
         }
       } catch {
-        return cached;
+        // Fall through to refresh — atob may fail on base64url-encoded JWTs
       }
       // Token is expired — force refresh via Privy's standalone function
       const fresh = await fetchIdentityToken();
