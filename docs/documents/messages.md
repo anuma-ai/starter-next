@@ -86,9 +86,10 @@ const addMessageOptimistically = useCallback(
 ## Building Content Parts
 
 While the optimistic update builds parts for the UI, the API payload needs a
-different format. Text is the same, but files get stable IDs for matching during
-preprocessing and are split into `image_url` and `input_file` types. A separate
-`sdkFiles` array is also created so the SDK can encrypt and store files in OPFS.
+different format. Text is the same, but files are included as content parts
+in the messages array — images as `image_url`, other files as `input_file`
+with stable IDs for matching during preprocessing. A separate `sdkFiles`
+array provides metadata so the SDK can encrypt and store files in OPFS.
 
 ```ts
 // Content parts are the API payload — separate from the optimistic UI parts above.
