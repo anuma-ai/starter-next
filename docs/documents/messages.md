@@ -2,12 +2,121 @@
 
 The `useChatStorage` hook from `@reverbia/sdk/react` provides persistent chat
 storage with WatermelonDB. It manages conversations, message history, and
-handles syncing between local storage and the server.
+streams responses from the API.
 
-## Prerequisites
+## Setup
 
-- A WatermelonDB `Database` instance configured in your app
-- An authentication function that returns a valid token
+The hook expects a few values from your app's providers. `database` is a
+WatermelonDB instance created with `useDatabaseManager` from the SDK and
+exposed via React context:
+
+```ts
+// Create a WatermelonDB instance scoped to the user's wallet address.
+// Expose via React context so hooks can access it with useDatabase().
+export function setupDatabase() {
+  const { user } = usePrivy();
+  const database = useDatabaseManager(user?.wallet?.address, dbManager);
+  return database;
+}
+```
+
+`getToken` returns a Privy identity token. It caches the token from
+`useIdentityToken()` and refreshes it when the JWT expires, avoiding redundant
+API calls:
+
+```ts
+// Cache the Privy identity token and refresh when the JWT expires.
+// This avoids calling Privy's standalone getIdentityToken() on every
+// request (which hits /api/v1/users/me each time).
+export function setupGetToken() {
+  const { identityToken } = useIdentityToken();
+  const identityTokenRef = useRef(identityToken);
+  const tokenWaitersRef = useRef<Array<(token: string | null) => void>>([]);
+
+  useEffect(() => {
+    identityTokenRef.current = identityToken;
+    if (identityToken && tokenWaitersRef.current.length > 0) {
+      for (const resolve of tokenWaitersRef.current) resolve(identityToken);
+      tokenWaitersRef.current = [];
+    }
+  }, [identityToken]);
+
+  const getToken = useCallback(async (): Promise<string | null> => {
+    const cached = identityTokenRef.current;
+    if (cached) {
+      try {
+        const payload = JSON.parse(atob(cached.split(".")[1]));
+        if (payload.exp && payload.exp * 1000 > Date.now() + 30_000) {
+          return cached;
+        }
+      } catch {
+        // Fall through to refresh
+      }
+      try {
+        const fresh = await fetchIdentityToken();
+        if (fresh) {
+          identityTokenRef.current = fresh;
+          return fresh;
+        }
+      } catch {
+        // Network error — fall through to waiter
+      }
+    }
+    return new Promise((resolve) => {
+      tokenWaitersRef.current.push(resolve);
+      setTimeout(() => {
+        tokenWaitersRef.current = tokenWaitersRef.current.filter(
+          (r) => r !== resolve
+        );
+        resolve(identityTokenRef.current);
+      }, 10_000);
+    });
+  }, []);
+
+  return getToken;
+}
+```
+
+`walletAddress` and the signing functions come from Privy's auth hooks.
+`signMessage` prompts the user to sign (used to derive an encryption key),
+while `embeddedWalletSigner` signs silently via Privy's embedded wallet:
+
+```ts
+// Get wallet address and signing functions from Privy.
+// signMessage prompts the user; embeddedWalletSigner signs silently.
+export function setupWallet() {
+  const { user, signMessage: privySignMessage } = usePrivy();
+  const { wallets } = useWallets();
+
+  const walletAddress = user?.wallet?.address;
+
+  const signMessage = useCallback(
+    async (message: string) => {
+      const result = await privySignMessage(
+        { message },
+        { uiOptions: { showWalletUIs: false } }
+      );
+      return result.signature;
+    },
+    [privySignMessage]
+  );
+
+  const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
+  const embeddedWalletSigner = useCallback(
+    async (message: string) => {
+      if (!embeddedWallet?.address) throw new Error("Embedded wallet not ready");
+      const result = await privySignMessage(
+        { message },
+        { uiOptions: { showWalletUIs: false } }
+      );
+      return result.signature;
+    },
+    [embeddedWallet, privySignMessage]
+  );
+
+  return { walletAddress, signMessage, embeddedWalletSigner };
+}
+```
 
 ## Hook Initialization
 
@@ -25,11 +134,16 @@ const {
   getAllFiles,
   createMemoryRetrievalTool,
 } = useChatStorage({
+  // WatermelonDB instance — set up once at app root with your schema
   database,
+  // Privy identity token — wraps useIdentityToken() with caching and expiry refresh
   getToken,
+  // Create a conversation automatically on the first message instead of upfront
   autoCreateConversation: true,
   baseUrl: process.env.NEXT_PUBLIC_API_URL,
-  // Enable encrypted file storage in OPFS when wallet is connected
+  // Wallet-based encryption: when set, files are encrypted in OPFS using a key
+  // derived from a wallet signature. signMessage prompts the user to sign,
+  // embeddedWalletSigner signs silently via an embedded wallet.
   walletAddress,
   signMessage: signMessageProp,
   embeddedWalletSigner,

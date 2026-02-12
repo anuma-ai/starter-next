@@ -299,11 +299,16 @@ export function useAppChatStorage({
     getAllFiles,
     createMemoryRetrievalTool,
   } = useChatStorage({
+    // WatermelonDB instance — set up once at app root with your schema
     database,
+    // Privy identity token — wraps useIdentityToken() with caching and expiry refresh
     getToken,
+    // Create a conversation automatically on the first message instead of upfront
     autoCreateConversation: true,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
-    // Enable encrypted file storage in OPFS when wallet is connected
+    // Wallet-based encryption: when set, files are encrypted in OPFS using a key
+    // derived from a wallet signature. signMessage prompts the user to sign,
+    // embeddedWalletSigner signs silently via an embedded wallet.
     walletAddress,
     signMessage: signMessageProp,
     embeddedWalletSigner,
