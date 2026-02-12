@@ -4,26 +4,6 @@ The `useChatStorage` hook from `@reverbia/sdk/react` provides persistent chat
 storage with WatermelonDB. It manages conversations, message history, and
 streams responses from the API.
 
-## Setup
-
-The hook expects a few values from your app's providers. `database` is a
-WatermelonDB instance created with `useDatabaseManager` from the SDK and
-exposed via React context:
-
-{@includeCode ../lib/chat-setup.ts#database}
-
-`getToken` returns a Privy identity token. It caches the token from
-`useIdentityToken()` and refreshes it when the JWT expires, avoiding redundant
-API calls:
-
-{@includeCode ../lib/chat-setup.ts#getToken}
-
-`walletAddress` and the signing functions come from Privy's auth hooks.
-`signMessage` prompts the user to sign (used to derive an encryption key),
-while `embeddedWalletSigner` signs silently via Privy's embedded wallet:
-
-{@includeCode ../lib/chat-setup.ts#walletSetup}
-
 ## Hook Initialization
 
 {@includeCode ../hooks/useAppChatStorage.ts#hookInit}
