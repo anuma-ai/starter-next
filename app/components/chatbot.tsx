@@ -1202,9 +1202,11 @@ const ChatBotDemo = () => {
                 disabled={!authenticated}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
-                  authenticated
-                    ? `Ask ${MODELS.find((m) => m.id === selectedModel)?.name ?? "AI"}${thinkingEnabled ? " (thinking)" : ""}`
-                    : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
+                  isVoiceActive
+                    ? "Listening..."
+                    : authenticated
+                      ? `Ask ${MODELS.find((m) => m.id === selectedModel)?.name ?? "AI"}${thinkingEnabled ? " (thinking)" : ""}`
+                      : CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED
                 }
                 value={input}
                 className="flex-1 px-2"
