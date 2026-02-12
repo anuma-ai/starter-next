@@ -307,10 +307,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         // Fall through to refresh — atob may fail on base64url-encoded JWTs
       }
       // Token is expired — force refresh via Privy's standalone function
-      const fresh = await fetchIdentityToken();
-      if (fresh) {
-        identityTokenRef.current = fresh;
-        return fresh;
+      try {
+        const fresh = await fetchIdentityToken();
+        if (fresh) {
+          identityTokenRef.current = fresh;
+          return fresh;
+        }
+      } catch {
+        // Network error during refresh (e.g. unstable connectivity on
+        // idle-tab resume) — fall through to the waiter-based path below
       }
     }
     // Wait for the useIdentityToken() hook to provide the token rather
