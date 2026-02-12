@@ -13,9 +13,7 @@ handles syncing between local storage and the server.
 
 {@includeCode ../hooks/useAppChatStorage.ts#hookInit}
 
-## Sending Messages
-
-### Optimistic UI Updates
+## Optimistic UI Updates
 
 Add messages to the UI immediately before the API responds. This creates a
 snappy user experience by showing the user's message right away along with an
@@ -23,39 +21,55 @@ empty assistant placeholder that will be filled as the response streams in.
 
 {@includeCode ../hooks/useAppChatStorage.ts#optimisticUpdate}
 
-### Handling the Send
+## Send Setup
 
-The main handler builds content parts, stores files in IndexedDB for
-persistence, and calls the SDK's `sendMessage` with streaming support.
+The send handler destructures options, triggers the optimistic update, sets a
+temporary conversation title on the first message, and initializes streaming
+state.
 
-{@includeCode ../hooks/useAppChatStorage.ts#handleSend}
+{@includeCode ../hooks/useAppChatStorage.ts#sendSetup}
 
-## Sending Images
+## Building Content Parts
 
-Images can be sent alongside text messages. They're added to the UI immediately
-and sent to the API as `image_url` content parts.
+Content parts are assembled for the SDK. Text is added first, then files are
+enriched with stable IDs. Images become `image_url` parts, other files become
+`input_file` parts. File metadata is also passed to the SDK for encrypted OPFS
+storage.
 
-### Adding Images to UI
+{@includeCode ../hooks/useAppChatStorage.ts#contentParts}
 
-When building message parts for optimistic UI updates, images are converted to
-`image_url` parts while other files become `file` parts.
+## Calling sendMessage
 
-{@includeCode ../hooks/useAppChatStorage.ts#imagePartsUI}
+The SDK call passes the content parts, model configuration, and a streaming
+callback. Options like `temperature`, `reasoning`, `serverTools`, and
+`clientTools` are conditionally spread so only provided values are sent.
 
-### Building Image Content for API
+{@includeCode ../hooks/useAppChatStorage.ts#sendCall}
 
-The content array sent to the API uses the same structure, with images as
-`image_url` and other files as `input_file`.
+## Tool Calling
 
-{@includeCode ../hooks/useAppChatStorage.ts#imageContentParts}
+When client tools are configured and the response contains tool calls, a
+multi-turn loop executes them. The loop detects tool calls across multiple API
+response formats (Responses API, Chat Completions API, SDK-wrapped formats),
+runs each tool via the `onToolCall` callback, and sends results back as a
+continuation message.
 
-### Persisting Files
+{@includeCode ../hooks/useAppChatStorage.ts#toolCalling}
 
-Files are stored in IndexedDB for persistence across sessions. The SDK receives
-file metadata without the data URL (which would be stripped anyway).
+## Title Generation
 
-{@includeCode ../hooks/useAppChatStorage.ts#fileStorage}
+On the first message in a conversation, a temporary title is set from the
+user's text immediately so the sidebar shows something meaningful. After the
+response completes, an LLM-generated title replaces it asynchronously using
+`sendMessage` with `skipStorage: true`.
 
-## Conversation Management
+{@includeCode ../hooks/useAppChatStorage.ts#titleGeneration}
 
-{@includeCode ../hooks/useAppChatStorage.ts#conversationManagement}
+## Post-Stream Cleanup
+
+After streaming completes, the final accumulated text is synced to React state.
+If the user switched to a different conversation mid-stream, the update is
+skipped — the message is already saved to the database and will appear when
+they switch back. Streaming refs and caches are then cleared.
+
+{@includeCode ../hooks/useAppChatStorage.ts#postStreamCleanup}

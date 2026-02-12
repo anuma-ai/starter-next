@@ -541,6 +541,7 @@ export function useAppChatStorage({
   //#region handleSend
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
+      //#region sendSetup
       const {
         model,
         temperature,
@@ -595,10 +596,12 @@ export function useAppChatStorage({
         streamingConversationIdRef.current = explicitConversationId;
         setStreamingConversationIdState(explicitConversationId);
       }
+      //#endregion sendSetup
 
       // Use displayText for storage (clean user input), text for API (may include OCR/context)
       const textForStorage = displayText || text;
 
+      //#region contentParts
       // Build content parts for the messages array
       // The SDK extracts and stores the text from this array
       const contentParts: Array<{
@@ -653,10 +656,12 @@ export function useAppChatStorage({
         url: file.url, // SDK will encrypt and store in OPFS
       }));
       //#endregion fileStorage
+      //#endregion contentParts
 
       // If we have OCR/memory context that differs from displayText, pass it via memoryContext
       const memoryContext = displayText && text !== displayText ? text : undefined;
 
+      //#region sendCall
       // Build messages array with optional system prompt
       const messagesArray: Array<{ role: "system" | "user"; content: typeof contentParts }> = [];
       if (systemPrompt) {
@@ -694,7 +699,9 @@ export function useAppChatStorage({
           }
         },
       });
+      //#endregion sendCall
 
+      //#region toolCalling
       // Process tool calls if present and callback is provided
       // This implements a multi-turn tool calling loop
       if (onToolCall && clientTools && clientTools.length > 0) {
@@ -844,7 +851,9 @@ export function useAppChatStorage({
           console.warn('[useAppChatStorage] Max tool call iterations reached');
         }
       }
+      //#endregion toolCalling
 
+      //#region postStreamCleanup
       // Sync final streamed text to React state after streaming completes
       const finalText = streamingTextRef.current;
 
@@ -870,7 +879,9 @@ export function useAppChatStorage({
           });
         });
       }
+      //#endregion postStreamCleanup
 
+      //#region titleGeneration
       // Generate title for the first message only
       // Use isFirstMessage captured at the start of handleSendMessage
       // Use messageConversationId (the conversation this message was sent to), not the current viewing conversation
@@ -936,6 +947,7 @@ export function useAppChatStorage({
           }
         }, 500);
       }
+      //#endregion titleGeneration
 
       // Now that messages are in state, allow future reloads
       // Use setTimeout to ensure this happens after the conversationId might have changed
@@ -958,6 +970,7 @@ export function useAppChatStorage({
   //#endregion sendMessage
 
   //#region conversationManagement
+  //#region createConversation
   const handleNewConversation = useCallback(async (opts?: { projectId?: string; createImmediately?: boolean }) => {
     // Reset UI state
     setMessages([]);
@@ -981,7 +994,9 @@ export function useAppChatStorage({
     setConversationId(null as any);
     return null;
   }, [createConversation, setConversationId]);
+  //#endregion createConversation
 
+  //#region switchConversation
   const handleSwitchConversation = useCallback(
     async (id: string) => {
       // Skip if this conversation is already loaded (prevents overwriting optimistic messages)
@@ -1136,7 +1151,9 @@ export function useAppChatStorage({
     },
     [setConversationId, getMessages]
   );
+  //#endregion switchConversation
 
+  //#region deleteConversation
   const handleDeleteConversation = useCallback(
     async (id: string) => {
       console.log("[useAppChatStorage] Deleting conversation:", id);
@@ -1153,6 +1170,7 @@ export function useAppChatStorage({
     },
     [deleteConversation, conversationId]
   );
+  //#endregion deleteConversation
   //#endregion conversationManagement
 
   // Only show loading state when viewing the conversation that's actually streaming

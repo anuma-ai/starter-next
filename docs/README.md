@@ -2,6 +2,7 @@
 
 ## Documents
 
+- [conversations](documents/conversations.md)
 - [memory](documents/memory.md)
 - [messages](documents/messages.md)
 - [models](documents/models.md)
