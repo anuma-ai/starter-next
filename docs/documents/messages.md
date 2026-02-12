@@ -58,7 +58,6 @@ const addMessageOptimistically = useCallback(
       parts.push({ type: "text", text: textForUI });
     }
 
-    //#region imagePartsUI
     if (files && files.length > 0) {
       files.forEach((file) => {
         if (file.mediaType?.startsWith("image/")) {
@@ -76,8 +75,6 @@ const addMessageOptimistically = useCallback(
         }
       });
     }
-    //#endregion imagePartsUI
-
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
@@ -188,7 +185,6 @@ if (textForStorage) {
   contentParts.push({ type: "text", text: textForStorage });
 }
 
-//#region imageContentParts
 // Process files: create stable IDs, add to contentParts, and prepare for SDK
 const fileEntries = files || [];
 const enrichedFiles = fileEntries.map((file) => ({
@@ -215,9 +211,6 @@ enrichedFiles.forEach((file) => {
     });
   }
 });
-//#endregion imageContentParts
-
-//#region fileStorage
 // Create SDK files - SDK handles encrypted storage automatically
 const sdkFiles = enrichedFiles.map((file) => ({
   id: file.stableId,
@@ -226,7 +219,6 @@ const sdkFiles = enrichedFiles.map((file) => ({
   size: 0,
   url: file.url, // SDK will encrypt and store in OPFS
 }));
-//#endregion fileStorage
 ```
 
 ## Calling sendMessage
