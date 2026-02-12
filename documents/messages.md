@@ -24,19 +24,21 @@ empty assistant placeholder that will be filled as the response streams in.
 
 While the optimistic update builds parts for the UI, the API payload needs a
 different format. Text is the same, but files are included as content parts
-in the messages array — images as `image_url`, other files as `input_file`
-with stable IDs for matching during preprocessing. A separate `sdkFiles`
-array provides metadata so the SDK can encrypt and store files in OPFS.
+in the messages array — images as `image_url`, other files as `input_file`.
+Each file gets a stable ID so the SDK can match it back to extracted text
+after file preprocessing (see `preprocessFiles` in the SDK docs). A separate
+`sdkFiles` array provides metadata so the SDK can encrypt and store files
+in OPFS.
 
 {@includeCode ../hooks/useAppChatStorage.ts#contentParts}
 
 ## Calling sendMessage
 
 The content parts and an optional system prompt are assembled into a messages
-array, then passed to `sendMessage`. The key options are `model`,
-`temperature`, `reasoning` (for extended thinking), and `serverTools` and
-`clientTools` (for tool use). Only provided options are included. The `onData`
-callback streams text chunks to the UI as they arrive.
+array, then passed to `sendMessage`. Each option is conditionally spread so
+only provided values are sent. The `onData` callback streams text chunks to
+the UI as they arrive. See `SendMessageWithStorageArgs` in the SDK docs for
+the full list of options.
 
 {@includeCode ../hooks/useAppChatStorage.ts#sendCall}
 
@@ -44,17 +46,20 @@ callback streams text chunks to the UI as they arrive.
 
 When client tools are provided and the model returns tool calls, a loop
 executes them locally via the `onToolCall` callback and sends results back to
-the model. `extractToolCalls` normalizes across Responses API, Chat Completions
-API, and SDK-wrapped response formats. The loop runs up to 10 iterations to
-handle chained tool calls.
+the model. The loop runs up to 10 iterations to handle chained tool calls.
+`extractToolCalls` and `safeParseArgs` are app-level helpers that normalize
+tool call formats across the Responses API, Chat Completions API, and
+SDK-wrapped responses.
 
 {@includeCode ../hooks/useAppChatStorage.ts#toolCalling}
 
 ## Title Generation
 
 After the first message, an LLM-generated title is created asynchronously
-using `sendMessage` with `skipStorage: true` so the request isn't saved as a
-conversation message.
+using `sendMessage` with `skipStorage: true` so the title request isn't saved
+as a conversation message. `extractTextFromResponse` and
+`storeConversationTitle` are app-level helpers — the SDK provides
+`updateConversationTitle` on the hook result for the same purpose.
 
 {@includeCode ../hooks/useAppChatStorage.ts#titleGeneration}
 

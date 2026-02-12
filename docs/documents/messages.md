@@ -87,19 +87,19 @@ const addMessageOptimistically = useCallback(
 
 While the optimistic update builds parts for the UI, the API payload needs a
 different format. Text is the same, but files are included as content parts
-in the messages array — images as `image_url`, other files as `input_file`
-with stable IDs for matching during preprocessing. A separate `sdkFiles`
-array provides metadata so the SDK can encrypt and store files in OPFS.
+in the messages array — images as `image_url`, other files as `input_file`.
+Each file gets a stable ID so the SDK can match it back to extracted text
+after file preprocessing (see `preprocessFiles` in the SDK docs). A separate
+`sdkFiles` array provides metadata so the SDK can encrypt and store files
+in OPFS.
 
 ```ts
-// Content parts are the API payload — separate from the optimistic UI parts above.
-// Text goes first, then files with stable IDs for matching during preprocessing.
 const contentParts: any[] = [];
 if (textForStorage) {
   contentParts.push({ type: "text", text: textForStorage });
 }
 
-// Assign each file a stable ID so the SDK can match them during preprocessing
+// Stable IDs let the SDK match files back to their extracted text after preprocessing
 const enrichedFiles = (files || []).map((file) => ({
   ...file,
   stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -127,10 +127,10 @@ const sdkFiles = enrichedFiles.map((file) => ({
 ## Calling sendMessage
 
 The content parts and an optional system prompt are assembled into a messages
-array, then passed to `sendMessage`. The key options are `model`,
-`temperature`, `reasoning` (for extended thinking), and `serverTools` and
-`clientTools` (for tool use). Only provided options are included. The `onData`
-callback streams text chunks to the UI as they arrive.
+array, then passed to `sendMessage`. Each option is conditionally spread so
+only provided values are sent. The `onData` callback streams text chunks to
+the UI as they arrive. See `SendMessageWithStorageArgs` in the SDK docs for
+the full list of options.
 
 ```ts
 const messagesArray: any[] = [];
@@ -139,6 +139,7 @@ if (systemPrompt) {
 }
 messagesArray.push({ role: "user", content: contentParts });
 
+// See SendMessageWithStorageArgs in the SDK docs for the full list of options
 const response = await sendMessage({
   messages: messagesArray,
   model,
@@ -158,7 +159,6 @@ const response = await sendMessage({
   ...(explicitConversationId && { conversationId: explicitConversationId }),
   onData: (chunk: string) => {
     streamingTextRef.current += chunk;
-    // Only notify if user is still viewing this conversation
     if (onStreamingData && loadedConversationIdRef.current === streamingConversationIdRef.current) {
       onStreamingData(chunk, streamingTextRef.current);
     }
@@ -170,9 +170,10 @@ const response = await sendMessage({
 
 When client tools are provided and the model returns tool calls, a loop
 executes them locally via the `onToolCall` callback and sends results back to
-the model. `extractToolCalls` normalizes across Responses API, Chat Completions
-API, and SDK-wrapped response formats. The loop runs up to 10 iterations to
-handle chained tool calls.
+the model. The loop runs up to 10 iterations to handle chained tool calls.
+`extractToolCalls` and `safeParseArgs` are app-level helpers that normalize
+tool call formats across the Responses API, Chat Completions API, and
+SDK-wrapped responses.
 
 ```ts
 // Multi-turn tool calling loop (max 10 iterations)
@@ -232,8 +233,10 @@ if (onToolCall && clientTools && clientTools.length > 0) {
 ## Title Generation
 
 After the first message, an LLM-generated title is created asynchronously
-using `sendMessage` with `skipStorage: true` so the request isn't saved as a
-conversation message.
+using `sendMessage` with `skipStorage: true` so the title request isn't saved
+as a conversation message. `extractTextFromResponse` and
+`storeConversationTitle` are app-level helpers — the SDK provides
+`updateConversationTitle` on the hook result for the same purpose.
 
 ```ts
 // Generate an LLM title after the first message in a conversation.
@@ -281,29 +284,21 @@ skipped — the message is already saved to the database and will appear when
 they switch back.
 
 ```ts
-// Sync final streamed text to React state after streaming completes
 const finalText = streamingTextRef.current;
-
-// IMPORTANT: Only update if we're still on the same conversation
-// This prevents overwriting a different conversation's messages when user switches mid-stream
-// Use explicitConversationId (what this message was sent to) vs loadedConversationIdRef (what user is viewing)
 const messageConversationId = explicitConversationId;
 const viewingConversationId = loadedConversationIdRef.current;
 
+// Skip the state update if the user switched conversations mid-stream.
+// The message is already saved to DB and will appear when they switch back.
 if (messageConversationId && viewingConversationId && messageConversationId !== viewingConversationId) {
-  // Don't update messages - user has switched to a different conversation
-  // The message is saved to DB, so it will appear when user switches back to that conversation
+  // User switched away — no state update needed
 } else {
-  setMessages((prev) => {
-    return prev.map((msg) => {
-      if (msg.id === assistantMessageId) {
-        return {
-          ...msg,
-          parts: [{ type: "text", text: finalText }],
-        };
-      }
-      return msg;
-    });
-  });
+  setMessages((prev) =>
+    prev.map((msg) =>
+      msg.id === assistantMessageId
+        ? { ...msg, parts: [{ type: "text", text: finalText }] }
+        : msg
+    )
+  );
 }
 ```

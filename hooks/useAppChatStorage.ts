@@ -686,14 +686,12 @@ export function useAppChatStorage({
       const textForStorage = displayText || text;
 
       //#region contentParts
-      // Content parts are the API payload — separate from the optimistic UI parts above.
-      // Text goes first, then files with stable IDs for matching during preprocessing.
       const contentParts: any[] = [];
       if (textForStorage) {
         contentParts.push({ type: "text", text: textForStorage });
       }
 
-      // Assign each file a stable ID so the SDK can match them during preprocessing
+      // Stable IDs let the SDK match files back to their extracted text after preprocessing
       const enrichedFiles = (files || []).map((file) => ({
         ...file,
         stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -728,6 +726,7 @@ export function useAppChatStorage({
       }
       messagesArray.push({ role: "user", content: contentParts });
 
+      // See SendMessageWithStorageArgs in the SDK docs for the full list of options
       const response = await sendMessage({
         messages: messagesArray,
         model,
@@ -747,7 +746,6 @@ export function useAppChatStorage({
         ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
           streamingTextRef.current += chunk;
-          // Only notify if user is still viewing this conversation
           if (onStreamingData && loadedConversationIdRef.current === streamingConversationIdRef.current) {
             onStreamingData(chunk, streamingTextRef.current);
           }
@@ -811,30 +809,22 @@ export function useAppChatStorage({
       //#endregion toolCalling
 
       //#region postStreamCleanup
-      // Sync final streamed text to React state after streaming completes
       const finalText = streamingTextRef.current;
-
-      // IMPORTANT: Only update if we're still on the same conversation
-      // This prevents overwriting a different conversation's messages when user switches mid-stream
-      // Use explicitConversationId (what this message was sent to) vs loadedConversationIdRef (what user is viewing)
       const messageConversationId = explicitConversationId;
       const viewingConversationId = loadedConversationIdRef.current;
 
+      // Skip the state update if the user switched conversations mid-stream.
+      // The message is already saved to DB and will appear when they switch back.
       if (messageConversationId && viewingConversationId && messageConversationId !== viewingConversationId) {
-        // Don't update messages - user has switched to a different conversation
-        // The message is saved to DB, so it will appear when user switches back to that conversation
+        // User switched away — no state update needed
       } else {
-        setMessages((prev) => {
-          return prev.map((msg) => {
-            if (msg.id === assistantMessageId) {
-              return {
-                ...msg,
-                parts: [{ type: "text", text: finalText }],
-              };
-            }
-            return msg;
-          });
-        });
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, parts: [{ type: "text", text: finalText }] }
+              : msg
+          )
+        );
       }
       //#endregion postStreamCleanup
 
