@@ -14,7 +14,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { CancelCircleIcon } from "@hugeicons/core-free-icons";
+import { CancelCircleIcon, InformationCircleIcon } from "@hugeicons/core-free-icons";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -26,6 +26,17 @@ import { useChatContext } from "@/app/components/chat-provider";
 const DEFAULT_VAULT_ENABLED = true;
 const DEFAULT_VAULT_SEARCH_LIMIT = 5;
 const DEFAULT_VAULT_SEARCH_THRESHOLD = 0.1;
+
+const DEFAULT_VAULT_PROMPT = `You also have access to a memory vault for storing important facts and preferences the user shares. The vault has two tools:
+- memory_vault_search: Search existing vault memories by semantic similarity. Returns matching entries with their IDs.
+- memory_vault_save: Save or update a vault memory. Pass an "id" to update an existing entry.
+
+IMPORTANT — vault workflow:
+- When the user tells you something worth remembering, ALWAYS call memory_vault_search first to check if a related memory already exists.
+- If memory_vault_search returns a related entry, use its id with memory_vault_save to UPDATE it rather than creating a duplicate. Merge the new information into the existing text.
+- Only omit the "id" parameter when memory_vault_search confirms no existing entry is related.
+- The vault should stay compact: one entry per topic, updated over time.
+- When answering questions that might involve stored preferences or facts, call memory_vault_search to check.`;
 
 function setLocalStorageWithEvent(key: string, value: string) {
   localStorage.setItem(key, value);
@@ -51,6 +62,8 @@ export default function VaultPage() {
   const [memories, setMemories] = useState<VaultMemory[]>([]);
   const [loading, setLoading] = useState(true);
   const [newMemory, setNewMemory] = useState("");
+  const [vaultPrompt, setVaultPrompt] = useState(DEFAULT_VAULT_PROMPT);
+  const [isCustomPrompt, setIsCustomPrompt] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("chat_vaultEnabled");
@@ -66,6 +79,12 @@ export default function VaultPage() {
     if (savedThreshold) {
       const threshold = parseFloat(savedThreshold);
       if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) setSearchThreshold(threshold);
+    }
+
+    const savedVaultPrompt = localStorage.getItem("chat_vaultPrompt");
+    if (savedVaultPrompt !== null) {
+      setVaultPrompt(savedVaultPrompt);
+      setIsCustomPrompt(true);
     }
   }, []);
 
@@ -98,6 +117,21 @@ export default function VaultPage() {
   const handleSearchThresholdChange = (value: number[]) => {
     setSearchThreshold(value[0]);
     setLocalStorageWithEvent("chat_vaultSearchThreshold", value[0].toString());
+  };
+
+  const handleVaultPromptChange = (value: string) => {
+    setVaultPrompt(value);
+    setIsCustomPrompt(true);
+    setLocalStorageWithEvent("chat_vaultPrompt", value);
+  };
+
+  const handleVaultPromptReset = () => {
+    setVaultPrompt(DEFAULT_VAULT_PROMPT);
+    setIsCustomPrompt(false);
+    localStorage.removeItem("chat_vaultPrompt");
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "chat_vaultPrompt", newValue: null })
+    );
   };
 
   const handleAdd = async () => {
@@ -148,9 +182,37 @@ export default function VaultPage() {
             <div className="px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="vaultEnabled" className="text-base">
-                    Enable memory vault
-                  </Label>
+                  <span className="flex items-center gap-1.5">
+                    <Label htmlFor="vaultEnabled" className="text-base">
+                      Enable memory vault
+                    </Label>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                          <HugeiconsIcon icon={InformationCircleIcon} size={16} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="max-w-sm p-3">
+                        <div className="text-sm space-y-2">
+                          <p>
+                            The memory vault stores facts and preferences that the AI explicitly
+                            decides to remember during your conversations. Unlike memory retrieval
+                            (which searches past messages), the vault keeps curated, persistent notes.
+                          </p>
+                          <p>
+                            When the AI wants to save something, it first searches existing vault
+                            memories using semantic similarity to avoid duplicates. If a related
+                            memory already exists, it updates the entry instead of creating a new one.
+                            Each save requires your confirmation before it&apos;s stored.
+                          </p>
+                          <p>
+                            Vault memories are embedded at save time so searches are instant.
+                            When a wallet is connected, memories are encrypted at rest.
+                          </p>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </span>
                   <p className="text-sm text-muted-foreground">
                     Allow the AI to save important facts and preferences during conversations
                   </p>
@@ -163,88 +225,96 @@ export default function VaultPage() {
               </div>
             </div>
 
-            <div className={`px-4 py-3 border-t border-border ${!vaultEnabled ? "opacity-50 pointer-events-none" : ""}`}>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="searchLimit" className="text-base">
-                  Search limit
-                </Label>
-                <span className="text-sm text-muted-foreground">
-                  {searchLimit} results
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                Maximum number of vault memories returned when the AI searches.
-              </p>
-              <Slider
-                id="searchLimit"
-                min={1}
-                max={20}
-                step={1}
-                value={[searchLimit]}
-                onValueChange={handleSearchLimitChange}
-                className="w-full"
-                disabled={!vaultEnabled}
-              />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                <span>Fewer results</span>
-                <span>More results</span>
-              </div>
-            </div>
+            <Collapsible className={`border-t border-border ${!vaultEnabled ? "opacity-50 pointer-events-none" : ""}`}>
+              <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium cursor-pointer [&[data-state=open]>svg]:rotate-180">
+                Advanced
+                <ChevronDown className="size-4 text-muted-foreground transition-transform duration-200" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-4 py-3 border-t border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="searchLimit" className="text-base">
+                      Search limit
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {searchLimit} results
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Maximum number of vault memories returned when the AI searches.
+                  </p>
+                  <Slider
+                    id="searchLimit"
+                    min={1}
+                    max={20}
+                    step={1}
+                    value={[searchLimit]}
+                    onValueChange={handleSearchLimitChange}
+                    className="w-full"
+                    disabled={!vaultEnabled}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>Fewer results</span>
+                    <span>More results</span>
+                  </div>
+                </div>
 
-            <div className={`px-4 py-3 border-t border-border ${!vaultEnabled ? "opacity-50 pointer-events-none" : ""}`}>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="searchThreshold" className="text-base">
-                  Similarity threshold
-                </Label>
-                <span className="text-sm text-muted-foreground">
-                  {(searchThreshold * 100).toFixed(0)}%
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                Minimum similarity score for vault memories to be included in search results.
-              </p>
-              <Slider
-                id="searchThreshold"
-                min={0}
-                max={0.8}
-                step={0.05}
-                value={[searchThreshold]}
-                onValueChange={handleSearchThresholdChange}
-                className="w-full"
-                disabled={!vaultEnabled}
-              />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                <span>More matches</span>
-                <span>Stricter</span>
-              </div>
-            </div>
+                <div className="px-4 py-3 border-t border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="searchThreshold" className="text-base">
+                      Similarity threshold
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {(searchThreshold * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Minimum similarity score for vault memories to be included in search results.
+                  </p>
+                  <Slider
+                    id="searchThreshold"
+                    min={0}
+                    max={0.8}
+                    step={0.05}
+                    value={[searchThreshold]}
+                    onValueChange={handleSearchThresholdChange}
+                    className="w-full"
+                    disabled={!vaultEnabled}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>More matches</span>
+                    <span>Stricter</span>
+                  </div>
+                </div>
+
+                <div className="px-4 py-3 border-t border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="vaultPrompt" className="text-base">
+                      Vault instructions
+                    </Label>
+                    {isCustomPrompt && (
+                      <button
+                        onClick={handleVaultPromptReset}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      >
+                        Reset to default
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Controls how the AI saves and retrieves vault memories. Appended to the system prompt when the vault is enabled.
+                  </p>
+                  <textarea
+                    id="vaultPrompt"
+                    value={vaultPrompt}
+                    onChange={(e) => handleVaultPromptChange(e.target.value)}
+                    disabled={!vaultEnabled}
+                    className="w-full min-h-[200px] rounded-lg border border-border bg-sidebar dark:bg-background p-3 text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
-
-          <Collapsible className="rounded-xl bg-white dark:bg-card p-1">
-            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium cursor-pointer [&[data-state=open]>svg]:rotate-180">
-              How the vault works
-              <ChevronDown className="size-4 text-muted-foreground transition-transform duration-200" />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="px-4 pb-3 text-sm text-muted-foreground space-y-2">
-                <p>
-                  The memory vault stores facts and preferences that the AI explicitly
-                  decides to remember during your conversations. Unlike memory retrieval
-                  (which searches past messages), the vault keeps curated, persistent notes.
-                </p>
-                <p>
-                  When the AI wants to save something, it first searches existing vault
-                  memories using semantic similarity to avoid duplicates. If a related
-                  memory already exists, it updates the entry instead of creating a new one.
-                  Each save requires your confirmation before it&apos;s stored.
-                </p>
-                <p>
-                  Vault memories are embedded at save time so searches are instant.
-                  When a wallet is connected, memories are encrypted at rest.
-                </p>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
 
           <div className="relative rounded-xl bg-white dark:bg-card">
             <Input

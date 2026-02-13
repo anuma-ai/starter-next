@@ -45,10 +45,11 @@ type UseAppChatProps = {
   onVaultSave?: (operation: VaultSaveOperation) => Promise<boolean>;
 };
 
-// Default system prompt that includes memory retrieval and vault instructions
-const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.
+// Default system prompt (general instructions, without vault-specific rules)
+const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.`;
 
-You also have access to a memory vault for storing important facts and preferences the user shares. The vault has two tools:
+// Default vault instructions appended when the vault is enabled
+const DEFAULT_VAULT_PROMPT = `You also have access to a memory vault for storing important facts and preferences the user shares. The vault has two tools:
 - memory_vault_search: Search existing vault memories by semantic similarity. Returns matching entries with their IDs.
 - memory_vault_save: Save or update a vault memory. Pass an "id" to update an existing entry.
 
@@ -85,6 +86,8 @@ export function useAppChat({
   const [vaultEnabled, setVaultEnabled] = useState(true);
   const [vaultSearchLimit, setVaultSearchLimit] = useState(5);
   const [vaultSearchThreshold, setVaultSearchThreshold] = useState(0.1);
+  const [customSystemPrompt, setCustomSystemPrompt] = useState<string | null>(null);
+  const [customVaultPrompt, setCustomVaultPrompt] = useState<string | null>(null);
   //#endregion memorySettings
   const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
@@ -135,6 +138,16 @@ export function useAppChat({
       }
     }
 
+    const savedSystemPrompt = localStorage.getItem("chat_systemPrompt");
+    if (savedSystemPrompt !== null) {
+      setCustomSystemPrompt(savedSystemPrompt);
+    }
+
+    const savedVaultPrompt = localStorage.getItem("chat_vaultPrompt");
+    if (savedVaultPrompt !== null) {
+      setCustomVaultPrompt(savedVaultPrompt);
+    }
+
     // Listen for changes from settings page
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "chat_memoryEnabled" && e.newValue !== null) {
@@ -166,6 +179,12 @@ export function useAppChat({
         if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
           setVaultSearchThreshold(threshold);
         }
+      }
+      if (e.key === "chat_systemPrompt") {
+        setCustomSystemPrompt(e.newValue);
+      }
+      if (e.key === "chat_vaultPrompt") {
+        setCustomVaultPrompt(e.newValue);
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -221,8 +240,11 @@ export function useAppChat({
     embeddedWalletSigner,
     // Re-load messages when encryption becomes ready (to decrypt file attachments)
     encryptionReady,
-    // System prompt with memory retrieval instructions
-    systemPrompt: systemPrompt || DEFAULT_SYSTEM_PROMPT,
+    // Compose system prompt: base prompt + vault instructions (when enabled)
+    systemPrompt: [
+      customSystemPrompt || systemPrompt || DEFAULT_SYSTEM_PROMPT,
+      vaultEnabled ? (customVaultPrompt ?? DEFAULT_VAULT_PROMPT) : "",
+    ].filter(Boolean).join("\n\n"),
   });
 
   // Use tools hook for checksum-based refresh
