@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronDown, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronDown, Trash2, MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +14,12 @@ import {
 } from "@/components/ui/collapsible";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CancelCircleIcon } from "@hugeicons/core-free-icons";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { useChatContext } from "@/app/components/chat-provider";
 
 const DEFAULT_VAULT_ENABLED = true;
@@ -206,43 +212,53 @@ export default function VaultPage() {
                 return (
                   <div
                     key={memory.uniqueId}
-                    className="flex w-full items-start justify-between gap-3 px-4 py-3 rounded-lg text-left group"
+                    className="flex w-full items-start justify-between gap-2 px-4 py-3 rounded-lg text-left group"
                   >
-                    <span
-                      className="text-sm outline-none flex-1"
-                      contentEditable
-                      suppressContentEditableWarning
-                      onFocus={() => {
-                        editingRef.current[memory.uniqueId] = memory.content;
-                      }}
-                      onBlur={(e) => {
-                        handleBlur(memory.uniqueId, e.currentTarget.textContent || "");
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          e.currentTarget.blur();
-                        }
-                        if (e.key === "Escape") {
-                          e.currentTarget.textContent = editingRef.current[memory.uniqueId] || memory.content;
-                          delete editingRef.current[memory.uniqueId];
-                          e.currentTarget.blur();
-                        }
-                      }}
-                    >
-                      {memory.content}
-                    </span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-sm text-muted-foreground">
+                    <div className="flex-1 min-w-0">
+                      <span
+                        className="text-sm outline-none"
+                        contentEditable
+                        suppressContentEditableWarning
+                        onFocus={() => {
+                          editingRef.current[memory.uniqueId] = memory.content;
+                        }}
+                        onBlur={(e) => {
+                          handleBlur(memory.uniqueId, e.currentTarget.textContent || "");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            e.currentTarget.blur();
+                          }
+                          if (e.key === "Escape") {
+                            e.currentTarget.textContent = editingRef.current[memory.uniqueId] || memory.content;
+                            delete editingRef.current[memory.uniqueId];
+                            e.currentTarget.blur();
+                          }
+                        }}
+                      >
+                        {memory.content}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-2">
                         {formattedDate}
                       </span>
-                      <button
-                        onClick={() => handleDelete(memory.uniqueId)}
-                        className="text-muted-foreground hover:text-destructive transition-colors p-1 opacity-0 group-hover:opacity-100 cursor-pointer"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
                     </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors p-1 opacity-0 group-hover:opacity-100 cursor-pointer shrink-0">
+                          <MoreHorizontal className="size-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(memory.uniqueId)}
+                          className="text-destructive focus:text-destructive cursor-pointer"
+                        >
+                          <Trash2 className="size-4 mr-2 text-destructive" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 );
               })
