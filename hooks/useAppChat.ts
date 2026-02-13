@@ -14,6 +14,13 @@ import type { FileUIPart } from "@/types/chat";
  * responses. Memories are fetched on-demand when sendMessage is called.
  */
 
+type VaultSaveOperation = {
+  action: "add" | "update";
+  content: string;
+  id?: string;
+  previousContent?: string;
+};
+
 type UseAppChatProps = {
   database: Database;
   getToken: () => Promise<string | null>;
@@ -36,10 +43,14 @@ type UseAppChatProps = {
   toolChoice?: string;
   // System prompt for the AI
   systemPrompt?: string;
+  // Callback when the vault tool wants to save a memory (for confirmation UI)
+  onVaultSave?: (operation: VaultSaveOperation) => Promise<boolean>;
 };
 
-// Default system prompt that includes memory retrieval instructions
-const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.`;
+// Default system prompt that includes memory retrieval and vault instructions
+const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.
+
+You also have access to a memory vault tool for storing important facts and preferences the user shares. When the user tells you something worth remembering (their name, preferences, important facts), proactively save it to the vault. Existing vault entries are listed in the conversation context as "[id:<uuid>] content". To update an existing entry, pass its exact uuid as the id parameter. To create a new entry, omit the id parameter entirely. Prefer updating existing entries over creating duplicates.`;
 
 //#region hookInit
 export function useAppChat({
@@ -56,6 +67,7 @@ export function useAppChat({
   clientTools,
   toolChoice,
   systemPrompt,
+  onVaultSave,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +75,7 @@ export function useAppChat({
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryLimit, setMemoryLimit] = useState(5);
   const [memoryThreshold, setMemoryThreshold] = useState(0.2);
+  const [vaultEnabled, setVaultEnabled] = useState(true);
   //#endregion memorySettings
   const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
@@ -92,6 +105,11 @@ export function useAppChat({
       }
     }
 
+    const savedVaultEnabled = localStorage.getItem("chat_vaultEnabled");
+    if (savedVaultEnabled !== null) {
+      setVaultEnabled(savedVaultEnabled === "true");
+    }
+
     // Listen for changes from settings page
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "chat_memoryEnabled" && e.newValue !== null) {
@@ -108,6 +126,9 @@ export function useAppChat({
         if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
           setMemoryThreshold(threshold);
         }
+      }
+      if (e.key === "chat_vaultEnabled" && e.newValue !== null) {
+        setVaultEnabled(e.newValue === "true");
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -146,6 +167,9 @@ export function useAppChat({
     getMessages,
     getConversation,
     createMemoryRetrievalTool,
+    createMemoryVaultTool,
+    getVaultMemories,
+    deleteVaultMemory,
   } = useAppChatStorage({
     database,
     getToken,
@@ -227,17 +251,43 @@ export function useAppChat({
           }
         }
 
-        // Only include memory tool if memory retrieval is enabled
-        const effectiveClientTools = memoryEnabled
-          ? [
-              createMemoryRetrievalTool({
-                limit: memoryLimit,
-                minSimilarity: memoryThreshold,
-                excludeConversationId: effectiveConversationId ?? undefined,
-              }),
-              ...baseClientTools,
-            ]
-          : baseClientTools;
+        // Build client tools: memory retrieval + memory vault + base tools
+        const builtInTools: any[] = [];
+
+        if (memoryEnabled) {
+          builtInTools.push(
+            createMemoryRetrievalTool({
+              limit: memoryLimit,
+              minSimilarity: memoryThreshold,
+              excludeConversationId: effectiveConversationId ?? undefined,
+            })
+          );
+        }
+
+        if (vaultEnabled) {
+          builtInTools.push(
+            createMemoryVaultTool({
+              onSave: onVaultSave,
+            })
+          );
+        }
+
+        const effectiveClientTools = [...builtInTools, ...baseClientTools];
+
+        // Load vault memories to pass as context so the model knows what's stored
+        let vaultContext: string | undefined;
+        if (vaultEnabled) {
+          try {
+            const memories = await getVaultMemories();
+            if (memories.length > 0) {
+              vaultContext = memories
+                .map((m: any) => `[id:${m.uniqueId}] ${m.content}`)
+                .join("\n");
+            }
+          } catch {
+            // Non-critical: vault context is optional
+          }
+        }
         //#endregion memoryToolCreation
         const effectiveToolChoice = options?.toolChoice || toolChoice;
         const response = await baseSendMessage(text, {
@@ -259,6 +309,7 @@ export function useAppChat({
           conversationId: effectiveConversationId ?? undefined,
           ...(options?.onToolCall && { onToolCall: options.onToolCall }),
           ...(options?.isFirstMessage !== undefined && { isFirstMessage: options.isFirstMessage }),
+          ...(vaultContext && { memoryContext: vaultContext }),
           onThinking,
         });
 
@@ -296,10 +347,14 @@ export function useAppChat({
       maxOutputTokens,
       handleThinkingData,
       createMemoryRetrievalTool,
+      createMemoryVaultTool,
+      getVaultMemories,
       createConversation,
       memoryEnabled,
       memoryLimit,
       memoryThreshold,
+      vaultEnabled,
+      onVaultSave,
       conversationId,
       serverTools,
       clientTools,
@@ -395,5 +450,9 @@ export function useAppChat({
     subscribeToThinking,
     getMessages,
     getConversation,
+
+    // Memory vault
+    getVaultMemories,
+    deleteVaultMemory,
   };
 }

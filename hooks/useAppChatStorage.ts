@@ -96,6 +96,8 @@ type SendMessageOptions = {
   onToolCall?: (toolCall: ToolCall, clientTools: any[]) => Promise<any>;
   /** Flag to indicate this is the first message - used for title generation */
   isFirstMessage?: boolean;
+  /** Additional memory context (e.g. vault memories) to include alongside OCR context */
+  memoryContext?: string;
 };
 
 // Storage key prefix for AI-generated conversation titles
@@ -298,6 +300,9 @@ export function useAppChatStorage({
     deleteConversation,
     getAllFiles,
     createMemoryRetrievalTool,
+    createMemoryVaultTool,
+    getVaultMemories,
+    deleteVaultMemory,
   } = useChatStorage({
     // WatermelonDB instance — set up once at app root with your schema
     database,
@@ -644,6 +649,7 @@ export function useAppChatStorage({
         conversationId: explicitConversationId,
         onToolCall,
         isFirstMessage: isFirstMessageOption,
+        memoryContext: additionalMemoryContext,
       } = options;
 
       // Determine if this is the first message for title generation
@@ -716,8 +722,9 @@ export function useAppChatStorage({
       }));
       //#endregion contentParts
 
-      // If we have OCR/memory context that differs from displayText, pass it via memoryContext
-      const memoryContext = displayText && text !== displayText ? text : undefined;
+      // Combine OCR context (when text differs from displayText) with any additional memory context (e.g. vault)
+      const ocrContext = displayText && text !== displayText ? text : undefined;
+      const memoryContext = [ocrContext, additionalMemoryContext].filter(Boolean).join("\n\n") || undefined;
 
       //#region sendCall
       const messagesArray: any[] = [];
@@ -1036,5 +1043,8 @@ export function useAppChatStorage({
     getMessages,
     getConversation,
     createMemoryRetrievalTool,
+    createMemoryVaultTool,
+    getVaultMemories,
+    deleteVaultMemory,
   };
 }

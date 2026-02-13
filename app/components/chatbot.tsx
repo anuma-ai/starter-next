@@ -332,6 +332,9 @@ const ChatBotDemo = () => {
     setConversationId,
     getConversation,
     createConversation,
+    recentVaultSave,
+    undoVaultSave,
+    dismissVaultSave,
   } = chatState;
 
   const inputRef = useRef(input);
@@ -1165,6 +1168,35 @@ const ChatBotDemo = () => {
           )}
         </div>
       </div>
+
+      {recentVaultSave && (
+        <div className="sticky bottom-20 z-10 px-10">
+          <div className="mx-auto max-w-3xl">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-muted-foreground">
+                  Saved to memory vault: <span className="text-foreground">{recentVaultSave.content}</span>
+                </p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={undoVaultSave}
+                  className="rounded-lg px-3 py-1.5 text-sm border border-border hover:bg-muted transition-colors"
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={dismissVaultSave}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                  aria-label="Dismiss"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div
         className={`min-w-0 px-10 pb-4 pt-2 ${messages.length === 0 ? "w-full" : "sticky bottom-0"

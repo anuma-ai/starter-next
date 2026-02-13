@@ -49,6 +49,21 @@ import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
+type VaultSaveOperation = {
+  action: "add" | "update";
+  content: string;
+  id?: string;
+  previousContent?: string;
+};
+
+type StoredVaultMemory = {
+  uniqueId: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+};
+
 type ChatState = {
   messages: any[];
   input: string;
@@ -69,6 +84,12 @@ type ChatState = {
   refreshConversations: () => Promise<void>;
   getMessages: (conversationId: string) => Promise<any[]>;
   getConversation: (id: string) => Promise<any>;
+  // Memory vault
+  getVaultMemories: () => Promise<StoredVaultMemory[]>;
+  deleteVaultMemory: (id: string) => Promise<boolean>;
+  recentVaultSave: { content: string; memoryId: string } | null;
+  undoVaultSave: () => void;
+  dismissVaultSave: () => void;
   // Projects
   projects: StoredProject[];
   projectsLoading: boolean;
@@ -454,6 +475,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return [...calendarTools, ...driveTools];
   }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess]);
 
+  // Memory vault: auto-save with undo
+  const [recentVaultSave, setRecentVaultSave] = useState<{ content: string; memoryId: string } | null>(null);
+  const vaultDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track content of pending save so we can find the memory ID after it's created
+  const pendingVaultContentRef = useRef<string | null>(null);
+
+  const onVaultSave = useCallback(async (operation: VaultSaveOperation): Promise<boolean> => {
+    // Remember what's being saved so we can find the memory ID after the SDK creates it
+    pendingVaultContentRef.current = operation.content;
+    return true;
+  }, []);
+
   const baseChatState = useAppChat({
     database,
     model: "openai/gpt-5.2-2025-12-11",
@@ -490,7 +523,67 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return result;
     },
     clientTools,
+    onVaultSave,
   });
+
+  // After the SDK saves a memory (onVaultSave returned true), find the new entry and show the undo banner.
+  const getVaultMemoriesRef = useRef(baseChatState.getVaultMemories);
+  const deleteVaultMemoryRef = useRef(baseChatState.deleteVaultMemory);
+  useEffect(() => {
+    getVaultMemoriesRef.current = baseChatState.getVaultMemories;
+    deleteVaultMemoryRef.current = baseChatState.deleteVaultMemory;
+  });
+
+  useEffect(() => {
+    if (!pendingVaultContentRef.current) return;
+    const content = pendingVaultContentRef.current;
+
+    const findSavedMemory = async () => {
+      try {
+        const memories = await getVaultMemoriesRef.current();
+        const match = memories.find((m: any) => m.content === content);
+        if (match) {
+          pendingVaultContentRef.current = null;
+          if (vaultDismissTimerRef.current) clearTimeout(vaultDismissTimerRef.current);
+          setRecentVaultSave({ content: match.content, memoryId: match.uniqueId });
+          vaultDismissTimerRef.current = setTimeout(() => {
+            setRecentVaultSave(null);
+          }, 5000);
+          return true;
+        }
+      } catch {
+        // Will retry
+      }
+      return false;
+    };
+
+    const timer = setInterval(async () => {
+      const found = await findSavedMemory();
+      if (found) clearInterval(timer);
+    }, 500);
+
+    const cleanup = setTimeout(() => {
+      clearInterval(timer);
+      pendingVaultContentRef.current = null;
+    }, 5000);
+
+    return () => {
+      clearInterval(timer);
+      clearTimeout(cleanup);
+    };
+  }, [baseChatState.isLoading]);
+
+  const undoVaultSave = useCallback(() => {
+    if (!recentVaultSave) return;
+    deleteVaultMemoryRef.current?.(recentVaultSave.memoryId);
+    if (vaultDismissTimerRef.current) clearTimeout(vaultDismissTimerRef.current);
+    setRecentVaultSave(null);
+  }, [recentVaultSave]);
+
+  const dismissVaultSave = useCallback(() => {
+    if (vaultDismissTimerRef.current) clearTimeout(vaultDismissTimerRef.current);
+    setRecentVaultSave(null);
+  }, []);
 
   // Projects state
   const {
@@ -709,6 +802,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       triggerProjectConversationsRefresh,
       // Encryption
       encryptionReady,
+      // Memory vault
+      recentVaultSave,
+      undoVaultSave,
+      dismissVaultSave,
     }),
     [
       baseChatState,
@@ -730,6 +827,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setPendingProjectAssignment,
       triggerProjectConversationsRefresh,
       encryptionReady,
+      recentVaultSave,
+      undoVaultSave,
+      dismissVaultSave,
     ]
   );
 
