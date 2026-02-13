@@ -325,7 +325,7 @@ export default function VaultPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleAdd();
                 }}
-                className="border-0 focus-visible:ring-0 rounded-lg bg-transparent shadow-none px-5 pr-28 h-[52px]"
+                className="border-0 focus-visible:ring-0 rounded-lg bg-transparent dark:bg-transparent shadow-none px-5 pr-28 h-[52px]"
               />
               {newMemory.trim() && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
