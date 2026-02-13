@@ -301,6 +301,8 @@ export function useAppChatStorage({
     getAllFiles,
     createMemoryRetrievalTool,
     createMemoryVaultTool,
+    createMemoryVaultSearchTool,
+    vaultEmbeddingCache,
     getVaultMemories,
     deleteVaultMemory,
   } = useChatStorage({
@@ -1044,6 +1046,8 @@ export function useAppChatStorage({
     getConversation,
     createMemoryRetrievalTool,
     createMemoryVaultTool,
+    createMemoryVaultSearchTool,
+    vaultEmbeddingCache,
     getVaultMemories,
     deleteVaultMemory,
   };

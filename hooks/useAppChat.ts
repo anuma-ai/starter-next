@@ -2,7 +2,12 @@
 
 import { useCallback, useState, useRef, useEffect } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
-import { useTools, type ServerToolsFilter } from "@reverbia/sdk/react";
+import {
+  useTools,
+  eagerEmbedContent,
+  type ServerToolsFilter,
+  type VaultSaveOperation,
+} from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
 
@@ -13,13 +18,6 @@ import type { FileUIPart } from "@/types/chat";
  * to create a complete chat experience with persistent storage and memory-augmented
  * responses. Memories are fetched on-demand when sendMessage is called.
  */
-
-type VaultSaveOperation = {
-  action: "add" | "update";
-  content: string;
-  id?: string;
-  previousContent?: string;
-};
 
 type UseAppChatProps = {
   database: Database;
@@ -50,7 +48,16 @@ type UseAppChatProps = {
 // Default system prompt that includes memory retrieval and vault instructions
 const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.
 
-You also have access to a memory vault tool for storing important facts and preferences the user shares. When the user tells you something worth remembering (their name, preferences, important facts), proactively save it to the vault. Existing vault entries are listed in the conversation context as "[id:<uuid>] content". To update an existing entry, pass its exact uuid as the id parameter. To create a new entry, omit the id parameter entirely. Prefer updating existing entries over creating duplicates.`;
+You also have access to a memory vault for storing important facts and preferences the user shares. The vault has two tools:
+- memory_vault_search: Search existing vault memories by semantic similarity. Returns matching entries with their IDs.
+- memory_vault_save: Save or update a vault memory. Pass an "id" to update an existing entry.
+
+IMPORTANT — vault workflow:
+- When the user tells you something worth remembering, ALWAYS call memory_vault_search first to check if a related memory already exists.
+- If memory_vault_search returns a related entry, use its id with memory_vault_save to UPDATE it rather than creating a duplicate. Merge the new information into the existing text.
+- Only omit the "id" parameter when memory_vault_search confirms no existing entry is related.
+- The vault should stay compact: one entry per topic, updated over time.
+- When answering questions that might involve stored preferences or facts, call memory_vault_search to check.`;
 
 //#region hookInit
 export function useAppChat({
@@ -168,6 +175,8 @@ export function useAppChat({
     getConversation,
     createMemoryRetrievalTool,
     createMemoryVaultTool,
+    createMemoryVaultSearchTool,
+    vaultEmbeddingCache,
     getVaultMemories,
     deleteVaultMemory,
   } = useAppChatStorage({
@@ -189,6 +198,7 @@ export function useAppChat({
     getToken,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
+
   //#endregion hookInit
 
   //#region sendMessage
@@ -265,29 +275,29 @@ export function useAppChat({
         }
 
         if (vaultEnabled) {
+          // Wrap onVaultSave to eagerly embed content at save time
+          const wrappedOnVaultSave = async (operation: VaultSaveOperation) => {
+            try {
+              await eagerEmbedContent(
+                operation.content,
+                { getToken, baseUrl: process.env.NEXT_PUBLIC_API_URL },
+                vaultEmbeddingCache
+              );
+            } catch {
+              // Non-critical: embedding will be generated on next search
+            }
+            return onVaultSave ? onVaultSave(operation) : true;
+          };
+
           builtInTools.push(
             createMemoryVaultTool({
-              onSave: onVaultSave,
+              onSave: wrappedOnVaultSave,
             })
           );
+          builtInTools.push(createMemoryVaultSearchTool());
         }
 
         const effectiveClientTools = [...builtInTools, ...baseClientTools];
-
-        // Load vault memories to pass as context so the model knows what's stored
-        let vaultContext: string | undefined;
-        if (vaultEnabled) {
-          try {
-            const memories = await getVaultMemories();
-            if (memories.length > 0) {
-              vaultContext = memories
-                .map((m: any) => `[id:${m.uniqueId}] ${m.content}`)
-                .join("\n");
-            }
-          } catch {
-            // Non-critical: vault context is optional
-          }
-        }
         //#endregion memoryToolCreation
         const effectiveToolChoice = options?.toolChoice || toolChoice;
         const response = await baseSendMessage(text, {
@@ -309,7 +319,6 @@ export function useAppChat({
           conversationId: effectiveConversationId ?? undefined,
           ...(options?.onToolCall && { onToolCall: options.onToolCall }),
           ...(options?.isFirstMessage !== undefined && { isFirstMessage: options.isFirstMessage }),
-          ...(vaultContext && { memoryContext: vaultContext }),
           onThinking,
         });
 
@@ -348,7 +357,8 @@ export function useAppChat({
       handleThinkingData,
       createMemoryRetrievalTool,
       createMemoryVaultTool,
-      getVaultMemories,
+      createMemoryVaultSearchTool,
+      vaultEmbeddingCache,
       createConversation,
       memoryEnabled,
       memoryLimit,

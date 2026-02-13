@@ -143,3 +143,6 @@ vite.config.ts.timestamp-*
 /playwright-report/
 /playwright/.auth/
 /test-results/
+
+# Large dataset files
+data/
