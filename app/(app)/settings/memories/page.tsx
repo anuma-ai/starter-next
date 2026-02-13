@@ -76,7 +76,7 @@ export default function MemoriesPage() {
           >
             <ChevronLeft className="size-5" />
           </Button>
-          <h1 className="text-lg font-semibold w-full text-center">Memories</h1>
+          <h1 className="text-lg font-semibold w-full text-center">Memory Engine</h1>
         </div>
 
         <div className="space-y-4">
