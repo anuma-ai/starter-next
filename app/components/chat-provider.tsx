@@ -92,6 +92,8 @@ type ChatState = {
   recentVaultSave: { content: string; memoryId: string } | null;
   undoVaultSave: () => void;
   dismissVaultSave: () => void;
+  pauseVaultDismiss: () => void;
+  resumeVaultDismiss: () => void;
   // Projects
   projects: StoredProject[];
   projectsLoading: boolean;
@@ -480,6 +482,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Memory vault: auto-save with undo
   const [recentVaultSave, setRecentVaultSave] = useState<{ content: string; memoryId: string } | null>(null);
   const vaultDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const vaultDismissStartRef = useRef<number>(0);
+  const vaultDismissRemainingRef = useRef<number>(5000);
   // Track content of pending save so we can find the memory ID after it's created
   const pendingVaultContentRef = useRef<string | null>(null);
 
@@ -548,6 +552,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           pendingVaultContentRef.current = null;
           if (vaultDismissTimerRef.current) clearTimeout(vaultDismissTimerRef.current);
           setRecentVaultSave({ content: match.content, memoryId: match.uniqueId });
+          vaultDismissRemainingRef.current = 5000;
+          vaultDismissStartRef.current = Date.now();
           vaultDismissTimerRef.current = setTimeout(() => {
             setRecentVaultSave(null);
           }, 5000);
@@ -586,6 +592,24 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (vaultDismissTimerRef.current) clearTimeout(vaultDismissTimerRef.current);
     setRecentVaultSave(null);
   }, []);
+
+  const pauseVaultDismiss = useCallback(() => {
+    if (vaultDismissTimerRef.current) {
+      clearTimeout(vaultDismissTimerRef.current);
+      vaultDismissTimerRef.current = null;
+      const elapsed = Date.now() - vaultDismissStartRef.current;
+      vaultDismissRemainingRef.current = Math.max(0, vaultDismissRemainingRef.current - elapsed);
+    }
+  }, []);
+
+  const resumeVaultDismiss = useCallback(() => {
+    if (recentVaultSave && !vaultDismissTimerRef.current) {
+      vaultDismissStartRef.current = Date.now();
+      vaultDismissTimerRef.current = setTimeout(() => {
+        setRecentVaultSave(null);
+      }, vaultDismissRemainingRef.current);
+    }
+  }, [recentVaultSave]);
 
   // Projects state
   const {
@@ -808,6 +832,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       recentVaultSave,
       undoVaultSave,
       dismissVaultSave,
+      pauseVaultDismiss,
+      resumeVaultDismiss,
     }),
     [
       baseChatState,
@@ -832,6 +858,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       recentVaultSave,
       undoVaultSave,
       dismissVaultSave,
+      pauseVaultDismiss,
+      resumeVaultDismiss,
     ]
   );
 

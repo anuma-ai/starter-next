@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon, NoteEditIcon } from "@hugeicons/core-free-icons";
+import { AnimatePresence, motion } from "motion/react";
 import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, AudioLinesIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
@@ -335,6 +336,8 @@ const ChatBotDemo = () => {
     recentVaultSave,
     undoVaultSave,
     dismissVaultSave,
+    pauseVaultDismiss,
+    resumeVaultDismiss,
   } = chatState;
 
   const inputRef = useRef(input);
@@ -488,6 +491,11 @@ const ChatBotDemo = () => {
       hasRedirectedRef.current = false;
     }
   }, [pathname]);
+
+  // Dismiss vault notification on route change to prevent it leaking to other pages
+  useEffect(() => {
+    dismissVaultSave();
+  }, [pathname, dismissVaultSave]);
 
   const onSubmit = useCallback(
     async (message: PromptInputMessage) => {
@@ -1169,34 +1177,40 @@ const ChatBotDemo = () => {
         </div>
       </div>
 
-      {recentVaultSave && (
-        <div className="sticky bottom-20 z-10 px-10">
-          <div className="mx-auto max-w-3xl">
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-muted-foreground">
-                  Saved to memory vault: <span className="text-foreground">{recentVaultSave.content}</span>
-                </p>
-              </div>
-              <div className="flex gap-2 flex-shrink-0">
+      <AnimatePresence>
+        {recentVaultSave && (
+          <motion.div
+            className="sticky bottom-20 z-10 px-10"
+            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            <div className="mx-auto max-w-3xl">
+              <div
+                className="flex items-center gap-3 rounded-[30px] border border-input bg-background p-3 px-5"
+                style={{ cornerShape: "squircle" } as React.CSSProperties}
+                onMouseEnter={pauseVaultDismiss}
+                onMouseLeave={resumeVaultDismiss}
+              >
+                <HugeiconsIcon icon={NoteEditIcon} className="size-5 text-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm">
+                    <span className="text-foreground">Saved to memory vault:</span>{" "}
+                    <span className="text-foreground">{recentVaultSave.content}</span>
+                  </p>
+                </div>
                 <button
                   onClick={undoVaultSave}
-                  className="rounded-lg px-3 py-1.5 text-sm border border-border hover:bg-muted transition-colors"
+                  className="rounded-lg px-3 py-1.5 text-sm border border-border hover:bg-muted transition-colors flex-shrink-0 cursor-pointer"
                 >
                   Undo
                 </button>
-                <button
-                  onClick={dismissVaultSave}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                  aria-label="Dismiss"
-                >
-                  &times;
-                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div
         className={`min-w-0 px-10 pb-4 pt-2 ${messages.length === 0 ? "w-full" : "sticky bottom-0"
