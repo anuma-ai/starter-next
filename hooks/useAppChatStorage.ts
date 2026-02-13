@@ -305,6 +305,7 @@ export function useAppChatStorage({
     vaultEmbeddingCache,
     getVaultMemories,
     createVaultMemory,
+    updateVaultMemory,
     deleteVaultMemory,
   } = useChatStorage({
     // WatermelonDB instance — set up once at app root with your schema
@@ -1051,6 +1052,7 @@ export function useAppChatStorage({
     vaultEmbeddingCache,
     getVaultMemories,
     createVaultMemory,
+    updateVaultMemory,
     deleteVaultMemory,
   };
 }

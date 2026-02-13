@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronDown, Trash2 } from "lucide-react";
@@ -35,7 +35,7 @@ type VaultMemory = {
 
 export default function VaultPage() {
   const router = useRouter();
-  const { getVaultMemories, createVaultMemory, deleteVaultMemory } = useChatContext();
+  const { getVaultMemories, createVaultMemory, updateVaultMemory, deleteVaultMemory } = useChatContext();
   const [vaultEnabled, setVaultEnabled] = useState(DEFAULT_VAULT_ENABLED);
   const [memories, setMemories] = useState<VaultMemory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +73,21 @@ export default function VaultPage() {
     const created = await createVaultMemory(content);
     setMemories((prev) => [created, ...prev]);
     setNewMemory("");
+  };
+
+  const editingRef = useRef<Record<string, string>>({});
+
+  const handleBlur = async (id: string, newContent: string) => {
+    const trimmed = newContent.trim();
+    const original = memories.find((m) => m.uniqueId === id)?.content;
+    delete editingRef.current[id];
+    if (!trimmed || trimmed === original) return;
+    const updated = await updateVaultMemory(id, trimmed);
+    if (updated) {
+      setMemories((prev) =>
+        prev.map((m) => (m.uniqueId === id ? updated : m))
+      );
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -193,7 +208,30 @@ export default function VaultPage() {
                     key={memory.uniqueId}
                     className="flex w-full items-start justify-between gap-3 px-4 py-3 rounded-lg text-left group"
                   >
-                    <span className="text-sm">{memory.content}</span>
+                    <span
+                      className="text-sm outline-none flex-1"
+                      contentEditable
+                      suppressContentEditableWarning
+                      onFocus={() => {
+                        editingRef.current[memory.uniqueId] = memory.content;
+                      }}
+                      onBlur={(e) => {
+                        handleBlur(memory.uniqueId, e.currentTarget.textContent || "");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          e.currentTarget.blur();
+                        }
+                        if (e.key === "Escape") {
+                          e.currentTarget.textContent = editingRef.current[memory.uniqueId] || memory.content;
+                          delete editingRef.current[memory.uniqueId];
+                          e.currentTarget.blur();
+                        }
+                      }}
+                    >
+                      {memory.content}
+                    </span>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-sm text-muted-foreground">
                         {formattedDate}
