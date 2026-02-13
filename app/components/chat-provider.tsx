@@ -86,6 +86,7 @@ type ChatState = {
   getConversation: (id: string) => Promise<any>;
   // Memory vault
   getVaultMemories: () => Promise<StoredVaultMemory[]>;
+  createVaultMemory: (content: string) => Promise<StoredVaultMemory>;
   deleteVaultMemory: (id: string) => Promise<boolean>;
   recentVaultSave: { content: string; memoryId: string } | null;
   undoVaultSave: () => void;

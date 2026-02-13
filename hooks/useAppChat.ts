@@ -178,6 +178,7 @@ export function useAppChat({
     createMemoryVaultSearchTool,
     vaultEmbeddingCache,
     getVaultMemories,
+    createVaultMemory,
     deleteVaultMemory,
   } = useAppChatStorage({
     database,
@@ -463,6 +464,7 @@ export function useAppChat({
 
     // Memory vault
     getVaultMemories,
+    createVaultMemory,
     deleteVaultMemory,
   };
 }

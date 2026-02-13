@@ -3,9 +3,17 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronDown, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CancelCircleIcon } from "@hugeicons/core-free-icons";
 import { useChatContext } from "@/app/components/chat-provider";
 
 const DEFAULT_VAULT_ENABLED = true;
@@ -27,10 +35,11 @@ type VaultMemory = {
 
 export default function VaultPage() {
   const router = useRouter();
-  const { getVaultMemories, deleteVaultMemory } = useChatContext();
+  const { getVaultMemories, createVaultMemory, deleteVaultMemory } = useChatContext();
   const [vaultEnabled, setVaultEnabled] = useState(DEFAULT_VAULT_ENABLED);
   const [memories, setMemories] = useState<VaultMemory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newMemory, setNewMemory] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem("chat_vaultEnabled");
@@ -56,6 +65,14 @@ export default function VaultPage() {
   const handleVaultEnabledChange = (checked: boolean) => {
     setVaultEnabled(checked);
     setLocalStorageWithEvent("chat_vaultEnabled", checked.toString());
+  };
+
+  const handleAdd = async () => {
+    const content = newMemory.trim();
+    if (!content) return;
+    const created = await createVaultMemory(content);
+    setMemories((prev) => [created, ...prev]);
+    setNewMemory("");
   };
 
   const handleDelete = async (id: string) => {
@@ -99,49 +116,99 @@ export default function VaultPage() {
             </div>
           </div>
 
-          <div className="rounded-xl bg-white dark:bg-card p-1">
-            <div className="px-4 py-3">
-              <h3 className="text-sm font-medium mb-3">
-                Stored memories
-                {!loading && memories.length > 0 && (
-                  <span className="text-muted-foreground font-normal ml-1">({memories.length})</span>
-                )}
-              </h3>
-              {loading ? (
-                <p className="text-sm text-muted-foreground">Loading...</p>
-              ) : memories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No memories saved yet. The AI will save important facts as you chat.
+          <Collapsible className="rounded-xl bg-white dark:bg-card p-1">
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium cursor-pointer [&[data-state=open]>svg]:rotate-180">
+              How the vault works
+              <ChevronDown className="size-4 text-muted-foreground transition-transform duration-200" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="px-4 pb-3 text-sm text-muted-foreground space-y-2">
+                <p>
+                  The memory vault stores facts and preferences that the AI explicitly
+                  decides to remember during your conversations. Unlike memory retrieval
+                  (which searches past messages), the vault keeps curated, persistent notes.
                 </p>
-              ) : (
-                <div className="space-y-2">
-                  {memories.map((memory) => (
-                    <div
-                      key={memory.uniqueId}
-                      className="flex items-start gap-3 rounded-lg border border-border p-3"
-                    >
-                      <p className="flex-1 text-sm">{memory.content}</p>
+                <p>
+                  When the AI wants to save something, it first searches existing vault
+                  memories using semantic similarity to avoid duplicates. If a related
+                  memory already exists, it updates the entry instead of creating a new one.
+                  Each save requires your confirmation before it&apos;s stored.
+                </p>
+                <p>
+                  Vault memories are embedded at save time so searches are instant.
+                  When a wallet is connected, memories are encrypted at rest.
+                </p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <div className="relative rounded-xl bg-white dark:bg-card">
+            <Input
+              type="text"
+              placeholder="Add a memory..."
+              value={newMemory}
+              onChange={(e) => setNewMemory(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAdd();
+              }}
+              className="border-0 focus-visible:ring-0 rounded-xl bg-transparent shadow-none px-5 pr-28 h-[52px]"
+            />
+            {newMemory.trim() && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <button
+                  onClick={() => setNewMemory("")}
+                  className="text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
+                >
+                  <HugeiconsIcon icon={CancelCircleIcon} size={18} />
+                </button>
+                <button
+                  onClick={handleAdd}
+                  className="text-sm bg-foreground text-background px-3 py-1 rounded-xl hover:opacity-80 transition-opacity cursor-pointer"
+                  style={{ cornerShape: "squircle" } as React.CSSProperties}
+                >
+                  Save
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl bg-white dark:bg-card p-1">
+            {loading ? (
+              <p className="text-center text-muted-foreground py-8">Loading...</p>
+            ) : memories.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                No memories saved yet. The AI will save important facts as you chat.
+              </p>
+            ) : (
+              memories.map((memory) => {
+                const date = memory.updatedAt
+                  ? new Date(memory.updatedAt)
+                  : new Date(memory.createdAt);
+                const formattedDate = date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                });
+                return (
+                  <div
+                    key={memory.uniqueId}
+                    className="flex w-full items-start justify-between gap-3 px-4 py-3 rounded-lg text-left group"
+                  >
+                    <span className="text-sm">{memory.content}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-sm text-muted-foreground">
+                        {formattedDate}
+                      </span>
                       <button
                         onClick={() => handleDelete(memory.uniqueId)}
-                        className="flex-shrink-0 text-muted-foreground hover:text-destructive transition-colors p-1"
+                        className="text-muted-foreground hover:text-destructive transition-colors p-1 opacity-0 group-hover:opacity-100 cursor-pointer"
                       >
                         <Trash2 className="size-4" />
                       </button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-white dark:bg-card p-4">
-            <h3 className="text-sm font-medium mb-2">How the vault works</h3>
-            <p className="text-sm text-muted-foreground">
-              The memory vault stores facts and preferences that the AI explicitly decides to
-              remember during your conversations. Unlike memory retrieval (which searches past
-              messages), the vault keeps curated, persistent notes. Each save requires your
-              confirmation before it&apos;s stored.
-            </p>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
