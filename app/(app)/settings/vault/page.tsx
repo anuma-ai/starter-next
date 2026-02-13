@@ -316,37 +316,36 @@ export default function VaultPage() {
             </Collapsible>
           </div>
 
-          <div className="relative rounded-xl bg-white dark:bg-card">
-            <Input
-              type="text"
-              placeholder="Add a memory..."
-              value={newMemory}
-              onChange={(e) => setNewMemory(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAdd();
-              }}
-              className="border-0 focus-visible:ring-0 rounded-xl bg-transparent shadow-none px-5 pr-28 h-[52px]"
-            />
-            {newMemory.trim() && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <button
-                  onClick={() => setNewMemory("")}
-                  className="text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
-                >
-                  <HugeiconsIcon icon={CancelCircleIcon} size={18} />
-                </button>
-                <button
-                  onClick={handleAdd}
-                  className="text-sm bg-foreground text-background px-3 py-1 rounded-xl hover:opacity-80 transition-opacity cursor-pointer"
-                  style={{ cornerShape: "squircle" } as React.CSSProperties}
-                >
-                  Save
-                </button>
-              </div>
-            )}
-          </div>
-
           <div className="rounded-xl bg-white dark:bg-card p-1">
+            <div className="relative border-b border-border">
+              <Input
+                type="text"
+                placeholder="Add a memory..."
+                value={newMemory}
+                onChange={(e) => setNewMemory(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAdd();
+                }}
+                className="border-0 focus-visible:ring-0 rounded-lg bg-transparent shadow-none px-5 pr-28 h-[52px]"
+              />
+              {newMemory.trim() && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <button
+                    onClick={() => setNewMemory("")}
+                    className="text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
+                  >
+                    <HugeiconsIcon icon={CancelCircleIcon} size={18} />
+                  </button>
+                  <button
+                    onClick={handleAdd}
+                    className="text-sm bg-foreground text-background px-3 py-1 rounded-xl hover:opacity-80 transition-opacity cursor-pointer"
+                    style={{ cornerShape: "squircle" } as React.CSSProperties}
+                  >
+                    Save
+                  </button>
+                </div>
+              )}
+            </div>
             {loading ? (
               <p className="text-center text-muted-foreground py-8">Loading...</p>
             ) : memories.length === 0 ? (
