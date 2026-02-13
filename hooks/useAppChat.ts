@@ -83,6 +83,8 @@ export function useAppChat({
   const [memoryLimit, setMemoryLimit] = useState(5);
   const [memoryThreshold, setMemoryThreshold] = useState(0.2);
   const [vaultEnabled, setVaultEnabled] = useState(true);
+  const [vaultSearchLimit, setVaultSearchLimit] = useState(5);
+  const [vaultSearchThreshold, setVaultSearchThreshold] = useState(0.1);
   //#endregion memorySettings
   const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
@@ -117,6 +119,22 @@ export function useAppChat({
       setVaultEnabled(savedVaultEnabled === "true");
     }
 
+    const savedVaultSearchLimit = localStorage.getItem("chat_vaultSearchLimit");
+    if (savedVaultSearchLimit) {
+      const limit = parseInt(savedVaultSearchLimit, 10);
+      if (!isNaN(limit) && limit > 0) {
+        setVaultSearchLimit(limit);
+      }
+    }
+
+    const savedVaultSearchThreshold = localStorage.getItem("chat_vaultSearchThreshold");
+    if (savedVaultSearchThreshold) {
+      const threshold = parseFloat(savedVaultSearchThreshold);
+      if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
+        setVaultSearchThreshold(threshold);
+      }
+    }
+
     // Listen for changes from settings page
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "chat_memoryEnabled" && e.newValue !== null) {
@@ -136,6 +154,18 @@ export function useAppChat({
       }
       if (e.key === "chat_vaultEnabled" && e.newValue !== null) {
         setVaultEnabled(e.newValue === "true");
+      }
+      if (e.key === "chat_vaultSearchLimit" && e.newValue) {
+        const limit = parseInt(e.newValue, 10);
+        if (!isNaN(limit) && limit > 0) {
+          setVaultSearchLimit(limit);
+        }
+      }
+      if (e.key === "chat_vaultSearchThreshold" && e.newValue) {
+        const threshold = parseFloat(e.newValue);
+        if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
+          setVaultSearchThreshold(threshold);
+        }
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -296,7 +326,10 @@ export function useAppChat({
               onSave: wrappedOnVaultSave,
             })
           );
-          builtInTools.push(createMemoryVaultSearchTool());
+          builtInTools.push(createMemoryVaultSearchTool({
+            limit: vaultSearchLimit,
+            minSimilarity: vaultSearchThreshold,
+          }));
         }
 
         const effectiveClientTools = [...builtInTools, ...baseClientTools];
@@ -366,6 +399,8 @@ export function useAppChat({
       memoryLimit,
       memoryThreshold,
       vaultEnabled,
+      vaultSearchLimit,
+      vaultSearchThreshold,
       onVaultSave,
       conversationId,
       serverTools,

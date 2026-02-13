@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronDown, Trash2, MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import {
   Collapsible,
@@ -23,6 +24,8 @@ import {
 import { useChatContext } from "@/app/components/chat-provider";
 
 const DEFAULT_VAULT_ENABLED = true;
+const DEFAULT_VAULT_SEARCH_LIMIT = 5;
+const DEFAULT_VAULT_SEARCH_THRESHOLD = 0.1;
 
 function setLocalStorageWithEvent(key: string, value: string) {
   localStorage.setItem(key, value);
@@ -43,6 +46,8 @@ export default function VaultPage() {
   const router = useRouter();
   const { getVaultMemories, createVaultMemory, updateVaultMemory, deleteVaultMemory } = useChatContext();
   const [vaultEnabled, setVaultEnabled] = useState(DEFAULT_VAULT_ENABLED);
+  const [searchLimit, setSearchLimit] = useState(DEFAULT_VAULT_SEARCH_LIMIT);
+  const [searchThreshold, setSearchThreshold] = useState(DEFAULT_VAULT_SEARCH_THRESHOLD);
   const [memories, setMemories] = useState<VaultMemory[]>([]);
   const [loading, setLoading] = useState(true);
   const [newMemory, setNewMemory] = useState("");
@@ -50,6 +55,18 @@ export default function VaultPage() {
   useEffect(() => {
     const saved = localStorage.getItem("chat_vaultEnabled");
     if (saved !== null) setVaultEnabled(saved === "true");
+
+    const savedLimit = localStorage.getItem("chat_vaultSearchLimit");
+    if (savedLimit) {
+      const limit = parseInt(savedLimit, 10);
+      if (!isNaN(limit) && limit > 0) setSearchLimit(limit);
+    }
+
+    const savedThreshold = localStorage.getItem("chat_vaultSearchThreshold");
+    if (savedThreshold) {
+      const threshold = parseFloat(savedThreshold);
+      if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) setSearchThreshold(threshold);
+    }
   }, []);
 
   const loadMemories = useCallback(async () => {
@@ -71,6 +88,16 @@ export default function VaultPage() {
   const handleVaultEnabledChange = (checked: boolean) => {
     setVaultEnabled(checked);
     setLocalStorageWithEvent("chat_vaultEnabled", checked.toString());
+  };
+
+  const handleSearchLimitChange = (value: number[]) => {
+    setSearchLimit(value[0]);
+    setLocalStorageWithEvent("chat_vaultSearchLimit", value[0].toString());
+  };
+
+  const handleSearchThresholdChange = (value: number[]) => {
+    setSearchThreshold(value[0]);
+    setLocalStorageWithEvent("chat_vaultSearchThreshold", value[0].toString());
   };
 
   const handleAdd = async () => {
@@ -133,6 +160,62 @@ export default function VaultPage() {
                   checked={vaultEnabled}
                   onCheckedChange={handleVaultEnabledChange}
                 />
+              </div>
+            </div>
+
+            <div className={`px-4 py-3 border-t border-border ${!vaultEnabled ? "opacity-50 pointer-events-none" : ""}`}>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="searchLimit" className="text-base">
+                  Search limit
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {searchLimit} results
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Maximum number of vault memories returned when the AI searches.
+              </p>
+              <Slider
+                id="searchLimit"
+                min={1}
+                max={20}
+                step={1}
+                value={[searchLimit]}
+                onValueChange={handleSearchLimitChange}
+                className="w-full"
+                disabled={!vaultEnabled}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>Fewer results</span>
+                <span>More results</span>
+              </div>
+            </div>
+
+            <div className={`px-4 py-3 border-t border-border ${!vaultEnabled ? "opacity-50 pointer-events-none" : ""}`}>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="searchThreshold" className="text-base">
+                  Similarity threshold
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {(searchThreshold * 100).toFixed(0)}%
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Minimum similarity score for vault memories to be included in search results.
+              </p>
+              <Slider
+                id="searchThreshold"
+                min={0}
+                max={0.8}
+                step={0.05}
+                value={[searchThreshold]}
+                onValueChange={handleSearchThresholdChange}
+                className="w-full"
+                disabled={!vaultEnabled}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>More matches</span>
+                <span>Stricter</span>
               </div>
             </div>
           </div>
