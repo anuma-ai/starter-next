@@ -203,7 +203,6 @@ export default function VaultPage() {
                             When the AI wants to save something, it first searches existing vault
                             memories using semantic similarity to avoid duplicates. If a related
                             memory already exists, it updates the entry instead of creating a new one.
-                            Each save requires your confirmation before it&apos;s stored.
                           </p>
                           <p>
                             Vault memories are embedded at save time so searches are instant.
