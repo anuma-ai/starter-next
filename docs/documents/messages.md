@@ -219,9 +219,10 @@ if (onToolCall && clientTools && clientTools.length > 0) {
         includeHistory: true,
         clientTools: clientTools?.map((t) => ({
           type: t.type || 'function',
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters,
+          // Handle both nested (SDK tools) and flat (app-builder tools) structures
+          name: (t as any).function?.name || t.name,
+          description: (t as any).function?.description || t.description,
+          parameters: (t as any).function?.arguments || t.parameters,
         })),
         toolChoice: 'auto',
         ...(apiType && { apiType }),
@@ -233,7 +234,9 @@ if (onToolCall && clientTools && clientTools.length > 0) {
           }
         },
       });
-    } catch { break; }
+    } catch {
+      break;
+    }
   }
 }
 ```
