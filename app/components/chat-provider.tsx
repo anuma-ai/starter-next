@@ -46,6 +46,8 @@ import type {
   ServerTool,
 } from "@reverbia/sdk/react";
 import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
+import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
+import { useUIInteraction } from "@/app/components/ui-interaction-provider";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -108,6 +110,7 @@ export {
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();
   const { user, signMessage: privySignMessage, ready: privyReady } = usePrivy();
+  const uiInteraction = useUIInteraction();
 
   // Wrap Privy's signMessage to match SDK's expected signature
   const signMessage = useCallback(
@@ -437,6 +440,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return new Promise(() => { });
   }, [driveToken]);
 
+  // Ref for accessing messages inside tool callbacks without causing re-creation
+  const messagesRef = useRef<any[]>([]);
+
   // Create Google tools with auth (these are client-side tools with local executors)
   const clientTools = useMemo(() => {
     // Google Calendar tools
@@ -451,8 +457,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       requestDriveAccess
     );
 
-    return [...calendarTools, ...driveTools];
-  }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess]);
+    // UI interaction tools (for prompting user with interactive UI)
+    const uiInteractionTools = createUIInteractionTools(
+      () => uiInteraction,
+      () => messagesRef.current.at(-1)?.id
+    );
+
+    const allTools = [...calendarTools, ...driveTools, ...uiInteractionTools];
+
+    return allTools;
+  }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess, uiInteraction]);
 
   const baseChatState = useAppChat({
     database,
@@ -464,6 +478,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     signMessage,
     embeddedWalletSigner,
     encryptionReady,
+    systemPrompt: `You have access to a prompt_user_choice tool that displays an interactive UI with clickable options. ALWAYS use this tool when you want to present multiple choices to the user (e.g., restaurant options, destination choices, preferences). Do not just list options as text - use the tool to create an interactive selection menu.`,
     // Use semantic search to find relevant tools based on prompt similarity
     // Apply user's tool mode preferences: enable (always include), disable (always exclude), auto (semantic search)
     serverTools: (embeddings: number[] | number[][], tools: ServerTool[]) => {
@@ -491,6 +506,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     },
     clientTools,
   });
+
+  // Keep messages ref in sync for tool callbacks
+  messagesRef.current = baseChatState.messages;
 
   // Projects state
   const {
@@ -600,7 +618,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [encryptionReady, baseChatState.conversationId, baseChatState.switchConversation]);
 
-  // Wrap handleSubmit to track the current message for OAuth retry
+  // Wrap handleSubmit to track the current message for OAuth retry and add onToolCall handler
   const handleSubmit = useCallback(
     async (message: any, options?: any) => {
       // Track the message text for potential OAuth redirect
@@ -608,7 +626,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         currentMessageRef.current = message.text;
       }
       try {
-        await baseChatState.handleSubmit(message, options);
+        await baseChatState.handleSubmit(message, {
+          ...options,
+          // Add onToolCall handler for client-side tool execution
+          onToolCall: async (toolCall: { id: string; name: string; arguments: Record<string, any> }, tools: any[]) => {
+            // Find the matching tool
+            const tool = tools.find((t: any) => t.name === toolCall.name);
+            if (!tool || !tool.execute) {
+              return { error: `Tool ${toolCall.name} not found` };
+            }
+
+            try {
+              // Execute the tool
+              const result = await tool.execute(toolCall.arguments);
+              return result;
+            } catch (error) {
+              return { error: String(error) };
+            }
+          },
+        });
       } finally {
         // Clear after successful send (or error)
         currentMessageRef.current = null;

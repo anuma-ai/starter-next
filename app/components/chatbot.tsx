@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
@@ -41,6 +41,8 @@ import {
 import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
+import { useUIInteraction } from "./ui-interaction-provider";
+import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
@@ -146,6 +148,7 @@ const ChatBotDemo = () => {
   const chatState = useChatContext();
   const { authenticated, user } = usePrivy();
   const thinkingPanel = useThinkingPanel();
+  const uiInteraction = useUIInteraction();
   const hasRedirectedRef = useRef(false);
   const database = useDatabase();
   const walletAddress = user?.wallet?.address;
@@ -336,6 +339,11 @@ const ChatBotDemo = () => {
 
   const inputRef = useRef(input);
   inputRef.current = input;
+
+  // Clear UI interactions when conversation changes to prevent cross-conversation leaks
+  useEffect(() => {
+    uiInteraction.clearInteractions();
+  }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
@@ -919,9 +927,66 @@ const ChatBotDemo = () => {
           }`}
       >
         <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
-          {messages.map((message: any) => (
-            <div key={message.id}>
-              {message.parts.map((part: any, i: number) => {
+          {(() => {
+            // Build a queue of resolved interactions for inline rendering
+            const resolvedInteractions = Array.from(uiInteraction.pendingInteractions.values())
+              .filter(i => i.type === "choice" && i.resolved)
+              .sort((a, b) => a.createdAt - b.createdAt);
+            let resolvedIdx = 0;
+            const renderedInlineIds = new Set<string>();
+
+            return messages.map((message: any) => {
+            // At tool result message positions, render the resolved interaction instead
+            if (message.role === "user" && message.parts.length > 0 && message.parts[0].type === "text") {
+              const text = message.parts[0].text || "";
+              if (text.includes("[Tool Execution Results]") && text.includes("prompt_user_choice")) {
+                const interaction = resolvedInteractions[resolvedIdx];
+                if (interaction) {
+                  resolvedIdx++;
+                  renderedInlineIds.add(interaction.id);
+                  return (
+                    <div key={message.id}>
+                      <ChoiceInteraction
+                        id={interaction.id}
+                        title={interaction.data.title}
+                        description={interaction.data.description}
+                        options={interaction.data.options}
+                        allowMultiple={interaction.data.allowMultiple}
+                        resolved={true}
+                        result={interaction.result}
+                      />
+                    </div>
+                  );
+                }
+                // Fallback: parse result from persisted message (e.g. after conversation reload)
+                try {
+                  const match = text.match(/Tool "prompt_user_choice" returned: (.+)/);
+                  if (match) {
+                    const parsed = JSON.parse(match[1]);
+                    const answer = Array.isArray(parsed.selected) ? parsed.selected : [parsed.selected];
+                    const title = parsed._meta?.title;
+                    return (
+                      <div key={message.id} className="my-4 max-w-2xl">
+                        {title && (
+                          <div className="mb-2">
+                            <h3 className="text-base font-medium text-muted-foreground">{title}</h3>
+                          </div>
+                        )}
+                        <div className="rounded-xl bg-sidebar dark:bg-card px-4 py-3">
+                          <div className="text-base font-medium">
+                            {answer.join(", ")}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                } catch {}
+                return null;
+              }
+            }
+
+            // Compute message content (shared between normal and injection paths)
+            const messageContent = message.parts.map((part: any, i: number) => {
                 switch (part.type) {
                   case "text": {
                     const isLastAssistantMessage =
@@ -1146,9 +1211,38 @@ const ChatBotDemo = () => {
                   default:
                     return null;
                 }
-              })}
-            </div>
-          ))}
+              });
+
+            // Inject resolved interactions before the message they were anchored to
+            // This ensures the choice summary appears above the follow-up response
+            const interactionsBeforeThisMsg = resolvedInteractions.filter(
+              i => !renderedInlineIds.has(i.id) && i.data.afterMessageId === message.id
+            );
+
+            if (interactionsBeforeThisMsg.length > 0) {
+              interactionsBeforeThisMsg.forEach(i => renderedInlineIds.add(i.id));
+              return (
+                <Fragment key={message.id}>
+                  {interactionsBeforeThisMsg.map(interaction => (
+                    <ChoiceInteraction
+                      key={interaction.id}
+                      id={interaction.id}
+                      title={interaction.data.title}
+                      description={interaction.data.description}
+                      options={interaction.data.options}
+                      allowMultiple={interaction.data.allowMultiple}
+                      resolved={true}
+                      result={interaction.result}
+                    />
+                  ))}
+                  <div>{messageContent}</div>
+                </Fragment>
+              );
+            }
+
+            return <div key={message.id}>{messageContent}</div>;
+          });
+          })()}
           {/* File preprocessing is now handled automatically by the SDK */}
           {/* Standalone loading indicator when submitting but before assistant message appears */}
           {isSubmitting && !isLoading && messages.at(-1)?.role === "user" && (
@@ -1163,6 +1257,47 @@ const ChatBotDemo = () => {
               <span>{getErrorTitle(error)}</span>
             </div>
           )}
+          {/* Render unresolved (pending) UI interactions at the bottom */}
+          {Array.from(uiInteraction.pendingInteractions.values())
+            .filter((interaction) => interaction.type === "choice" && !interaction.resolved)
+            .map((interaction) => (
+              <ChoiceInteraction
+                key={interaction.id}
+                id={interaction.id}
+                title={interaction.data.title}
+                description={interaction.data.description}
+                options={interaction.data.options}
+                allowMultiple={interaction.data.allowMultiple}
+              />
+            ))}
+          {/* Fallback: render resolved interactions at bottom when anchor message not found */}
+          {Array.from(uiInteraction.pendingInteractions.values())
+            .filter((interaction) => interaction.type === "choice" && interaction.resolved)
+            .filter((interaction) => {
+              const anchorId = interaction.data.afterMessageId;
+              // Show at bottom if no anchor, or anchor message doesn't exist in messages array
+              // (and no tool result message rendered it inline either)
+              if (!anchorId) return true;
+              const anchorExists = messages.some((m: any) => m.id === anchorId);
+              const toolResultExists = messages.some((m: any) =>
+                m.role === "user" && m.parts?.[0]?.type === "text" &&
+                m.parts[0].text?.includes("[Tool Execution Results]") &&
+                m.parts[0].text?.includes("prompt_user_choice")
+              );
+              return !anchorExists && !toolResultExists;
+            })
+            .map((interaction) => (
+              <ChoiceInteraction
+                key={interaction.id}
+                id={interaction.id}
+                title={interaction.data.title}
+                description={interaction.data.description}
+                options={interaction.data.options}
+                allowMultiple={interaction.data.allowMultiple}
+                resolved={true}
+                result={interaction.result}
+              />
+            ))}
         </div>
       </div>
 

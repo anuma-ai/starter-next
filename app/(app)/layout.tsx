@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { ChatProvider } from "../components/chat-provider";
+import { UIInteractionProvider } from "../components/ui-interaction-provider";
 
 const AppLayout = dynamic(
   () =>
@@ -20,8 +21,10 @@ export default function AppGroupLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ChatProvider>
-      <AppLayout>{children}</AppLayout>
-    </ChatProvider>
+    <UIInteractionProvider>
+      <ChatProvider>
+        <AppLayout>{children}</AppLayout>
+      </ChatProvider>
+    </UIInteractionProvider>
   );
 }

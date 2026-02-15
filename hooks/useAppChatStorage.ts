@@ -797,9 +797,10 @@ export function useAppChatStorage({
               includeHistory: true,
               clientTools: clientTools?.map((t) => ({
                 type: t.type || 'function',
-                name: t.name,
-                description: t.description,
-                parameters: t.parameters,
+                // Handle both nested (SDK tools) and flat (app-builder tools) structures
+                name: (t as any).function?.name || t.name,
+                description: (t as any).function?.description || t.description,
+                parameters: (t as any).function?.arguments || t.parameters,
               })),
               toolChoice: 'auto',
               ...(apiType && { apiType }),
@@ -811,7 +812,9 @@ export function useAppChatStorage({
                 }
               },
             });
-          } catch { break; }
+          } catch {
+            break;
+          }
         }
       }
       //#endregion toolCalling
