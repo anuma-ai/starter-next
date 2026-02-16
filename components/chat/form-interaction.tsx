@@ -178,7 +178,7 @@ export function FormInteraction({
       {/* Fields */}
       <div className="rounded-xl bg-sidebar dark:bg-card p-1 mb-3 flex flex-col gap-0.5">
         {fields.map((field, fieldIndex) => {
-          const isStacked = field.type === "textarea" || field.type === "slider";
+          const isStacked = field.type === "slider";
           const isActive = activeField === field.name || openDateField === field.name || openSelectField === field.name;
 
           return (
@@ -190,7 +190,7 @@ export function FormInteraction({
                 "hover:bg-white/80 dark:hover:bg-muted/50",
                 "active:scale-[0.99]",
                 isActive && "bg-white/40 dark:bg-muted/30",
-                isStacked ? "space-y-2" : "flex items-center gap-3",
+                isStacked ? "space-y-2" : field.type === "textarea" ? "flex items-start gap-3" : "flex items-center gap-3",
                 isSubmitting && "opacity-50 cursor-not-allowed"
               )}
             >
@@ -230,8 +230,8 @@ export function FormInteraction({
                   onBlur={() => setActiveField(null)}
                   placeholder={field.placeholder}
                   disabled={isSubmitting}
-                  rows={3}
-                  className="w-full rounded-lg border-0 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 resize-y"
+                  rows={2}
+                  className="flex-1 min-w-0 bg-transparent text-base text-right text-foreground/70 placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 resize-none"
                 />
               )}
 
