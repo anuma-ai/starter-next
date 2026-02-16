@@ -627,17 +627,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       try {
         await baseChatState.handleSubmit(message, {
           ...options,
-          // Add onToolCall handler for client-side tool execution
+          // Add onToolCall handler for client-side tool execution.
+          // Supports both flat format (name/execute) and SDK ToolConfig
+          // format (function.name/executor).
           onToolCall: async (toolCall: { id: string; name: string; arguments: Record<string, any> }, tools: any[]) => {
-            // Find the matching tool
-            const tool = tools.find((t: any) => t.name === toolCall.name);
-            if (!tool || !tool.execute) {
+            // Find the matching tool (handle both flat and nested name formats)
+            const tool = tools.find((t: any) =>
+              (t.function?.name || t.name) === toolCall.name
+            );
+            const executor = tool?.executor || tool?.execute;
+            if (!tool || !executor) {
               return { error: `Tool ${toolCall.name} not found` };
             }
 
             try {
-              // Execute the tool
-              const result = await tool.execute(toolCall.arguments);
+              const result = await executor(toolCall.arguments);
               return result;
             } catch (error) {
               return { error: String(error) };
