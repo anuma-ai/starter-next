@@ -137,7 +137,7 @@ export function FormInteraction({
     return (
       <div className="my-4 max-w-2xl">
         <div className="mb-2">
-          <h3 className="text-base font-medium text-muted-foreground">
+          <h3 className="text-base font-medium text-muted-foreground dark:text-white/40">
             {title}
           </h3>
         </div>
@@ -155,7 +155,7 @@ export function FormInteraction({
                     : val;
             return (
               <div key={field.name} className="flex items-center justify-between px-4 py-3 text-sm">
-                <span className="text-muted-foreground">{field.label}</span>
+                <span className="text-muted-foreground dark:text-white/40">{field.label}</span>
                 <span className="font-medium text-right">{displayVal}</span>
               </div>
             );
@@ -171,7 +171,7 @@ export function FormInteraction({
       <div className="mb-3">
         <h3 className="text-base font-medium">{title}</h3>
         {description && (
-          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+          <p className="text-sm text-muted-foreground dark:text-white/40 mt-1">{description}</p>
         )}
       </div>
 
@@ -200,7 +200,7 @@ export function FormInteraction({
                   {field.label}
                 </span>
                 {field.description && (
-                  <p className="text-sm text-muted-foreground mt-0.5">
+                  <p className="text-sm text-muted-foreground dark:text-white/40 mt-0.5">
                     {field.description}
                   </p>
                 )}
@@ -217,7 +217,7 @@ export function FormInteraction({
                   onBlur={() => setActiveField(null)}
                   placeholder={field.placeholder}
                   disabled={isSubmitting}
-                  className="flex-1 min-w-0 bg-transparent text-base text-right text-foreground/70 placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+                  className="flex-1 min-w-0 bg-transparent text-base text-right text-foreground/70 dark:text-white/70 placeholder:text-muted-foreground dark:placeholder:text-white/40 focus:outline-none disabled:opacity-50"
                 />
               )}
 
@@ -231,7 +231,7 @@ export function FormInteraction({
                   placeholder={field.placeholder}
                   disabled={isSubmitting}
                   rows={2}
-                  className="flex-1 min-w-0 bg-transparent text-base text-right text-foreground/70 placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 resize-none"
+                  className="flex-1 min-w-0 bg-transparent text-base text-right text-foreground/70 dark:text-white/70 placeholder:text-muted-foreground dark:placeholder:text-white/40 focus:outline-none disabled:opacity-50 resize-none"
                 />
               )}
 
@@ -247,12 +247,12 @@ export function FormInteraction({
                     }
                   >
                     <SelectTrigger
-                      className="border-0 shadow-none bg-transparent dark:bg-transparent dark:hover:bg-transparent text-base text-foreground/70 p-0 h-auto min-h-0 focus:ring-0 cursor-pointer [&>svg]:text-muted-foreground"
+                      className="border-0 shadow-none bg-transparent dark:bg-transparent dark:hover:bg-transparent text-base text-foreground/70 dark:text-white/70 p-0 h-auto min-h-0 focus:ring-0 cursor-pointer [&>svg]:text-muted-foreground dark:[&>svg]:text-white/30 dark:data-[placeholder]:text-white/40"
                     >
                       <SelectValue placeholder={field.placeholder || "Select..."} />
                     </SelectTrigger>
                     <SelectContent
-                      className="rounded-xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+                      className="rounded-xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:border dark:border-border dark:[box-shadow:0_10px_38px_-10px_rgba(0,0,0,0.5),0_10px_20px_-15px_rgba(0,0,0,0.4)]"
                     >
                       <SelectGroup>
                         {field.options?.map((opt) => (
@@ -301,9 +301,9 @@ export function FormInteraction({
                     step={field.step ?? 1}
                     disabled={isSubmitting}
                     onValueChange={([v]) => setValue(field.name, v)}
-                    className="flex-1 [&_[data-slot=slider-range]]:bg-neutral-500 [&_[data-slot=slider-thumb]]:border-neutral-500"
+                    className="flex-1 [&_[data-slot=slider-range]]:bg-neutral-500 [&_[data-slot=slider-thumb]]:border-neutral-500 dark:[&_[data-slot=slider-range]]:bg-white/50 dark:[&_[data-slot=slider-thumb]]:border-white/50 dark:[&_[data-slot=slider-track]]:bg-white/15"
                   />
-                  <span className="text-sm tabular-nums w-10 text-right text-muted-foreground">
+                  <span className="text-sm tabular-nums w-10 text-right text-muted-foreground dark:text-white/40">
                     {values[field.name] ?? field.min ?? 0}
                   </span>
                 </div>
@@ -323,7 +323,7 @@ export function FormInteraction({
                         disabled={isSubmitting}
                         className={cn(
                           "text-base focus:outline-none disabled:opacity-50 cursor-pointer",
-                          values[field.name] ? "text-foreground/70" : "text-muted-foreground"
+                          values[field.name] ? "text-foreground/70 dark:text-white/70" : "text-muted-foreground dark:text-white/40"
                         )}
                       >
                         {values[field.name]
@@ -332,7 +332,7 @@ export function FormInteraction({
                       </button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-auto p-0 rounded-xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+                      className="w-auto p-0 rounded-xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:bg-card dark:border dark:border-border dark:[box-shadow:0_10px_38px_-10px_rgba(0,0,0,0.5),0_10px_20px_-15px_rgba(0,0,0,0.4)]"
                       align="end"
                       onFocusOutside={(e) => e.preventDefault()}
                     >
@@ -370,6 +370,7 @@ export function FormInteraction({
           size="sm"
           onClick={handleCancel}
           disabled={isSubmitting}
+          className="cursor-pointer"
         >
           Cancel
         </Button>
@@ -377,7 +378,7 @@ export function FormInteraction({
           onClick={handleSubmit}
           disabled={isSubmitting}
           size="sm"
-          className="rounded-lg [corner-shape:round]"
+          className="rounded-lg [corner-shape:round] cursor-pointer"
         >
           {isSubmitting ? "Submitting..." : "Submit"}
         </Button>
