@@ -1378,7 +1378,7 @@ const ChatBotDemo = () => {
             )}
           {/* Fallback: render resolved interactions at bottom when anchor message not found */}
           {Array.from(uiInteraction.pendingInteractions.values())
-            .filter((interaction) => interaction.resolved)
+            .filter((interaction) => interaction.resolved && interaction.type !== "display")
             .filter((interaction) => {
               const anchorId = interaction.data.afterMessageId;
               if (!anchorId) return true;
