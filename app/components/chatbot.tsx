@@ -43,6 +43,7 @@ import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
 import { useUIInteraction } from "./ui-interaction-provider";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
+import { FormInteraction } from "@/components/chat/form-interaction";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
@@ -930,7 +931,7 @@ const ChatBotDemo = () => {
           {(() => {
             // Build a queue of resolved interactions for inline rendering
             const resolvedInteractions = Array.from(uiInteraction.pendingInteractions.values())
-              .filter(i => i.type === "choice" && i.resolved)
+              .filter(i => (i.type === "choice" || i.type === "form") && i.resolved)
               .sort((a, b) => a.createdAt - b.createdAt);
             let resolvedIdx = 0;
             const renderedInlineIds = new Set<string>();
@@ -939,11 +940,25 @@ const ChatBotDemo = () => {
             // At tool result message positions, render the resolved interaction instead
             if (message.role === "user" && message.parts.length > 0 && message.parts[0].type === "text") {
               const text = message.parts[0].text || "";
-              if (text.includes("[Tool Execution Results]") && text.includes("prompt_user_choice")) {
+              if (text.includes("[Tool Execution Results]") && (text.includes("prompt_user_choice") || text.includes("prompt_user_form"))) {
                 const interaction = resolvedInteractions[resolvedIdx];
                 if (interaction) {
                   resolvedIdx++;
                   renderedInlineIds.add(interaction.id);
+                  if (interaction.type === "form") {
+                    return (
+                      <div key={message.id}>
+                        <FormInteraction
+                          id={interaction.id}
+                          title={interaction.data.title}
+                          description={interaction.data.description}
+                          fields={interaction.data.fields}
+                          resolved={true}
+                          result={interaction.result}
+                        />
+                      </div>
+                    );
+                  }
                   return (
                     <div key={message.id}>
                       <ChoiceInteraction
@@ -960,9 +975,10 @@ const ChatBotDemo = () => {
                 }
                 // Fallback: parse result from persisted message (e.g. after conversation reload)
                 try {
-                  const match = text.match(/Tool "prompt_user_choice" returned: (.+)/);
-                  if (match) {
-                    const parsed = JSON.parse(match[1]);
+                  // Choice fallback
+                  const choiceMatch = text.match(/Tool "prompt_user_choice" returned: (.+)/);
+                  if (choiceMatch) {
+                    const parsed = JSON.parse(choiceMatch[1]);
                     const answer = Array.isArray(parsed.selected) ? parsed.selected : [parsed.selected];
                     const title = parsed._meta?.title;
                     return (
@@ -976,6 +992,30 @@ const ChatBotDemo = () => {
                           <div className="text-base font-medium">
                             {answer.join(", ")}
                           </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Form fallback
+                  const formMatch = text.match(/Tool "prompt_user_form" returned: (.+)/);
+                  if (formMatch) {
+                    const parsed = JSON.parse(formMatch[1]);
+                    const title = parsed._meta?.title;
+                    const values = parsed.values || {};
+                    return (
+                      <div key={message.id} className="my-4 max-w-2xl">
+                        {title && (
+                          <div className="mb-2">
+                            <h3 className="text-base font-medium text-muted-foreground">{title}</h3>
+                          </div>
+                        )}
+                        <div className="rounded-xl bg-sidebar dark:bg-card px-4 py-3 space-y-1">
+                          {Object.entries(values).map(([key, val]) => (
+                            <div key={key} className="text-base">
+                              <span className="text-muted-foreground">{key}:</span>{" "}
+                              <span className="font-medium">{String(val)}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     );
@@ -1223,18 +1263,30 @@ const ChatBotDemo = () => {
               interactionsBeforeThisMsg.forEach(i => renderedInlineIds.add(i.id));
               return (
                 <Fragment key={message.id}>
-                  {interactionsBeforeThisMsg.map(interaction => (
-                    <ChoiceInteraction
-                      key={interaction.id}
-                      id={interaction.id}
-                      title={interaction.data.title}
-                      description={interaction.data.description}
-                      options={interaction.data.options}
-                      allowMultiple={interaction.data.allowMultiple}
-                      resolved={true}
-                      result={interaction.result}
-                    />
-                  ))}
+                  {interactionsBeforeThisMsg.map(interaction =>
+                    interaction.type === "form" ? (
+                      <FormInteraction
+                        key={interaction.id}
+                        id={interaction.id}
+                        title={interaction.data.title}
+                        description={interaction.data.description}
+                        fields={interaction.data.fields}
+                        resolved={true}
+                        result={interaction.result}
+                      />
+                    ) : (
+                      <ChoiceInteraction
+                        key={interaction.id}
+                        id={interaction.id}
+                        title={interaction.data.title}
+                        description={interaction.data.description}
+                        options={interaction.data.options}
+                        allowMultiple={interaction.data.allowMultiple}
+                        resolved={true}
+                        result={interaction.result}
+                      />
+                    )
+                  )}
                   <div>{messageContent}</div>
                 </Fragment>
               );
@@ -1259,45 +1311,65 @@ const ChatBotDemo = () => {
           )}
           {/* Render unresolved (pending) UI interactions at the bottom */}
           {Array.from(uiInteraction.pendingInteractions.values())
-            .filter((interaction) => interaction.type === "choice" && !interaction.resolved)
-            .map((interaction) => (
-              <ChoiceInteraction
-                key={interaction.id}
-                id={interaction.id}
-                title={interaction.data.title}
-                description={interaction.data.description}
-                options={interaction.data.options}
-                allowMultiple={interaction.data.allowMultiple}
-              />
-            ))}
+            .filter((interaction) => !interaction.resolved)
+            .map((interaction) =>
+              interaction.type === "form" ? (
+                <FormInteraction
+                  key={interaction.id}
+                  id={interaction.id}
+                  title={interaction.data.title}
+                  description={interaction.data.description}
+                  fields={interaction.data.fields}
+                />
+              ) : (
+                <ChoiceInteraction
+                  key={interaction.id}
+                  id={interaction.id}
+                  title={interaction.data.title}
+                  description={interaction.data.description}
+                  options={interaction.data.options}
+                  allowMultiple={interaction.data.allowMultiple}
+                />
+              )
+            )}
           {/* Fallback: render resolved interactions at bottom when anchor message not found */}
           {Array.from(uiInteraction.pendingInteractions.values())
-            .filter((interaction) => interaction.type === "choice" && interaction.resolved)
+            .filter((interaction) => interaction.resolved)
             .filter((interaction) => {
               const anchorId = interaction.data.afterMessageId;
-              // Show at bottom if no anchor, or anchor message doesn't exist in messages array
-              // (and no tool result message rendered it inline either)
               if (!anchorId) return true;
               const anchorExists = messages.some((m: any) => m.id === anchorId);
               const toolResultExists = messages.some((m: any) =>
                 m.role === "user" && m.parts?.[0]?.type === "text" &&
                 m.parts[0].text?.includes("[Tool Execution Results]") &&
-                m.parts[0].text?.includes("prompt_user_choice")
+                (m.parts[0].text?.includes("prompt_user_choice") || m.parts[0].text?.includes("prompt_user_form"))
               );
               return !anchorExists && !toolResultExists;
             })
-            .map((interaction) => (
-              <ChoiceInteraction
-                key={interaction.id}
-                id={interaction.id}
-                title={interaction.data.title}
-                description={interaction.data.description}
-                options={interaction.data.options}
-                allowMultiple={interaction.data.allowMultiple}
-                resolved={true}
-                result={interaction.result}
-              />
-            ))}
+            .map((interaction) =>
+              interaction.type === "form" ? (
+                <FormInteraction
+                  key={interaction.id}
+                  id={interaction.id}
+                  title={interaction.data.title}
+                  description={interaction.data.description}
+                  fields={interaction.data.fields}
+                  resolved={true}
+                  result={interaction.result}
+                />
+              ) : (
+                <ChoiceInteraction
+                  key={interaction.id}
+                  id={interaction.id}
+                  title={interaction.data.title}
+                  description={interaction.data.description}
+                  options={interaction.data.options}
+                  allowMultiple={interaction.data.allowMultiple}
+                  resolved={true}
+                  result={interaction.result}
+                />
+              )
+            )}
         </div>
       </div>
 

@@ -478,7 +478,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     signMessage,
     embeddedWalletSigner,
     encryptionReady,
-    systemPrompt: `You have access to a prompt_user_choice tool that displays an interactive UI with clickable options. ALWAYS use this tool when you want to present multiple choices to the user (e.g., restaurant options, destination choices, preferences). Do not just list options as text - use the tool to create an interactive selection menu.`,
+    systemPrompt: `You have access to two interactive UI tools:
+
+1. prompt_user_choice — displays clickable options for the user to select from. ALWAYS use this when presenting multiple choices (e.g., restaurant options, destination choices, preferences). Do not list options as text.
+
+2. prompt_user_form — displays a form with multiple fields to collect several pieces of information at once. Use this when you need multiple inputs from the user (e.g., trip details like destination + dates + budget, booking info, profile settings). Supports text, textarea, select, and toggle fields. Do not ask questions one by one when a form would be more efficient.`,
     // Use semantic search to find relevant tools based on prompt similarity
     // Apply user's tool mode preferences: enable (always include), disable (always exclude), auto (semantic search)
     serverTools: (embeddings: number[] | number[][], tools: ServerTool[]) => {

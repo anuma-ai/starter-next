@@ -15,7 +15,7 @@ import {
  */
 type PendingInteraction = {
   id: string;
-  type: "choice";
+  type: "choice" | "form";
   data: any;
   resolve: (result: any) => void;
   reject: (error: Error) => void;
@@ -29,7 +29,7 @@ type PendingInteraction = {
  */
 type UIInteractionContextValue = {
   pendingInteractions: Map<string, PendingInteraction>;
-  createInteraction: (id: string, type: "choice", data: any) => Promise<any>;
+  createInteraction: (id: string, type: "choice" | "form", data: any) => Promise<any>;
   resolveInteraction: (id: string, result: any) => void;
   cancelInteraction: (id: string) => void;
   clearInteractions: () => void;
@@ -77,7 +77,7 @@ export function UIInteractionProvider({ children }: UIInteractionProviderProps) 
    * when the user responds
    */
   const createInteraction = useCallback(
-    (id: string, type: "choice", data: any): Promise<any> => {
+    (id: string, type: "choice" | "form", data: any): Promise<any> => {
       return new Promise((resolve, reject) => {
         const interaction: PendingInteraction = {
           id,
