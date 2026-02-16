@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@reverbia/sdk': file:../ai-sdk
-
 importers:
 
   .:
@@ -96,8 +93,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.7)(react@19.2.3)
       '@reverbia/sdk':
-        specifier: file:../ai-sdk
-        version: file:../ai-sdk(31b00ea3b05c6c52cfef8c0271ab5abd)
+        specifier: 1.0.0-next.20260216165025
+        version: 1.0.0-next.20260216165025(31b00ea3b05c6c52cfef8c0271ab5abd)
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -2097,8 +2094,8 @@ packages:
   '@reverbia/portal@1.0.0-next.20260211161039':
     resolution: {integrity: sha512-8CbNRV1LHhPn9NzsBK2+lPvN2WFzzl9V+iXFCPdHMBiaz8WuBRL3DtBeIzyergY14O6izRBLOVVwvhxr75NWPQ==}
 
-  '@reverbia/sdk@file:../ai-sdk':
-    resolution: {directory: ../ai-sdk, type: directory}
+  '@reverbia/sdk@1.0.0-next.20260216165025':
+    resolution: {integrity: sha512-8dlc0BaELFaRNKwdbPxcqpnOEz40rAViHSBJTDpaDb1D1XmJ/Flo6Rl945ZcwEiz6vJwski4jU8aIn81lh4ZJw==}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -9925,7 +9922,7 @@ snapshots:
 
   '@reverbia/portal@1.0.0-next.20260211161039': {}
 
-  '@reverbia/sdk@file:../ai-sdk(31b00ea3b05c6c52cfef8c0271ab5abd)':
+  '@reverbia/sdk@1.0.0-next.20260216165025(31b00ea3b05c6c52cfef8c0271ab5abd)':
     dependencies:
       '@reverbia/portal': 1.0.0-next.20260211161039
       ai: 5.0.93(zod@4.3.5)
