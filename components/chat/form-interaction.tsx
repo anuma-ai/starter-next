@@ -1,8 +1,16 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { useUIInteraction } from "@/app/components/ui-interaction-provider";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export type FormFieldOption = {
@@ -13,7 +21,7 @@ export type FormFieldOption = {
 export type FormField = {
   name: string;
   label: string;
-  type: "text" | "textarea" | "select" | "toggle";
+  type: "text" | "textarea" | "select" | "toggle" | "date";
   description?: string;
   required?: boolean;
   placeholder?: string;
@@ -119,9 +127,11 @@ export function FormInteraction({
             const displayVal =
               field.type === "toggle"
                 ? "Yes"
-                : field.type === "select"
-                  ? field.options?.find((o) => o.value === val)?.label || val
-                  : val;
+                : field.type === "date"
+                  ? format(new Date(val), "PPP")
+                  : field.type === "select"
+                    ? field.options?.find((o) => o.value === val)?.label || val
+                    : val;
             return (
               <div key={field.name} className="text-base">
                 <span className="text-muted-foreground">{field.label}:</span>{" "}
@@ -222,6 +232,40 @@ export function FormInteraction({
                   )}
                 />
               </button>
+            )}
+
+            {field.type === "date" && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={isSubmitting}
+                    data-empty={!values[field.name]}
+                    className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="size-4" />
+                    {values[field.name]
+                      ? format(new Date(values[field.name]), "PPP")
+                      : <span>{field.placeholder || "Pick a date"}</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={
+                      values[field.name]
+                        ? new Date(values[field.name])
+                        : undefined
+                    }
+                    onSelect={(date) =>
+                      setValue(
+                        field.name,
+                        date ? date.toISOString().split("T")[0] : ""
+                      )
+                    }
+                  />
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         ))}

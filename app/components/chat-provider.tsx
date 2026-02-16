@@ -482,7 +482,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
 1. prompt_user_choice — displays clickable options for the user to select from. ALWAYS use this when presenting multiple choices (e.g., restaurant options, destination choices, preferences). Do not list options as text.
 
-2. prompt_user_form — displays a form with multiple fields to collect several pieces of information at once. Use this when you need multiple inputs from the user (e.g., trip details like destination + dates + budget, booking info, profile settings). Supports text, textarea, select, and toggle fields. Do not ask questions one by one when a form would be more efficient.`,
+2. prompt_user_form — displays a form with multiple fields to collect several pieces of information at once. Use this when you need multiple inputs from the user (e.g., trip details like destination + dates + budget, booking info, profile settings). Supports text, textarea, select, toggle, and date (calendar picker) fields. Use the date type for any date input — it shows a calendar picker which is much better than a text field. Do not ask questions one by one when a form would be more efficient. Only include fields for information you can actually use in your response — do not add fields for actions you cannot perform (e.g., sending emails, making reservations).`,
     // Use semantic search to find relevant tools based on prompt similarity
     // Apply user's tool mode preferences: enable (always include), disable (always exclude), auto (semantic search)
     serverTools: (embeddings: number[] | number[][], tools: ServerTool[]) => {

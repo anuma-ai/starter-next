@@ -186,8 +186,8 @@ export function createUIInteractionTools(
                 },
                 type: {
                   type: "string",
-                  enum: ["text", "textarea", "select", "toggle"],
-                  description: "Field type: text (single line), textarea (multi-line), select (dropdown), toggle (on/off)",
+                  enum: ["text", "textarea", "select", "toggle", "date"],
+                  description: "Field type: text (single line), textarea (multi-line), select (dropdown), toggle (on/off), date (calendar picker)",
                 },
                 description: {
                   type: "string",
@@ -238,7 +238,7 @@ export function createUIInteractionTools(
           if (!field.name || !field.label || !field.type) {
             return { cancelled: true };
           }
-          if (!["text", "textarea", "select", "toggle"].includes(field.type)) {
+          if (!["text", "textarea", "select", "toggle", "date"].includes(field.type)) {
             return { cancelled: true };
           }
           if (field.type === "select" && (!Array.isArray(field.options) || field.options.length === 0)) {
