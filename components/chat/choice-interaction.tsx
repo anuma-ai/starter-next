@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useUIInteraction } from "@/app/components/ui-interaction-provider";
+import { useUIInteraction } from "@reverbia/sdk/react";
 import { Button } from "@/components/ui/button";
 import { Check, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,13 +22,6 @@ export type ChoiceInteractionProps = {
   result?: any;
 };
 
-/**
- * ChoiceInteraction Component
- *
- * Renders an interactive choice UI inline in the chat where the user can
- * select one or more options. When the user submits their selection, the
- * result is sent back to the LLM via the tool call response.
- */
 export function ChoiceInteraction({
   id,
   title,
@@ -52,14 +45,12 @@ export function ChoiceInteraction({
       setSelectedValues((prev) => {
         const next = new Set(prev);
         if (allowMultiple) {
-          // Toggle selection for multiple choice
           if (next.has(value)) {
             next.delete(value);
           } else {
             next.add(value);
           }
         } else {
-          // Replace selection for single choice
           next.clear();
           next.add(value);
         }
@@ -71,20 +62,16 @@ export function ChoiceInteraction({
 
   const handleSubmit = useCallback(() => {
     if (selectedValues.size === 0 || isSubmitting) return;
-
-    // If "Other" is selected and it's empty, don't submit
     if (selectedValues.has("__other__") && !otherText.trim()) return;
 
     setIsSubmitting(true);
 
     let finalValues = Array.from(selectedValues);
 
-    // Replace "__other__" with the actual text
     if (selectedValues.has("__other__")) {
       finalValues = finalValues.map(v => v === "__other__" ? otherText.trim() : v);
     }
 
-    // Set submitted state and answer for display
     setSubmittedAnswer(finalValues);
     setSubmitted(true);
 
@@ -101,7 +88,6 @@ export function ChoiceInteraction({
     cancelInteraction(id);
   }, [id, cancelInteraction, isSubmitting]);
 
-  // Show summary after submission
   if (submitted || resolved) {
     const answer = resolved && result
       ? (Array.isArray(result.selected) ? result.selected : [result.selected])
@@ -123,7 +109,6 @@ export function ChoiceInteraction({
 
   return (
     <div className="my-4 max-w-2xl">
-      {/* Header */}
       <div className="mb-3">
         <h3 className="text-base font-medium">{title}</h3>
         {description && (
@@ -131,7 +116,6 @@ export function ChoiceInteraction({
         )}
       </div>
 
-      {/* Options */}
       <div className="rounded-xl bg-sidebar dark:bg-card p-1 mb-3">
         {options.map((option) => {
           const isSelected = selectedValues.has(option.value);
@@ -147,10 +131,8 @@ export function ChoiceInteraction({
                 isSubmitting && "opacity-50 cursor-not-allowed"
               )}
             >
-              {/* Radio or Checkbox indicator */}
               <div className="flex items-center pt-1">
                 {allowMultiple ? (
-                  /* Checkbox */
                   <div
                     className={cn(
                       "h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background flex items-center justify-center",
@@ -160,7 +142,6 @@ export function ChoiceInteraction({
                     {isSelected && <Check className="h-4 w-4" />}
                   </div>
                 ) : (
-                  /* Radio button */
                   <div
                     className={cn(
                       "h-4 w-4 shrink-0 rounded-full border border-primary ring-offset-background flex items-center justify-center"
@@ -183,7 +164,6 @@ export function ChoiceInteraction({
           );
         })}
 
-        {/* "Other" option with inline input */}
         <div
           onClick={() => !isSubmitting && handleOptionClick("__other__")}
           className={cn(
@@ -194,10 +174,8 @@ export function ChoiceInteraction({
             isSubmitting && "opacity-50 cursor-not-allowed"
           )}
         >
-          {/* Radio or Checkbox indicator */}
           <div className="flex items-center pt-1">
             {allowMultiple ? (
-              /* Checkbox */
               <div
                 className={cn(
                   "h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background flex items-center justify-center",
@@ -207,7 +185,6 @@ export function ChoiceInteraction({
                 {selectedValues.has("__other__") && <Check className="h-4 w-4" />}
               </div>
             ) : (
-              /* Radio button */
               <div
                 className={cn(
                   "h-4 w-4 shrink-0 rounded-full border border-primary ring-offset-background flex items-center justify-center"
@@ -224,7 +201,6 @@ export function ChoiceInteraction({
               value={otherText}
               onChange={(e) => {
                 setOtherText(e.target.value);
-                // Auto-select "Other" when user types
                 if (e.target.value && !selectedValues.has("__other__")) {
                   handleOptionClick("__other__");
                 }
@@ -243,7 +219,6 @@ export function ChoiceInteraction({
         </div>
       </div>
 
-      {/* Footer buttons */}
       <div className="flex gap-2 justify-end">
         <Button
           variant="ghost"

@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { useUIInteraction } from "@/app/components/ui-interaction-provider";
+import { useUIInteraction } from "@reverbia/sdk/react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -96,7 +95,6 @@ export function FormInteraction({
 
     setIsSubmitting(true);
 
-    // Clean string values
     const cleaned: Record<string, any> = {};
     for (const field of fields) {
       const val = values[field.name];
@@ -129,7 +127,6 @@ export function FormInteraction({
     }
   }, [isSubmitting, setValue, values]);
 
-  // Summary view after submission
   if (submitted || resolved) {
     const displayValues =
       resolved && result?.values ? result.values : submittedValues;
@@ -167,7 +164,6 @@ export function FormInteraction({
 
   return (
     <div className="my-4 max-w-2xl">
-      {/* Header */}
       <div className="mb-3">
         <h3 className="text-base font-medium">{title}</h3>
         {description && (
@@ -175,9 +171,8 @@ export function FormInteraction({
         )}
       </div>
 
-      {/* Fields */}
       <div className="rounded-xl bg-sidebar dark:bg-card p-1 mb-3 flex flex-col gap-0.5">
-        {fields.map((field, fieldIndex) => {
+        {fields.map((field) => {
           const isStacked = field.type === "slider";
           const isActive = activeField === field.name || openDateField === field.name || openSelectField === field.name;
 
@@ -194,7 +189,6 @@ export function FormInteraction({
                 isSubmitting && "opacity-50 cursor-not-allowed"
               )}
             >
-              {/* Label */}
               <div className={cn(isStacked ? "" : "shrink-0")}>
                 <span className="text-base">
                   {field.label}
@@ -206,7 +200,6 @@ export function FormInteraction({
                 )}
               </div>
 
-              {/* Input */}
               {field.type === "text" && (
                 <input
                   ref={(el) => { inputRefs.current[field.name] = el; }}
@@ -363,7 +356,6 @@ export function FormInteraction({
         })}
       </div>
 
-      {/* Footer buttons */}
       <div className="flex gap-2 justify-end">
         <Button
           variant="ghost"

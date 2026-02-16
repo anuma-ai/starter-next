@@ -46,8 +46,8 @@ import type {
   ServerTool,
 } from "@reverbia/sdk/react";
 import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
+import { useUIInteraction } from "@reverbia/sdk/react";
 import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
-import { useUIInteraction } from "@/app/components/ui-interaction-provider";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -458,10 +458,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     );
 
     // UI interaction tools (for prompting user with interactive UI)
-    const uiInteractionTools = createUIInteractionTools(
-      () => uiInteraction,
-      () => messagesRef.current.at(-1)?.id
-    );
+    const uiInteractionTools = createUIInteractionTools({
+      getContext: () => uiInteraction,
+      getLastMessageId: () => messagesRef.current.at(-1)?.id,
+    });
 
     const allTools = [...calendarTools, ...driveTools, ...uiInteractionTools];
 

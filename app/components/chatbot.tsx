@@ -41,7 +41,7 @@ import {
 import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
-import { useUIInteraction } from "./ui-interaction-provider";
+import { useUIInteraction } from "@reverbia/sdk/react";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { FormInteraction } from "@/components/chat/form-interaction";
 import { WeatherCard } from "@/components/chat/weather-card";
@@ -346,6 +346,60 @@ const ChatBotDemo = () => {
   useEffect(() => {
     uiInteraction.clearInteractions();
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist display interactions to localStorage so they survive page refresh.
+  // The SDK auto-executes display tools internally and stores results only in
+  // the in-memory pendingInteractions map, which is lost on refresh.
+  // We store the index of the assistant message the card appears before so we
+  // can re-anchor correctly after reload (ephemeral message IDs don't survive).
+  const prevDisplayCountRef = useRef(0);
+  useEffect(() => {
+    if (!conversationId) return;
+    const displays = Array.from(uiInteraction.pendingInteractions.values())
+      .filter((i) => i.type === "display" && i.resolved);
+    if (displays.length > 0 && displays.length > prevDisplayCountRef.current) {
+      const data = displays.map((d: any) => {
+        // Find the index of the anchored message so we can re-anchor on restore
+        const anchorIdx = messages.findIndex((m: any) => m.id === d.data.afterMessageId);
+        return {
+          id: d.id,
+          displayType: d.data.displayType,
+          anchorMessageIndex: anchorIdx >= 0 ? anchorIdx : undefined,
+          result: d.result,
+        };
+      });
+      try {
+        localStorage.setItem(`display:${conversationId}`, JSON.stringify(data));
+      } catch {}
+    }
+    prevDisplayCountRef.current = displays.length;
+  }, [uiInteraction.pendingInteractions, conversationId, messages]);
+
+  // Restore display interactions from localStorage on conversation load
+  const restoredConvRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!conversationId || messages.length === 0) return;
+    if (restoredConvRef.current === conversationId) return;
+    restoredConvRef.current = conversationId;
+    try {
+      const stored = localStorage.getItem(`display:${conversationId}`);
+      if (!stored) return;
+      const items = JSON.parse(stored);
+      for (const item of items) {
+        if (uiInteraction.getInteraction(item.id)) continue;
+        // Re-anchor using the stored message index mapped to the loaded message ID
+        const anchorMsg = item.anchorMessageIndex != null
+          ? messages[item.anchorMessageIndex]
+          : undefined;
+        uiInteraction.createDisplayInteraction(
+          item.id,
+          item.displayType,
+          { afterMessageId: (anchorMsg as any)?.id },
+          item.result
+        );
+      }
+    } catch {}
+  }, [conversationId, messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
