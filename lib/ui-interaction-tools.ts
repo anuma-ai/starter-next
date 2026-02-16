@@ -14,7 +14,9 @@ import type { CreateUIToolsOptions } from "@reverbia/sdk/tools";
 
 export type { CreateUIToolsOptions };
 
-// Result types for tool responses
+// #region displayToolTypes
+// Result types returned by the weather display tool's execute function.
+// The component that renders this data will receive one of these shapes.
 export type ForecastDay = {
   date: string;
   weatherCode: number;
@@ -37,6 +39,7 @@ export type DisplayWeatherResult = {
   error: string;
   _meta?: { location: string };
 };
+// #endregion displayToolTypes
 
 /**
  * Create UI interaction tools for the chat.
@@ -205,6 +208,7 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
     }),
   });
 
+  // #region displayToolDefinition
   const weatherTool = createDisplayTool(options, {
     name: "display_weather",
     description:
@@ -276,6 +280,7 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
       }
     },
   });
+  // #endregion displayToolDefinition
 
   return [choiceTool, formTool, weatherTool];
 }

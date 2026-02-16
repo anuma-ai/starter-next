@@ -457,7 +457,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       requestDriveAccess
     );
 
-    // UI interaction tools (for prompting user with interactive UI)
+    // UI interaction tools (choice menus, forms, display cards)
     const uiInteractionTools = createUIInteractionTools({
       getContext: () => uiInteraction,
       getLastMessageId: () => messagesRef.current.at(-1)?.id,

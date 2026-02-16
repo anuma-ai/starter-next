@@ -48,6 +48,12 @@ import { WeatherCard } from "@/components/chat/weather-card";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
+import {
+  collectDisplayInteractions,
+  getDisplaysForMessage,
+  getUnanchoredDisplays,
+  useDisplayPersistence,
+} from "@/lib/display-interaction";
 
 function getErrorTitle(error: string): string {
   const e = error.toLowerCase();
@@ -347,59 +353,8 @@ const ChatBotDemo = () => {
     uiInteraction.clearInteractions();
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist display interactions to localStorage so they survive page refresh.
-  // The SDK auto-executes display tools internally and stores results only in
-  // the in-memory pendingInteractions map, which is lost on refresh.
-  // We store the index of the assistant message the card appears before so we
-  // can re-anchor correctly after reload (ephemeral message IDs don't survive).
-  const prevDisplayCountRef = useRef(0);
-  useEffect(() => {
-    if (!conversationId) return;
-    const displays = Array.from(uiInteraction.pendingInteractions.values())
-      .filter((i) => i.type === "display" && i.resolved);
-    if (displays.length > 0 && displays.length > prevDisplayCountRef.current) {
-      const data = displays.map((d: any) => {
-        // Find the index of the anchored message so we can re-anchor on restore
-        const anchorIdx = messages.findIndex((m: any) => m.id === d.data.afterMessageId);
-        return {
-          id: d.id,
-          displayType: d.data.displayType,
-          anchorMessageIndex: anchorIdx >= 0 ? anchorIdx : undefined,
-          result: d.result,
-        };
-      });
-      try {
-        localStorage.setItem(`display:${conversationId}`, JSON.stringify(data));
-      } catch {}
-    }
-    prevDisplayCountRef.current = displays.length;
-  }, [uiInteraction.pendingInteractions, conversationId, messages]);
-
-  // Restore display interactions from localStorage on conversation load
-  const restoredConvRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!conversationId || messages.length === 0) return;
-    if (restoredConvRef.current === conversationId) return;
-    restoredConvRef.current = conversationId;
-    try {
-      const stored = localStorage.getItem(`display:${conversationId}`);
-      if (!stored) return;
-      const items = JSON.parse(stored);
-      for (const item of items) {
-        if (uiInteraction.getInteraction(item.id)) continue;
-        // Re-anchor using the stored message index mapped to the loaded message ID
-        const anchorMsg = item.anchorMessageIndex != null
-          ? messages[item.anchorMessageIndex]
-          : undefined;
-        uiInteraction.createDisplayInteraction(
-          item.id,
-          item.displayType,
-          { afterMessageId: (anchorMsg as any)?.id },
-          item.result
-        );
-      }
-    } catch {}
-  }, [conversationId, messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Persist display interactions to localStorage so they survive page refresh
+  useDisplayPersistence(uiInteraction, conversationId, messages);
 
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
@@ -992,9 +947,7 @@ const ChatBotDemo = () => {
             const renderedInlineIds = new Set<string>();
 
             // Display-only interactions (e.g. weather cards)
-            const displayInteractions = Array.from(uiInteraction.pendingInteractions.values())
-              .filter(i => i.type === "display" && i.resolved)
-              .sort((a, b) => a.createdAt - b.createdAt);
+            const displayInteractions = collectDisplayInteractions(uiInteraction.pendingInteractions);
             const renderedDisplayIds = new Set<string>();
 
             return messages.map((message: any) => {
@@ -1324,15 +1277,12 @@ const ChatBotDemo = () => {
             );
 
             // Display interactions anchored to this message (e.g. weather cards)
-            const displaysBeforeThisMsg = displayInteractions.filter(
-              i => !renderedDisplayIds.has(i.id) && i.data.afterMessageId === message.id
-            );
+            const displaysBeforeThisMsg = getDisplaysForMessage(message.id, displayInteractions, renderedDisplayIds);
 
             const hasInjections = interactionsBeforeThisMsg.length > 0 || displaysBeforeThisMsg.length > 0;
 
             if (hasInjections) {
               interactionsBeforeThisMsg.forEach(i => renderedInlineIds.add(i.id));
-              displaysBeforeThisMsg.forEach(i => renderedDisplayIds.add(i.id));
               return (
                 <Fragment key={message.id}>
                   {interactionsBeforeThisMsg.map(interaction =>
@@ -1447,15 +1397,9 @@ const ChatBotDemo = () => {
                 />
               )
             )}
-          {/* Fallback: render display interactions at bottom when anchor message not found */}
-          {Array.from(uiInteraction.pendingInteractions.values())
-            .filter((i: any) => i.type === "display" && i.resolved)
-            .filter((i: any) => {
-              const anchorId = i.data.afterMessageId;
-              if (!anchorId) return true;
-              return !messages.some((m: any) => m.id === anchorId);
-            })
-            .map((interaction: any) =>
+          {/* Render display interactions at bottom when anchor message not found */}
+          {getUnanchoredDisplays(uiInteraction.pendingInteractions, messages)
+            .map((interaction) =>
               interaction.data.displayType === "weather" ? (
                 <WeatherCard key={interaction.id} data={interaction.result} />
               ) : null
