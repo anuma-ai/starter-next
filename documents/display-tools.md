@@ -1,10 +1,10 @@
 # Display Tools
 
 Display tools let the AI render rich visual components inline in the chat.
-When the model calls a display tool, the SDK executes it automatically, stores
-the result as a display interaction, and the model continues its response
-without blocking. This guide walks through building a weather card as an
-example.
+They run entirely on the client side — when the model calls a display tool, the
+SDK executes it in the browser, stores the result as a display interaction, and
+the model continues its response without blocking. This guide walks through
+building a weather card as an example.
 
 ## Overview
 
