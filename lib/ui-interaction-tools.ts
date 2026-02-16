@@ -39,6 +39,13 @@ export type PromptUserFormResult =
   | { cancelled: true };
 
 // Result from display_weather tool
+export type ForecastDay = {
+  date: string;
+  weatherCode: number;
+  temperatureMax: number;
+  temperatureMin: number;
+};
+
 export type DisplayWeatherResult = {
   location: string;
   country?: string;
@@ -48,6 +55,7 @@ export type DisplayWeatherResult = {
   windSpeed: number;
   weatherCode: number;
   isDay: boolean;
+  forecast?: ForecastDay[];
   _meta?: { location: string };
 } | {
   error: string;
@@ -333,12 +341,20 @@ export function createUIInteractionTools(
 
           const { latitude, longitude, name, country } = geoData.results[0];
 
-          // Fetch current weather
+          // Fetch current weather + 7-day forecast
           const weatherRes = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day&timezone=auto`
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto`
           );
           const weatherData = await weatherRes.json();
           const current = weatherData.current;
+          const daily = weatherData.daily;
+
+          const forecast: ForecastDay[] = daily?.time?.map((date: string, i: number) => ({
+            date,
+            weatherCode: daily.weather_code[i],
+            temperatureMax: daily.temperature_2m_max[i],
+            temperatureMin: daily.temperature_2m_min[i],
+          })) || [];
 
           const result: DisplayWeatherResult = {
             location: name,
@@ -349,6 +365,7 @@ export function createUIInteractionTools(
             windSpeed: current.wind_speed_10m,
             weatherCode: current.weather_code,
             isDay: current.is_day === 1,
+            forecast,
             _meta: { location: args.location },
           };
 
