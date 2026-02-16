@@ -11,6 +11,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
@@ -176,8 +184,8 @@ export function FormInteraction({
       </div>
 
       {/* Fields */}
-      <div className="rounded-xl bg-sidebar dark:bg-card p-1 mb-3 space-y-0.5">
-        {fields.map((field) => {
+      <div className="rounded-xl bg-sidebar dark:bg-card p-1 mb-3 flex flex-col gap-0.5">
+        {fields.map((field, fieldIndex) => {
           const isStacked = field.type === "textarea" || field.type === "slider";
           const isActive = activeField === field.name || openDateField === field.name;
 
@@ -220,7 +228,7 @@ export function FormInteraction({
                   onBlur={() => setActiveField(null)}
                   placeholder={field.placeholder}
                   disabled={isSubmitting}
-                  className="flex-1 min-w-0 bg-transparent text-base text-right placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+                  className="flex-1 min-w-0 bg-transparent text-base text-right text-foreground/70 placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
                 />
               )}
 
@@ -239,27 +247,33 @@ export function FormInteraction({
               )}
 
               {field.type === "select" && (
-                <select
-                  ref={(el) => { inputRefs.current[field.name] = el; }}
-                  value={values[field.name] || ""}
-                  onChange={(e) => setValue(field.name, e.target.value)}
-                  onFocus={() => setActiveField(field.name)}
-                  onBlur={() => setActiveField(null)}
-                  disabled={isSubmitting}
-                  className={cn(
-                    "flex-1 min-w-0 bg-transparent text-base text-right appearance-none focus:outline-none disabled:opacity-50 cursor-pointer",
-                    !values[field.name] && "text-muted-foreground"
-                  )}
-                >
-                  <option value="">
-                    {field.placeholder || "Select..."}
-                  </option>
-                  {field.options?.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1 flex justify-end" onClick={(e) => e.stopPropagation()}>
+                  <Select
+                    value={values[field.name] || ""}
+                    onValueChange={(val) => setValue(field.name, val)}
+                    disabled={isSubmitting}
+                    onOpenChange={(open) =>
+                      setActiveField(open ? field.name : null)
+                    }
+                  >
+                    <SelectTrigger
+                      className="border-0 shadow-none bg-transparent text-base text-foreground/70 p-0 h-auto min-h-0 focus:ring-0 cursor-pointer [&>svg]:text-muted-foreground"
+                    >
+                      <SelectValue placeholder={field.placeholder || "Select..."} />
+                    </SelectTrigger>
+                    <SelectContent
+                      className="rounded-xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+                    >
+                      <SelectGroup>
+                        {field.options?.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
 
               {field.type === "toggle" && (
@@ -319,7 +333,7 @@ export function FormInteraction({
                         disabled={isSubmitting}
                         className={cn(
                           "text-base focus:outline-none disabled:opacity-50 cursor-pointer",
-                          values[field.name] ? "text-foreground" : "text-muted-foreground"
+                          values[field.name] ? "text-foreground/70" : "text-muted-foreground"
                         )}
                       >
                         {values[field.name]
