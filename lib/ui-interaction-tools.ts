@@ -193,11 +193,6 @@ export function createUIInteractionTools(
                   type: "string",
                   description: "Optional help text shown below the label",
                 },
-                required: {
-                  type: "boolean",
-                  description: "Whether the field must be filled (default: false)",
-                  default: false,
-                },
                 placeholder: {
                   type: "string",
                   description: "Placeholder text for text/textarea/select fields",

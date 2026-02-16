@@ -32,7 +32,6 @@ export type FormField = {
   label: string;
   type: "text" | "textarea" | "select" | "toggle" | "date" | "slider";
   description?: string;
-  required?: boolean;
   placeholder?: string;
   options?: FormFieldOption[];
   defaultValue?: string | boolean | number;
@@ -85,6 +84,7 @@ export function FormInteraction({
   );
   const [activeField, setActiveField] = useState<string | null>(null);
   const [openDateField, setOpenDateField] = useState<string | null>(null);
+  const [openSelectField, setOpenSelectField] = useState<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const setValue = useCallback((name: string, value: any) => {
@@ -93,16 +93,6 @@ export function FormInteraction({
 
   const handleSubmit = useCallback(() => {
     if (isSubmitting) return;
-
-    // Validate required fields
-    for (const field of fields) {
-      if (field.required && field.type !== "toggle" && field.type !== "slider") {
-        const val = values[field.name];
-        if (!val || (typeof val === "string" && !val.trim())) {
-          return;
-        }
-      }
-    }
 
     setIsSubmitting(true);
 
@@ -131,6 +121,8 @@ export function FormInteraction({
       setValue(field.name, !values[field.name]);
     } else if (field.type === "date") {
       setOpenDateField(field.name);
+    } else if (field.type === "select") {
+      setOpenSelectField(field.name);
     } else {
       const el = inputRefs.current[field.name];
       if (el) el.focus();
@@ -187,7 +179,7 @@ export function FormInteraction({
       <div className="rounded-xl bg-sidebar dark:bg-card p-1 mb-3 flex flex-col gap-0.5">
         {fields.map((field, fieldIndex) => {
           const isStacked = field.type === "textarea" || field.type === "slider";
-          const isActive = activeField === field.name || openDateField === field.name;
+          const isActive = activeField === field.name || openDateField === field.name || openSelectField === field.name;
 
           return (
             <div
@@ -206,9 +198,6 @@ export function FormInteraction({
               <div className={cn(isStacked ? "" : "shrink-0")}>
                 <span className="text-base">
                   {field.label}
-                  {field.required && (
-                    <span className="text-destructive ml-0.5">*</span>
-                  )}
                 </span>
                 {field.description && (
                   <p className="text-sm text-muted-foreground mt-0.5">
@@ -242,22 +231,23 @@ export function FormInteraction({
                   placeholder={field.placeholder}
                   disabled={isSubmitting}
                   rows={3}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 resize-y"
+                  className="w-full rounded-lg border-0 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 resize-y"
                 />
               )}
 
               {field.type === "select" && (
-                <div className="flex-1 flex justify-end" onClick={(e) => e.stopPropagation()}>
+                <div className="flex-1 flex justify-end">
                   <Select
                     value={values[field.name] || ""}
                     onValueChange={(val) => setValue(field.name, val)}
                     disabled={isSubmitting}
+                    open={openSelectField === field.name}
                     onOpenChange={(open) =>
-                      setActiveField(open ? field.name : null)
+                      setOpenSelectField(open ? field.name : null)
                     }
                   >
                     <SelectTrigger
-                      className="border-0 shadow-none bg-transparent text-base text-foreground/70 p-0 h-auto min-h-0 focus:ring-0 cursor-pointer [&>svg]:text-muted-foreground"
+                      className="border-0 shadow-none bg-transparent dark:bg-transparent dark:hover:bg-transparent text-base text-foreground/70 p-0 h-auto min-h-0 focus:ring-0 cursor-pointer [&>svg]:text-muted-foreground"
                     >
                       <SelectValue placeholder={field.placeholder || "Select..."} />
                     </SelectTrigger>
@@ -311,7 +301,7 @@ export function FormInteraction({
                     step={field.step ?? 1}
                     disabled={isSubmitting}
                     onValueChange={([v]) => setValue(field.name, v)}
-                    className="flex-1"
+                    className="flex-1 [&_[data-slot=slider-range]]:bg-neutral-500 [&_[data-slot=slider-thumb]]:border-neutral-500"
                   />
                   <span className="text-sm tabular-nums w-10 text-right text-muted-foreground">
                     {values[field.name] ?? field.min ?? 0}
@@ -385,18 +375,7 @@ export function FormInteraction({
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={
-            isSubmitting ||
-            fields.some(
-              (f) =>
-                f.required &&
-                f.type !== "toggle" &&
-                f.type !== "slider" &&
-                (!values[f.name] ||
-                  (typeof values[f.name] === "string" &&
-                    !values[f.name].trim()))
-            )
-          }
+          disabled={isSubmitting}
           size="sm"
           className="rounded-lg [corner-shape:round]"
         >
