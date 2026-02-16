@@ -1002,26 +1002,9 @@ const ChatBotDemo = () => {
             if (message.role === "user" && message.parts.length > 0 && message.parts[0].type === "text") {
               const text = message.parts[0].text || "";
 
-              // Weather tool: parse persisted tool result and render a WeatherCard
-              // Skip if the next message is also a tool result with display_weather (deduplicate retries)
+              // Display tool results are rendered via the interaction system
+              // (persisted in localStorage), not from [Tool Execution Results] messages
               if (text.includes("[Tool Execution Results]") && text.includes("display_weather")) {
-                const msgIdx = messages.indexOf(message);
-                const nextMsg = messages[msgIdx + 1];
-                const nextText = nextMsg?.role === "user" && nextMsg?.parts?.[0]?.text;
-                if (nextText && nextText.includes("[Tool Execution Results]") && nextText.includes("display_weather")) {
-                  return null;
-                }
-                try {
-                  const weatherMatch = text.match(/Tool "display_weather" returned: (.+)/);
-                  if (weatherMatch) {
-                    const weatherData = JSON.parse(weatherMatch[1]);
-                    return (
-                      <div key={message.id}>
-                        <WeatherCard data={weatherData} />
-                      </div>
-                    );
-                  }
-                } catch {}
                 return null;
               }
 
@@ -1058,54 +1041,50 @@ const ChatBotDemo = () => {
                     </div>
                   );
                 }
-                // Fallback: parse result from persisted message (e.g. after conversation reload)
+                // Fallback: parse result from persisted message and render the
+                // same components used during the live session for consistent styling.
                 try {
-                  // Choice fallback
                   const choiceMatch = text.match(/Tool "prompt_user_choice" returned: (.+)/);
                   if (choiceMatch) {
                     const parsed = JSON.parse(choiceMatch[1]);
-                    const answer = Array.isArray(parsed.selected) ? parsed.selected : [parsed.selected];
-                    const title = parsed._meta?.title;
+                    const meta = parsed._meta || {};
                     return (
-                      <div key={message.id} className="my-4 max-w-2xl">
-                        {title && (
-                          <div className="mb-2">
-                            <h3 className="text-base font-medium text-muted-foreground">{title}</h3>
-                          </div>
-                        )}
-                        <div className="rounded-xl bg-sidebar dark:bg-card px-4 py-3">
-                          <div className="text-base font-medium">
-                            {answer.join(", ")}
-                          </div>
-                        </div>
+                      <div key={message.id}>
+                        <ChoiceInteraction
+                          id={message.id}
+                          title={meta.title || ""}
+                          description={meta.description}
+                          options={meta.options || []}
+                          allowMultiple={meta.allowMultiple}
+                          resolved={true}
+                          result={parsed}
+                        />
                       </div>
                     );
                   }
-                  // Form fallback
                   const formMatch = text.match(/Tool "prompt_user_form" returned: (.+)/);
                   if (formMatch) {
                     const parsed = JSON.parse(formMatch[1]);
-                    const title = parsed._meta?.title;
-                    const values = parsed.values || {};
+                    const meta = parsed._meta || {};
                     return (
-                      <div key={message.id} className="my-4 max-w-2xl">
-                        {title && (
-                          <div className="mb-2">
-                            <h3 className="text-base font-medium text-muted-foreground">{title}</h3>
-                          </div>
-                        )}
-                        <div className="rounded-xl bg-sidebar dark:bg-card px-4 py-3 space-y-1">
-                          {Object.entries(values).map(([key, val]) => (
-                            <div key={key} className="text-base">
-                              <span className="text-muted-foreground">{key}:</span>{" "}
-                              <span className="font-medium">{String(val)}</span>
-                            </div>
-                          ))}
-                        </div>
+                      <div key={message.id}>
+                        <FormInteraction
+                          id={message.id}
+                          title={meta.title || ""}
+                          description={meta.description}
+                          fields={meta.fields || []}
+                          resolved={true}
+                          result={parsed}
+                        />
                       </div>
                     );
                   }
                 } catch {}
+                return null;
+              }
+
+              // Hide remaining [Tool Execution Results] (server-side tools, etc.)
+              if (text.includes("[Tool Execution Results]")) {
                 return null;
               }
             }

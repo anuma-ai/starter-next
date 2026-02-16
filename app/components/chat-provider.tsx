@@ -631,18 +631,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           // Supports both flat format (name/execute) and SDK ToolConfig
           // format (function.name/executor).
           onToolCall: async (toolCall: { id: string; name: string; arguments: Record<string, any> }, tools: any[]) => {
-            // Find the matching tool (handle both flat and nested name formats)
             const tool = tools.find((t: any) =>
               (t.function?.name || t.name) === toolCall.name
             );
+            // Skip server-side tools (not in clientTools) and auto-executed
+            // tools (already handled by SDK's internal tool loop)
+            if (!tool || tool.autoExecute) return undefined;
             const executor = tool?.executor || tool?.execute;
-            if (!tool || !executor) {
-              return { error: `Tool ${toolCall.name} not found` };
-            }
-
+            if (!executor) return undefined;
             try {
-              const result = await executor(toolCall.arguments);
-              return result;
+              return await executor(toolCall.arguments);
             } catch (error) {
               return { error: String(error) };
             }

@@ -99,7 +99,12 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
       args.options.every((o: any) => o.value && o.label),
     mapResult: (result: any, args: any) => ({
       ...result,
-      _meta: { title: args.title },
+      _meta: {
+        title: args.title,
+        description: args.description,
+        options: args.options,
+        allowMultiple: args.allowMultiple,
+      },
     }),
   });
 
@@ -192,7 +197,11 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
     },
     mapResult: (result: any, args: any) => ({
       ...result,
-      _meta: { title: args.title },
+      _meta: {
+        title: args.title,
+        description: args.description,
+        fields: args.fields,
+      },
     }),
   });
 
