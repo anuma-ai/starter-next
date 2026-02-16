@@ -9,6 +9,7 @@ import type { FormField } from "@/components/chat/form-interaction";
 // Type for UI interaction context (will be injected when creating tools)
 type UIInteractionContext = {
   createInteraction: (id: string, type: "choice" | "form", data: any) => Promise<any>;
+  createDisplayInteraction: (id: string, displayType: string, data: any, result: any) => void;
 };
 
 // Arguments for prompt_user_choice tool
@@ -36,6 +37,22 @@ export type PromptUserFormArgs = {
 export type PromptUserFormResult =
   | { values: Record<string, any> }
   | { cancelled: true };
+
+// Result from display_weather tool
+export type DisplayWeatherResult = {
+  location: string;
+  country?: string;
+  temperature: number;
+  apparentTemperature: number;
+  humidity: number;
+  windSpeed: number;
+  weatherCode: number;
+  isDay: boolean;
+  _meta?: { location: string };
+} | {
+  error: string;
+  _meta?: { location: string };
+};
 
 /**
  * Create UI interaction tools for the chat.
@@ -275,6 +292,84 @@ export function createUIInteractionTools(
           return { ...result, _meta: { title: args.title } };
         } catch (error) {
           return { cancelled: true };
+        }
+      },
+    },
+    {
+      type: "function",
+      name: "display_weather",
+      description:
+        "Fetches and displays current weather as a visual card in the chat. ALWAYS call this tool when the user asks about weather, even if you already have weather data from another tool. This tool renders a rich visual card that is much better than plain text.",
+      parameters: {
+        type: "object",
+        properties: {
+          location: {
+            type: "string",
+            description:
+              "City name or place to get weather for (e.g., 'London', 'New York', 'Tokyo')",
+          },
+        },
+        required: ["location"],
+      },
+      execute: async (args: { location: string }): Promise<DisplayWeatherResult> => {
+        if (!args.location || typeof args.location !== "string") {
+          return { error: "No location provided", _meta: { location: "" } };
+        }
+
+        try {
+          // Geocode the location
+          const geoRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(args.location)}&count=1&language=en&format=json`
+          );
+          const geoData = await geoRes.json();
+
+          if (!geoData.results || geoData.results.length === 0) {
+            const errorResult: DisplayWeatherResult = {
+              error: `Location not found: ${args.location}`,
+              _meta: { location: args.location },
+            };
+            return errorResult;
+          }
+
+          const { latitude, longitude, name, country } = geoData.results[0];
+
+          // Fetch current weather
+          const weatherRes = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day&timezone=auto`
+          );
+          const weatherData = await weatherRes.json();
+          const current = weatherData.current;
+
+          const result: DisplayWeatherResult = {
+            location: name,
+            country,
+            temperature: current.temperature_2m,
+            apparentTemperature: current.apparent_temperature,
+            humidity: current.relative_humidity_2m,
+            windSpeed: current.wind_speed_10m,
+            weatherCode: current.weather_code,
+            isDay: current.is_day === 1,
+            _meta: { location: args.location },
+          };
+
+          // Store the result as a display interaction for rendering
+          const context = getContext();
+          if (context) {
+            const interactionId = `weather_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            context.createDisplayInteraction(
+              interactionId,
+              "weather",
+              { afterMessageId: getLastMessageId?.() },
+              result
+            );
+          }
+
+          return result;
+        } catch {
+          return {
+            error: "Failed to fetch weather data",
+            _meta: { location: args.location },
+          };
         }
       },
     },

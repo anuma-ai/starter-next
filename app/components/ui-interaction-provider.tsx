@@ -15,7 +15,7 @@ import {
  */
 type PendingInteraction = {
   id: string;
-  type: "choice" | "form";
+  type: "choice" | "form" | "display";
   data: any;
   resolve: (result: any) => void;
   reject: (error: Error) => void;
@@ -30,6 +30,7 @@ type PendingInteraction = {
 type UIInteractionContextValue = {
   pendingInteractions: Map<string, PendingInteraction>;
   createInteraction: (id: string, type: "choice" | "form", data: any) => Promise<any>;
+  createDisplayInteraction: (id: string, displayType: string, data: any, result: any) => void;
   resolveInteraction: (id: string, result: any) => void;
   cancelInteraction: (id: string) => void;
   clearInteractions: () => void;
@@ -123,6 +124,36 @@ export function UIInteractionProvider({ children }: UIInteractionProviderProps) 
   );
 
   /**
+   * Create a display-only interaction that is already resolved.
+   * Used for rendering rich components (e.g. weather cards) without blocking the tool call.
+   */
+  const createDisplayInteraction = useCallback(
+    (id: string, displayType: string, data: any, result: any) => {
+      setPendingInteractions((prev) => {
+        const next = new Map(prev);
+        // Remove any existing display interaction of the same displayType to avoid duplicates
+        for (const [key, value] of next.entries()) {
+          if (value.type === "display" && value.data?.displayType === displayType) {
+            next.delete(key);
+          }
+        }
+        next.set(id, {
+          id,
+          type: "display",
+          data: { ...data, displayType },
+          resolve: () => {},
+          reject: () => {},
+          createdAt: Date.now(),
+          resolved: true,
+          result,
+        });
+        return next;
+      });
+    },
+    []
+  );
+
+  /**
    * Resolve a pending interaction with a result
    */
   const resolveInteraction = useCallback((id: string, result: any) => {
@@ -174,11 +205,12 @@ export function UIInteractionProvider({ children }: UIInteractionProviderProps) 
     () => ({
       pendingInteractions,
       createInteraction,
+      createDisplayInteraction,
       resolveInteraction,
       cancelInteraction,
       clearInteractions,
     }),
-    [pendingInteractions, createInteraction, resolveInteraction, cancelInteraction, clearInteractions]
+    [pendingInteractions, createInteraction, createDisplayInteraction, resolveInteraction, cancelInteraction, clearInteractions]
   );
 
   return (
