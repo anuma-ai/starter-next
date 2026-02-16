@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useUIInteraction } from "@/app/components/ui-interaction-provider";
@@ -75,6 +75,8 @@ export function FormInteraction({
   const [submittedValues, setSubmittedValues] = useState<Record<string, any>>(
     {}
   );
+  const [activeField, setActiveField] = useState<string | null>(null);
+  const inputRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const setValue = useCallback((name: string, value: any) => {
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -114,6 +116,16 @@ export function FormInteraction({
     cancelInteraction(id);
   }, [id, cancelInteraction, isSubmitting]);
 
+  const handleRowClick = useCallback((field: FormField) => {
+    if (isSubmitting) return;
+    if (field.type === "toggle") {
+      setValue(field.name, !values[field.name]);
+    } else {
+      const el = inputRefs.current[field.name];
+      if (el) el.focus();
+    }
+  }, [isSubmitting, setValue, values]);
+
   // Summary view after submission
   if (submitted || resolved) {
     const displayValues =
@@ -126,7 +138,7 @@ export function FormInteraction({
             {title}
           </h3>
         </div>
-        <div className="rounded-xl bg-sidebar dark:bg-card px-4 py-3 space-y-1">
+        <div className="rounded-xl bg-sidebar dark:bg-card divide-y divide-border/50">
           {fields.map((field) => {
             const val = displayValues[field.name];
             if (val === undefined || val === "" || val === false || (field.type !== "slider" && val === 0)) return null;
@@ -139,9 +151,9 @@ export function FormInteraction({
                     ? field.options?.find((o) => o.value === val)?.label || val
                     : val;
             return (
-              <div key={field.name} className="text-base">
-                <span className="text-muted-foreground">{field.label}:</span>{" "}
-                <span className="font-medium">{displayVal}</span>
+              <div key={field.name} className="flex items-center justify-between px-4 py-3 text-sm">
+                <span className="text-muted-foreground">{field.label}</span>
+                <span className="font-medium text-right">{displayVal}</span>
               </div>
             );
           })}
@@ -161,137 +173,177 @@ export function FormInteraction({
       </div>
 
       {/* Fields */}
-      <div className="rounded-xl bg-sidebar dark:bg-card p-4 mb-3 space-y-4">
-        {fields.map((field) => (
-          <div key={field.name}>
-            <label className="text-sm font-medium block mb-1">
-              {field.label}
-              {field.required && (
-                <span className="text-destructive ml-0.5">*</span>
+      <div className="rounded-xl bg-sidebar dark:bg-card p-1 mb-3">
+        {fields.map((field) => {
+          const isStacked = field.type === "textarea" || field.type === "slider";
+          const isActive = activeField === field.name;
+
+          return (
+            <div
+              key={field.name}
+              onClick={() => handleRowClick(field)}
+              className={cn(
+                "px-4 py-3 cursor-pointer rounded-lg transition-all",
+                "hover:bg-white/80 dark:hover:bg-muted/50",
+                "active:scale-[0.99]",
+                isActive && "bg-white/80 dark:bg-muted/50",
+                isStacked ? "space-y-2" : "flex items-center gap-3",
+                isSubmitting && "opacity-50 cursor-not-allowed"
               )}
-            </label>
-            {field.description && (
-              <p className="text-xs text-muted-foreground mb-1.5">
-                {field.description}
-              </p>
-            )}
-
-            {field.type === "text" && (
-              <input
-                type="text"
-                value={values[field.name] || ""}
-                onChange={(e) => setValue(field.name, e.target.value)}
-                placeholder={field.placeholder}
-                disabled={isSubmitting}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-              />
-            )}
-
-            {field.type === "textarea" && (
-              <textarea
-                value={values[field.name] || ""}
-                onChange={(e) => setValue(field.name, e.target.value)}
-                placeholder={field.placeholder}
-                disabled={isSubmitting}
-                rows={3}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 resize-y"
-              />
-            )}
-
-            {field.type === "select" && (
-              <select
-                value={values[field.name] || ""}
-                onChange={(e) => setValue(field.name, e.target.value)}
-                disabled={isSubmitting}
-                className={cn(
-                  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50",
-                  !values[field.name] && "text-muted-foreground"
-                )}
-              >
-                <option value="">
-                  {field.placeholder || "Select..."}
-                </option>
-                {field.options?.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {field.type === "toggle" && (
-              <button
-                type="button"
-                role="switch"
-                aria-checked={!!values[field.name]}
-                onClick={() => setValue(field.name, !values[field.name])}
-                disabled={isSubmitting}
-                className={cn(
-                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-                  values[field.name] ? "bg-primary" : "bg-input"
-                )}
-              >
-                <span
-                  className={cn(
-                    "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                    values[field.name] ? "translate-x-5" : "translate-x-0"
+            >
+              {/* Label */}
+              <div className={cn(isStacked ? "" : "shrink-0")}>
+                <span className="text-base">
+                  {field.label}
+                  {field.required && (
+                    <span className="text-destructive ml-0.5">*</span>
                   )}
-                />
-              </button>
-            )}
-
-            {field.type === "slider" && (
-              <div className="flex items-center gap-3 pt-1">
-                <Slider
-                  value={[values[field.name] ?? field.min ?? 0]}
-                  min={field.min ?? 0}
-                  max={field.max ?? 100}
-                  step={field.step ?? 1}
-                  disabled={isSubmitting}
-                  onValueChange={([v]) => setValue(field.name, v)}
-                  className="flex-1"
-                />
-                <span className="text-sm tabular-nums w-10 text-right">
-                  {values[field.name] ?? field.min ?? 0}
                 </span>
+                {field.description && (
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {field.description}
+                  </p>
+                )}
               </div>
-            )}
 
-            {field.type === "date" && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
+              {/* Input */}
+              {field.type === "text" && (
+                <input
+                  ref={(el) => { inputRefs.current[field.name] = el; }}
+                  type="text"
+                  value={values[field.name] || ""}
+                  onChange={(e) => setValue(field.name, e.target.value)}
+                  onFocus={() => setActiveField(field.name)}
+                  onBlur={() => setActiveField(null)}
+                  placeholder={field.placeholder}
+                  disabled={isSubmitting}
+                  className="flex-1 min-w-0 bg-transparent text-base text-right placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+                />
+              )}
+
+              {field.type === "textarea" && (
+                <textarea
+                  ref={(el) => { inputRefs.current[field.name] = el; }}
+                  value={values[field.name] || ""}
+                  onChange={(e) => setValue(field.name, e.target.value)}
+                  onFocus={() => setActiveField(field.name)}
+                  onBlur={() => setActiveField(null)}
+                  placeholder={field.placeholder}
+                  disabled={isSubmitting}
+                  rows={3}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 resize-y"
+                />
+              )}
+
+              {field.type === "select" && (
+                <select
+                  ref={(el) => { inputRefs.current[field.name] = el; }}
+                  value={values[field.name] || ""}
+                  onChange={(e) => setValue(field.name, e.target.value)}
+                  onFocus={() => setActiveField(field.name)}
+                  onBlur={() => setActiveField(null)}
+                  disabled={isSubmitting}
+                  className={cn(
+                    "flex-1 min-w-0 bg-transparent text-base text-right appearance-none focus:outline-none disabled:opacity-50 cursor-pointer",
+                    !values[field.name] && "text-muted-foreground"
+                  )}
+                >
+                  <option value="">
+                    {field.placeholder || "Select..."}
+                  </option>
+                  {field.options?.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {field.type === "toggle" && (
+                <div className="flex-1 flex justify-end">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!!values[field.name]}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setValue(field.name, !values[field.name]);
+                    }}
                     disabled={isSubmitting}
-                    data-empty={!values[field.name]}
-                    className="data-[empty=true]:text-muted-foreground w-full justify-start text-left font-normal"
+                    className={cn(
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                      values[field.name] ? "bg-primary" : "bg-input"
+                    )}
                   >
-                    <CalendarIcon className="size-4" />
-                    {values[field.name]
-                      ? format(new Date(values[field.name]), "PPP")
-                      : <span>{field.placeholder || "Pick a date"}</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={
-                      values[field.name]
-                        ? new Date(values[field.name])
-                        : undefined
-                    }
-                    onSelect={(date) =>
-                      setValue(
-                        field.name,
-                        date ? date.toISOString().split("T")[0] : ""
-                      )
-                    }
+                    <span
+                      className={cn(
+                        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                        values[field.name] ? "translate-x-5" : "translate-x-0"
+                      )}
+                    />
+                  </button>
+                </div>
+              )}
+
+              {field.type === "slider" && (
+                <div className="flex items-center gap-3">
+                  <Slider
+                    value={[values[field.name] ?? field.min ?? 0]}
+                    min={field.min ?? 0}
+                    max={field.max ?? 100}
+                    step={field.step ?? 1}
+                    disabled={isSubmitting}
+                    onValueChange={([v]) => setValue(field.name, v)}
+                    className="flex-1"
                   />
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
-        ))}
+                  <span className="text-sm tabular-nums w-10 text-right text-muted-foreground">
+                    {values[field.name] ?? field.min ?? 0}
+                  </span>
+                </div>
+              )}
+
+              {field.type === "date" && (
+                <div className="flex-1 flex justify-end">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        ref={(el) => { inputRefs.current[field.name] = el; }}
+                        type="button"
+                        disabled={isSubmitting}
+                        onFocus={() => setActiveField(field.name)}
+                        onBlur={() => setActiveField(null)}
+                        className={cn(
+                          "text-base focus:outline-none disabled:opacity-50 cursor-pointer",
+                          values[field.name] ? "text-foreground" : "text-muted-foreground"
+                        )}
+                      >
+                        {values[field.name]
+                          ? format(new Date(values[field.name]), "PPP")
+                          : field.placeholder || "Pick a date"}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          values[field.name]
+                            ? new Date(values[field.name])
+                            : undefined
+                        }
+                        onSelect={(date) =>
+                          setValue(
+                            field.name,
+                            date ? date.toISOString().split("T")[0] : ""
+                          )
+                        }
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Footer buttons */}
