@@ -76,6 +76,7 @@ export function FormInteraction({
     {}
   );
   const [activeField, setActiveField] = useState<string | null>(null);
+  const [openDateField, setOpenDateField] = useState<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const setValue = useCallback((name: string, value: any) => {
@@ -120,6 +121,8 @@ export function FormInteraction({
     if (isSubmitting) return;
     if (field.type === "toggle") {
       setValue(field.name, !values[field.name]);
+    } else if (field.type === "date") {
+      setOpenDateField(field.name);
     } else {
       const el = inputRefs.current[field.name];
       if (el) el.focus();
@@ -173,10 +176,10 @@ export function FormInteraction({
       </div>
 
       {/* Fields */}
-      <div className="rounded-xl bg-sidebar dark:bg-card p-1 mb-3">
+      <div className="rounded-xl bg-sidebar dark:bg-card p-1 mb-3 space-y-0.5">
         {fields.map((field) => {
           const isStacked = field.type === "textarea" || field.type === "slider";
-          const isActive = activeField === field.name;
+          const isActive = activeField === field.name || openDateField === field.name;
 
           return (
             <div
@@ -186,7 +189,7 @@ export function FormInteraction({
                 "px-4 py-3 cursor-pointer rounded-lg transition-all",
                 "hover:bg-white/80 dark:hover:bg-muted/50",
                 "active:scale-[0.99]",
-                isActive && "bg-white/80 dark:bg-muted/50",
+                isActive && "bg-white/40 dark:bg-muted/30",
                 isStacked ? "space-y-2" : "flex items-center gap-3",
                 isSubmitting && "opacity-50 cursor-not-allowed"
               )}
@@ -304,14 +307,16 @@ export function FormInteraction({
 
               {field.type === "date" && (
                 <div className="flex-1 flex justify-end">
-                  <Popover>
+                  <Popover
+                    open={openDateField === field.name}
+                    onOpenChange={(open) =>
+                      setOpenDateField(open ? field.name : null)
+                    }
+                  >
                     <PopoverTrigger asChild>
                       <button
-                        ref={(el) => { inputRefs.current[field.name] = el; }}
                         type="button"
                         disabled={isSubmitting}
-                        onFocus={() => setActiveField(field.name)}
-                        onBlur={() => setActiveField(null)}
                         className={cn(
                           "text-base focus:outline-none disabled:opacity-50 cursor-pointer",
                           values[field.name] ? "text-foreground" : "text-muted-foreground"
@@ -322,7 +327,11 @@ export function FormInteraction({
                           : field.placeholder || "Pick a date"}
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
+                    <PopoverContent
+                      className="w-auto p-0 rounded-xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+                      align="end"
+                      onFocusOutside={(e) => e.preventDefault()}
+                    >
                       <Calendar
                         mode="single"
                         selected={
@@ -330,12 +339,13 @@ export function FormInteraction({
                             ? new Date(values[field.name])
                             : undefined
                         }
-                        onSelect={(date) =>
+                        onSelect={(date) => {
                           setValue(
                             field.name,
                             date ? date.toISOString().split("T")[0] : ""
-                          )
-                        }
+                          );
+                          setOpenDateField(null);
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
