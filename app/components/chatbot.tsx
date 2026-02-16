@@ -41,13 +41,19 @@ import {
 import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
-import { useUIInteraction } from "./ui-interaction-provider";
+import { useUIInteraction } from "@reverbia/sdk/react";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { FormInteraction } from "@/components/chat/form-interaction";
 import { WeatherCard } from "@/components/chat/weather-card";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
+import {
+  collectDisplayInteractions,
+  getDisplaysForMessage,
+  getUnanchoredDisplays,
+  useDisplayPersistence,
+} from "@/lib/display-interaction";
 
 function getErrorTitle(error: string): string {
   const e = error.toLowerCase();
@@ -346,6 +352,9 @@ const ChatBotDemo = () => {
   useEffect(() => {
     uiInteraction.clearInteractions();
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist display interactions to localStorage so they survive page refresh
+  useDisplayPersistence(uiInteraction, conversationId, messages);
 
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
@@ -938,9 +947,7 @@ const ChatBotDemo = () => {
             const renderedInlineIds = new Set<string>();
 
             // Display-only interactions (e.g. weather cards)
-            const displayInteractions = Array.from(uiInteraction.pendingInteractions.values())
-              .filter(i => i.type === "display" && i.resolved)
-              .sort((a, b) => a.createdAt - b.createdAt);
+            const displayInteractions = collectDisplayInteractions(uiInteraction.pendingInteractions);
             const renderedDisplayIds = new Set<string>();
 
             return messages.map((message: any) => {
@@ -948,26 +955,9 @@ const ChatBotDemo = () => {
             if (message.role === "user" && message.parts.length > 0 && message.parts[0].type === "text") {
               const text = message.parts[0].text || "";
 
-              // Weather tool: parse persisted tool result and render a WeatherCard
-              // Skip if the next message is also a tool result with display_weather (deduplicate retries)
+              // Display tool results are rendered via the interaction system
+              // (persisted in localStorage), not from [Tool Execution Results] messages
               if (text.includes("[Tool Execution Results]") && text.includes("display_weather")) {
-                const msgIdx = messages.indexOf(message);
-                const nextMsg = messages[msgIdx + 1];
-                const nextText = nextMsg?.role === "user" && nextMsg?.parts?.[0]?.text;
-                if (nextText && nextText.includes("[Tool Execution Results]") && nextText.includes("display_weather")) {
-                  return null;
-                }
-                try {
-                  const weatherMatch = text.match(/Tool "display_weather" returned: (.+)/);
-                  if (weatherMatch) {
-                    const weatherData = JSON.parse(weatherMatch[1]);
-                    return (
-                      <div key={message.id}>
-                        <WeatherCard data={weatherData} />
-                      </div>
-                    );
-                  }
-                } catch {}
                 return null;
               }
 
@@ -1004,54 +994,50 @@ const ChatBotDemo = () => {
                     </div>
                   );
                 }
-                // Fallback: parse result from persisted message (e.g. after conversation reload)
+                // Fallback: parse result from persisted message and render the
+                // same components used during the live session for consistent styling.
                 try {
-                  // Choice fallback
                   const choiceMatch = text.match(/Tool "prompt_user_choice" returned: (.+)/);
                   if (choiceMatch) {
                     const parsed = JSON.parse(choiceMatch[1]);
-                    const answer = Array.isArray(parsed.selected) ? parsed.selected : [parsed.selected];
-                    const title = parsed._meta?.title;
+                    const meta = parsed._meta || {};
                     return (
-                      <div key={message.id} className="my-4 max-w-2xl">
-                        {title && (
-                          <div className="mb-2">
-                            <h3 className="text-base font-medium text-muted-foreground">{title}</h3>
-                          </div>
-                        )}
-                        <div className="rounded-xl bg-sidebar dark:bg-card px-4 py-3">
-                          <div className="text-base font-medium">
-                            {answer.join(", ")}
-                          </div>
-                        </div>
+                      <div key={message.id}>
+                        <ChoiceInteraction
+                          id={message.id}
+                          title={meta.title || ""}
+                          description={meta.description}
+                          options={meta.options || []}
+                          allowMultiple={meta.allowMultiple}
+                          resolved={true}
+                          result={parsed}
+                        />
                       </div>
                     );
                   }
-                  // Form fallback
                   const formMatch = text.match(/Tool "prompt_user_form" returned: (.+)/);
                   if (formMatch) {
                     const parsed = JSON.parse(formMatch[1]);
-                    const title = parsed._meta?.title;
-                    const values = parsed.values || {};
+                    const meta = parsed._meta || {};
                     return (
-                      <div key={message.id} className="my-4 max-w-2xl">
-                        {title && (
-                          <div className="mb-2">
-                            <h3 className="text-base font-medium text-muted-foreground">{title}</h3>
-                          </div>
-                        )}
-                        <div className="rounded-xl bg-sidebar dark:bg-card px-4 py-3 space-y-1">
-                          {Object.entries(values).map(([key, val]) => (
-                            <div key={key} className="text-base">
-                              <span className="text-muted-foreground">{key}:</span>{" "}
-                              <span className="font-medium">{String(val)}</span>
-                            </div>
-                          ))}
-                        </div>
+                      <div key={message.id}>
+                        <FormInteraction
+                          id={message.id}
+                          title={meta.title || ""}
+                          description={meta.description}
+                          fields={meta.fields || []}
+                          resolved={true}
+                          result={parsed}
+                        />
                       </div>
                     );
                   }
                 } catch {}
+                return null;
+              }
+
+              // Hide remaining [Tool Execution Results] (server-side tools, etc.)
+              if (text.includes("[Tool Execution Results]")) {
                 return null;
               }
             }
@@ -1291,15 +1277,12 @@ const ChatBotDemo = () => {
             );
 
             // Display interactions anchored to this message (e.g. weather cards)
-            const displaysBeforeThisMsg = displayInteractions.filter(
-              i => !renderedDisplayIds.has(i.id) && i.data.afterMessageId === message.id
-            );
+            const displaysBeforeThisMsg = getDisplaysForMessage(message.id, displayInteractions, renderedDisplayIds);
 
             const hasInjections = interactionsBeforeThisMsg.length > 0 || displaysBeforeThisMsg.length > 0;
 
             if (hasInjections) {
               interactionsBeforeThisMsg.forEach(i => renderedInlineIds.add(i.id));
-              displaysBeforeThisMsg.forEach(i => renderedDisplayIds.add(i.id));
               return (
                 <Fragment key={message.id}>
                   {interactionsBeforeThisMsg.map(interaction =>
@@ -1414,15 +1397,9 @@ const ChatBotDemo = () => {
                 />
               )
             )}
-          {/* Fallback: render display interactions at bottom when anchor message not found */}
-          {Array.from(uiInteraction.pendingInteractions.values())
-            .filter((i: any) => i.type === "display" && i.resolved)
-            .filter((i: any) => {
-              const anchorId = i.data.afterMessageId;
-              if (!anchorId) return true;
-              return !messages.some((m: any) => m.id === anchorId);
-            })
-            .map((interaction: any) =>
+          {/* Render display interactions at bottom when anchor message not found */}
+          {getUnanchoredDisplays(uiInteraction.pendingInteractions, messages)
+            .map((interaction) =>
               interaction.data.displayType === "weather" ? (
                 <WeatherCard key={interaction.id} data={interaction.result} />
               ) : null

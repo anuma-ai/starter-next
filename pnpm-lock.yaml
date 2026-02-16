@@ -93,8 +93,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.7)(react@19.2.3)
       '@reverbia/sdk':
-        specifier: 1.0.0-next.20260211142719
-        version: 1.0.0-next.20260211142719(31b00ea3b05c6c52cfef8c0271ab5abd)
+        specifier: 1.0.0-next.20260216165025
+        version: 1.0.0-next.20260216165025(31b00ea3b05c6c52cfef8c0271ab5abd)
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -2091,11 +2091,11 @@ packages:
   '@reown/appkit@1.8.9':
     resolution: {integrity: sha512-e3N2DAzf3Xv3jnoD8IsUo0/Yfwuhk7npwJBe1+9rDJIRwgPsyYcCLD4gKPDFC5IUIfOLqK7YtGOh9oPEUnIWpw==}
 
-  '@reverbia/portal@1.0.0-next.20260207155946':
-    resolution: {integrity: sha512-Oi9VSAyVzqwjYOYa2usdI0y/ot1XUbSixBxM2FDilWscR+hGCflXcDdqKDT2F+1mvJwoAr0M5hpn+M/q44+OVw==}
+  '@reverbia/portal@1.0.0-next.20260211161039':
+    resolution: {integrity: sha512-8CbNRV1LHhPn9NzsBK2+lPvN2WFzzl9V+iXFCPdHMBiaz8WuBRL3DtBeIzyergY14O6izRBLOVVwvhxr75NWPQ==}
 
-  '@reverbia/sdk@1.0.0-next.20260211142719':
-    resolution: {integrity: sha512-LCtmVBg7E4LS0vpCcnV4EO+JcAEU5R1BhrhG2xd8bgLDZlLdnO6ECoSzTXtumPpJXBv8c9mVZARFA6G08a5HEg==}
+  '@reverbia/sdk@1.0.0-next.20260216165025':
+    resolution: {integrity: sha512-8dlc0BaELFaRNKwdbPxcqpnOEz40rAViHSBJTDpaDb1D1XmJ/Flo6Rl945ZcwEiz6vJwski4jU8aIn81lh4ZJw==}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -9920,11 +9920,11 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reverbia/portal@1.0.0-next.20260207155946': {}
+  '@reverbia/portal@1.0.0-next.20260211161039': {}
 
-  '@reverbia/sdk@1.0.0-next.20260211142719(31b00ea3b05c6c52cfef8c0271ab5abd)':
+  '@reverbia/sdk@1.0.0-next.20260216165025(31b00ea3b05c6c52cfef8c0271ab5abd)':
     dependencies:
-      '@reverbia/portal': 1.0.0-next.20260207155946
+      '@reverbia/portal': 1.0.0-next.20260211161039
       ai: 5.0.93(zod@4.3.5)
       jszip: 3.10.1
       mammoth: 1.11.0

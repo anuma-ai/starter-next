@@ -46,8 +46,8 @@ import type {
   ServerTool,
 } from "@reverbia/sdk/react";
 import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
+import { useUIInteraction } from "@reverbia/sdk/react";
 import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
-import { useUIInteraction } from "@/app/components/ui-interaction-provider";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -457,11 +457,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       requestDriveAccess
     );
 
-    // UI interaction tools (for prompting user with interactive UI)
-    const uiInteractionTools = createUIInteractionTools(
-      () => uiInteraction,
-      () => messagesRef.current.at(-1)?.id
-    );
+    // UI interaction tools (choice menus, forms, display cards)
+    const uiInteractionTools = createUIInteractionTools({
+      getContext: () => uiInteraction,
+      getLastMessageId: () => messagesRef.current.at(-1)?.id,
+    });
 
     const allTools = [...calendarTools, ...driveTools, ...uiInteractionTools];
 
@@ -627,18 +627,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       try {
         await baseChatState.handleSubmit(message, {
           ...options,
-          // Add onToolCall handler for client-side tool execution
+          // Add onToolCall handler for client-side tool execution.
+          // Supports both flat format (name/execute) and SDK ToolConfig
+          // format (function.name/executor).
           onToolCall: async (toolCall: { id: string; name: string; arguments: Record<string, any> }, tools: any[]) => {
-            // Find the matching tool
-            const tool = tools.find((t: any) => t.name === toolCall.name);
-            if (!tool || !tool.execute) {
-              return { error: `Tool ${toolCall.name} not found` };
-            }
-
+            const tool = tools.find((t: any) =>
+              (t.function?.name || t.name) === toolCall.name
+            );
+            // Skip server-side tools (not in clientTools) and auto-executed
+            // tools (already handled by SDK's internal tool loop)
+            if (!tool || tool.autoExecute) return undefined;
+            const executor = tool?.executor || tool?.execute;
+            if (!executor) return undefined;
             try {
-              // Execute the tool
-              const result = await tool.execute(toolCall.arguments);
-              return result;
+              return await executor(toolCall.arguments);
             } catch (error) {
               return { error: String(error) };
             }
