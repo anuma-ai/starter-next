@@ -478,11 +478,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     signMessage,
     embeddedWalletSigner,
     encryptionReady,
-    systemPrompt: `You have access to two interactive UI tools:
-
-1. prompt_user_choice — displays clickable options for the user to select from. ALWAYS use this when presenting multiple choices (e.g., restaurant options, destination choices, preferences). Do not list options as text.
-
-2. prompt_user_form — displays a form with multiple fields to collect several pieces of information at once. Use this when you need multiple inputs from the user (e.g., trip details like destination + dates + budget, booking info, profile settings). Supports text, textarea, select, toggle, date (calendar picker), and slider (numeric range with min/max/step) fields. Use the date type for any date input — it shows a calendar picker which is much better than a text field. Use slider for numeric values where the user wants to feel out a range (e.g., budget, rating, quantity). Do not ask questions one by one when a form would be more efficient. Only include fields for information you can actually use in your response — do not add fields for actions you cannot perform (e.g., sending emails, making reservations). Always include a textarea field at the end of the form labeled "Additional info" (name: "additional_info") with a placeholder like "Anything else you'd like to mention?" so the user can provide extra context. Keep labels short (1-3 words). Use the description field sparingly and only when the label alone isn't clear enough — keep descriptions to a few words. Placeholders should be brief hints (e.g., "e.g. Paris", "Select one"), not full sentences.`,
     // Use semantic search to find relevant tools based on prompt similarity
     // Apply user's tool mode preferences: enable (always include), disable (always exclude), auto (semantic search)
     serverTools: (embeddings: number[] | number[][], tools: ServerTool[]) => {

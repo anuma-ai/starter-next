@@ -9,6 +9,7 @@ import type { FormField } from "@/components/chat/form-interaction";
 // Type for UI interaction context (will be injected when creating tools)
 type UIInteractionContext = {
   createInteraction: (id: string, type: "choice" | "form", data: any) => Promise<any>;
+  createDisplayInteraction: (id: string, displayType: string, data: any, result: any) => void;
 };
 
 // Arguments for prompt_user_choice tool
@@ -37,6 +38,30 @@ export type PromptUserFormResult =
   | { values: Record<string, any> }
   | { cancelled: true };
 
+// Result from display_weather tool
+export type ForecastDay = {
+  date: string;
+  weatherCode: number;
+  temperatureMax: number;
+  temperatureMin: number;
+};
+
+export type DisplayWeatherResult = {
+  location: string;
+  country?: string;
+  temperature: number;
+  apparentTemperature: number;
+  humidity: number;
+  windSpeed: number;
+  weatherCode: number;
+  isDay: boolean;
+  forecast?: ForecastDay[];
+  _meta?: { location: string };
+} | {
+  error: string;
+  _meta?: { location: string };
+};
+
 /**
  * Create UI interaction tools for the chat.
  * These are client-side tools that execute locally and render UI inline.
@@ -53,7 +78,7 @@ export function createUIInteractionTools(
       type: "function",
       name: "prompt_user_choice",
       description:
-        "CRITICAL TIMING: When you need user input to proceed, call this tool FIRST before generating any response text. The tool will pause execution and wait for the user to select an option. After they choose, you will receive their selection and can then generate a response based on it. EXECUTION ORDER: 1) Call this tool to ask for input, 2) Wait for user selection, 3) Generate response using their choice. DO NOT generate explanatory text first and then call this tool - call it immediately when you need their decision. Use this for: restaurant choices, destination options, preference selection, category picking, etc.",
+        "ALWAYS use this tool instead of listing options as text whenever you want the user to pick from choices. This renders an interactive inline menu the user can click. Call this tool FIRST before generating any response text — do not list options as numbered text and then also call this tool. Examples: restaurant recommendations, travel destinations, preference selection, category picking, any scenario with 2+ options. After the user selects, you receive their choice and can respond based on it.",
       parameters: {
         type: "object",
         properties: {
@@ -159,7 +184,7 @@ export function createUIInteractionTools(
       type: "function",
       name: "prompt_user_form",
       description:
-        "CRITICAL TIMING: Call this tool FIRST before generating response text. Displays an interactive form inline in the chat to collect multiple pieces of information from the user at once. Use this instead of asking questions one by one. The form supports text inputs, textareas, dropdowns (select), and toggles. After the user fills out and submits the form, you will receive all their answers. Use this for: collecting trip details (destination, dates, budget), gathering profile info, configuration settings, booking details, etc.",
+        "ALWAYS use this tool instead of asking the user multiple questions as text. This renders an interactive inline form the user can fill out and submit. Use it whenever you need 2 or more pieces of information from the user — do not ask questions one by one in text. Supports text inputs, textareas, dropdowns (select), toggles, date pickers, and sliders. Call this tool FIRST before generating any response text. Examples: trip planning (destination, dates, budget), profile info, booking details, configuration settings. After the user submits, you receive all their answers at once.",
       parameters: {
         type: "object",
         properties: {
@@ -275,6 +300,93 @@ export function createUIInteractionTools(
           return { ...result, _meta: { title: args.title } };
         } catch (error) {
           return { cancelled: true };
+        }
+      },
+    },
+    {
+      type: "function",
+      name: "display_weather",
+      description:
+        "Fetches and displays current weather as a visual card in the chat. ALWAYS call this tool when the user asks about weather, even if you already have weather data from another tool. The card displays temperature, conditions, and a 7-day forecast visually — do NOT repeat this data in your text response. Just add a brief conversational comment if appropriate.",
+      parameters: {
+        type: "object",
+        properties: {
+          location: {
+            type: "string",
+            description:
+              "City name or place to get weather for (e.g., 'London', 'New York', 'Tokyo')",
+          },
+        },
+        required: ["location"],
+      },
+      execute: async (args: { location: string }): Promise<DisplayWeatherResult> => {
+        if (!args.location || typeof args.location !== "string") {
+          return { error: "No location provided", _meta: { location: "" } };
+        }
+
+        try {
+          // Geocode the location
+          const geoRes = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(args.location)}&count=1&language=en&format=json`
+          );
+          const geoData = await geoRes.json();
+
+          if (!geoData.results || geoData.results.length === 0) {
+            const errorResult: DisplayWeatherResult = {
+              error: `Location not found: ${args.location}`,
+              _meta: { location: args.location },
+            };
+            return errorResult;
+          }
+
+          const { latitude, longitude, name, country } = geoData.results[0];
+
+          // Fetch current weather + 7-day forecast
+          const weatherRes = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto`
+          );
+          const weatherData = await weatherRes.json();
+          const current = weatherData.current;
+          const daily = weatherData.daily;
+
+          const forecast: ForecastDay[] = daily?.time?.map((date: string, i: number) => ({
+            date,
+            weatherCode: daily.weather_code[i],
+            temperatureMax: daily.temperature_2m_max[i],
+            temperatureMin: daily.temperature_2m_min[i],
+          })) || [];
+
+          const result: DisplayWeatherResult = {
+            location: name,
+            country,
+            temperature: current.temperature_2m,
+            apparentTemperature: current.apparent_temperature,
+            humidity: current.relative_humidity_2m,
+            windSpeed: current.wind_speed_10m,
+            weatherCode: current.weather_code,
+            isDay: current.is_day === 1,
+            forecast,
+            _meta: { location: args.location },
+          };
+
+          // Store the result as a display interaction for rendering
+          const context = getContext();
+          if (context) {
+            const interactionId = `weather_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            context.createDisplayInteraction(
+              interactionId,
+              "weather",
+              { afterMessageId: getLastMessageId?.() },
+              result
+            );
+          }
+
+          return result;
+        } catch {
+          return {
+            error: "Failed to fetch weather data",
+            _meta: { location: args.location },
+          };
         }
       },
     },

@@ -44,6 +44,7 @@ import { useThinkingPanel } from "./thinking-panel-provider";
 import { useUIInteraction } from "./ui-interaction-provider";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { FormInteraction } from "@/components/chat/form-interaction";
+import { WeatherCard } from "@/components/chat/weather-card";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
@@ -936,10 +937,40 @@ const ChatBotDemo = () => {
             let resolvedIdx = 0;
             const renderedInlineIds = new Set<string>();
 
+            // Display-only interactions (e.g. weather cards)
+            const displayInteractions = Array.from(uiInteraction.pendingInteractions.values())
+              .filter(i => i.type === "display" && i.resolved)
+              .sort((a, b) => a.createdAt - b.createdAt);
+            const renderedDisplayIds = new Set<string>();
+
             return messages.map((message: any) => {
-            // At tool result message positions, render the resolved interaction instead
+            // At tool result message positions, render custom components instead of raw text
             if (message.role === "user" && message.parts.length > 0 && message.parts[0].type === "text") {
               const text = message.parts[0].text || "";
+
+              // Weather tool: parse persisted tool result and render a WeatherCard
+              // Skip if the next message is also a tool result with display_weather (deduplicate retries)
+              if (text.includes("[Tool Execution Results]") && text.includes("display_weather")) {
+                const msgIdx = messages.indexOf(message);
+                const nextMsg = messages[msgIdx + 1];
+                const nextText = nextMsg?.role === "user" && nextMsg?.parts?.[0]?.text;
+                if (nextText && nextText.includes("[Tool Execution Results]") && nextText.includes("display_weather")) {
+                  return null;
+                }
+                try {
+                  const weatherMatch = text.match(/Tool "display_weather" returned: (.+)/);
+                  if (weatherMatch) {
+                    const weatherData = JSON.parse(weatherMatch[1]);
+                    return (
+                      <div key={message.id}>
+                        <WeatherCard data={weatherData} />
+                      </div>
+                    );
+                  }
+                } catch {}
+                return null;
+              }
+
               if (text.includes("[Tool Execution Results]") && (text.includes("prompt_user_choice") || text.includes("prompt_user_form"))) {
                 const interaction = resolvedInteractions[resolvedIdx];
                 if (interaction) {
@@ -1259,8 +1290,16 @@ const ChatBotDemo = () => {
               i => !renderedInlineIds.has(i.id) && i.data.afterMessageId === message.id
             );
 
-            if (interactionsBeforeThisMsg.length > 0) {
+            // Display interactions anchored to this message (e.g. weather cards)
+            const displaysBeforeThisMsg = displayInteractions.filter(
+              i => !renderedDisplayIds.has(i.id) && i.data.afterMessageId === message.id
+            );
+
+            const hasInjections = interactionsBeforeThisMsg.length > 0 || displaysBeforeThisMsg.length > 0;
+
+            if (hasInjections) {
               interactionsBeforeThisMsg.forEach(i => renderedInlineIds.add(i.id));
+              displaysBeforeThisMsg.forEach(i => renderedDisplayIds.add(i.id));
               return (
                 <Fragment key={message.id}>
                   {interactionsBeforeThisMsg.map(interaction =>
@@ -1286,6 +1325,11 @@ const ChatBotDemo = () => {
                         result={interaction.result}
                       />
                     )
+                  )}
+                  {displaysBeforeThisMsg.map(interaction =>
+                    interaction.data.displayType === "weather" ? (
+                      <WeatherCard key={interaction.id} data={interaction.result} />
+                    ) : null
                   )}
                   <div>{messageContent}</div>
                 </Fragment>
@@ -1334,7 +1378,7 @@ const ChatBotDemo = () => {
             )}
           {/* Fallback: render resolved interactions at bottom when anchor message not found */}
           {Array.from(uiInteraction.pendingInteractions.values())
-            .filter((interaction) => interaction.resolved)
+            .filter((interaction) => interaction.resolved && interaction.type !== "display")
             .filter((interaction) => {
               const anchorId = interaction.data.afterMessageId;
               if (!anchorId) return true;
@@ -1369,6 +1413,19 @@ const ChatBotDemo = () => {
                   result={interaction.result}
                 />
               )
+            )}
+          {/* Fallback: render display interactions at bottom when anchor message not found */}
+          {Array.from(uiInteraction.pendingInteractions.values())
+            .filter((i: any) => i.type === "display" && i.resolved)
+            .filter((i: any) => {
+              const anchorId = i.data.afterMessageId;
+              if (!anchorId) return true;
+              return !messages.some((m: any) => m.id === anchorId);
+            })
+            .map((interaction: any) =>
+              interaction.data.displayType === "weather" ? (
+                <WeatherCard key={interaction.id} data={interaction.result} />
+              ) : null
             )}
         </div>
       </div>
