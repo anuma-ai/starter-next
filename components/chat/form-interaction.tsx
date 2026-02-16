@@ -11,6 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 export type FormFieldOption = {
@@ -21,12 +22,15 @@ export type FormFieldOption = {
 export type FormField = {
   name: string;
   label: string;
-  type: "text" | "textarea" | "select" | "toggle" | "date";
+  type: "text" | "textarea" | "select" | "toggle" | "date" | "slider";
   description?: string;
   required?: boolean;
   placeholder?: string;
   options?: FormFieldOption[];
-  defaultValue?: string | boolean;
+  defaultValue?: string | boolean | number;
+  min?: number;
+  max?: number;
+  step?: number;
 };
 
 export type FormInteractionProps = {
@@ -45,6 +49,8 @@ function getInitialValues(fields: FormField[]): Record<string, any> {
       values[field.name] = field.defaultValue;
     } else if (field.type === "toggle") {
       values[field.name] = false;
+    } else if (field.type === "slider") {
+      values[field.name] = field.min ?? 0;
     } else {
       values[field.name] = "";
     }
@@ -79,7 +85,7 @@ export function FormInteraction({
 
     // Validate required fields
     for (const field of fields) {
-      if (field.required && field.type !== "toggle") {
+      if (field.required && field.type !== "toggle" && field.type !== "slider") {
         const val = values[field.name];
         if (!val || (typeof val === "string" && !val.trim())) {
           return;
@@ -123,7 +129,7 @@ export function FormInteraction({
         <div className="rounded-xl bg-sidebar dark:bg-card px-4 py-3 space-y-1">
           {fields.map((field) => {
             const val = displayValues[field.name];
-            if (val === undefined || val === "" || val === false) return null;
+            if (val === undefined || val === "" || val === false || (field.type !== "slider" && val === 0)) return null;
             const displayVal =
               field.type === "toggle"
                 ? "Yes"
@@ -234,6 +240,23 @@ export function FormInteraction({
               </button>
             )}
 
+            {field.type === "slider" && (
+              <div className="flex items-center gap-3 pt-1">
+                <Slider
+                  value={[values[field.name] ?? field.min ?? 0]}
+                  min={field.min ?? 0}
+                  max={field.max ?? 100}
+                  step={field.step ?? 1}
+                  disabled={isSubmitting}
+                  onValueChange={([v]) => setValue(field.name, v)}
+                  className="flex-1"
+                />
+                <span className="text-sm tabular-nums w-10 text-right">
+                  {values[field.name] ?? field.min ?? 0}
+                </span>
+              </div>
+            )}
+
             {field.type === "date" && (
               <Popover>
                 <PopoverTrigger asChild>
@@ -289,6 +312,7 @@ export function FormInteraction({
               (f) =>
                 f.required &&
                 f.type !== "toggle" &&
+                f.type !== "slider" &&
                 (!values[f.name] ||
                   (typeof values[f.name] === "string" &&
                     !values[f.name].trim()))

@@ -186,8 +186,8 @@ export function createUIInteractionTools(
                 },
                 type: {
                   type: "string",
-                  enum: ["text", "textarea", "select", "toggle", "date"],
-                  description: "Field type: text (single line), textarea (multi-line), select (dropdown), toggle (on/off), date (calendar picker)",
+                  enum: ["text", "textarea", "select", "toggle", "date", "slider"],
+                  description: "Field type: text (single line), textarea (multi-line), select (dropdown), toggle (on/off), date (calendar picker), slider (numeric range)",
                 },
                 description: {
                   type: "string",
@@ -215,7 +215,19 @@ export function createUIInteractionTools(
                   description: "Options for select fields",
                 },
                 defaultValue: {
-                  description: "Default value for the field (string for text/textarea/select, boolean for toggle)",
+                  description: "Default value for the field (string for text/textarea/select, boolean for toggle, number for slider)",
+                },
+                min: {
+                  type: "number",
+                  description: "Minimum value for slider fields (default: 0)",
+                },
+                max: {
+                  type: "number",
+                  description: "Maximum value for slider fields (default: 100)",
+                },
+                step: {
+                  type: "number",
+                  description: "Step increment for slider fields (default: 1)",
                 },
               },
               required: ["name", "label", "type"],
@@ -238,7 +250,7 @@ export function createUIInteractionTools(
           if (!field.name || !field.label || !field.type) {
             return { cancelled: true };
           }
-          if (!["text", "textarea", "select", "toggle", "date"].includes(field.type)) {
+          if (!["text", "textarea", "select", "toggle", "date", "slider"].includes(field.type)) {
             return { cancelled: true };
           }
           if (field.type === "select" && (!Array.isArray(field.options) || field.options.length === 0)) {
