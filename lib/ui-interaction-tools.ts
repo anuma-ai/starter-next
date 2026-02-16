@@ -78,7 +78,7 @@ export function createUIInteractionTools(
       type: "function",
       name: "prompt_user_choice",
       description:
-        "CRITICAL TIMING: When you need user input to proceed, call this tool FIRST before generating any response text. The tool will pause execution and wait for the user to select an option. After they choose, you will receive their selection and can then generate a response based on it. EXECUTION ORDER: 1) Call this tool to ask for input, 2) Wait for user selection, 3) Generate response using their choice. DO NOT generate explanatory text first and then call this tool - call it immediately when you need their decision. Use this for: restaurant choices, destination options, preference selection, category picking, etc.",
+        "ALWAYS use this tool instead of listing options as text whenever you want the user to pick from choices. This renders an interactive inline menu the user can click. Call this tool FIRST before generating any response text — do not list options as numbered text and then also call this tool. Examples: restaurant recommendations, travel destinations, preference selection, category picking, any scenario with 2+ options. After the user selects, you receive their choice and can respond based on it.",
       parameters: {
         type: "object",
         properties: {
@@ -184,7 +184,7 @@ export function createUIInteractionTools(
       type: "function",
       name: "prompt_user_form",
       description:
-        "CRITICAL TIMING: Call this tool FIRST before generating response text. Displays an interactive form inline in the chat to collect multiple pieces of information from the user at once. Use this instead of asking questions one by one. The form supports text inputs, textareas, dropdowns (select), and toggles. After the user fills out and submits the form, you will receive all their answers. Use this for: collecting trip details (destination, dates, budget), gathering profile info, configuration settings, booking details, etc.",
+        "ALWAYS use this tool instead of asking the user multiple questions as text. This renders an interactive inline form the user can fill out and submit. Use it whenever you need 2 or more pieces of information from the user — do not ask questions one by one in text. Supports text inputs, textareas, dropdowns (select), toggles, date pickers, and sliders. Call this tool FIRST before generating any response text. Examples: trip planning (destination, dates, budget), profile info, booking details, configuration settings. After the user submits, you receive all their answers at once.",
       parameters: {
         type: "object",
         properties: {
