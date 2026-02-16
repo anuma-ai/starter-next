@@ -67,7 +67,7 @@ function formatDay(dateStr: string): string {
 export function WeatherCard({ data }: WeatherCardProps) {
   if (data.error) {
     return (
-      <div className="my-4 max-w-md">
+      <div className="my-4 max-w-lg">
         <div className="rounded-xl bg-sidebar dark:bg-card px-4 py-3">
           <p className="text-sm text-muted-foreground">{data.error}</p>
         </div>
@@ -81,7 +81,7 @@ export function WeatherCard({ data }: WeatherCardProps) {
     : data.location;
 
   return (
-    <div className="my-4 max-w-md">
+    <div className="my-4 max-w-lg">
       <div className="rounded-xl bg-sidebar dark:bg-card px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
