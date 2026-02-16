@@ -334,6 +334,9 @@ export function FormInteraction({
                     >
                       <Calendar
                         mode="single"
+                        captionLayout="dropdown"
+                        fromYear={new Date().getFullYear() - 100}
+                        toYear={new Date().getFullYear() + 10}
                         selected={
                           values[field.name]
                             ? new Date(values[field.name])
