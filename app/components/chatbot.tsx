@@ -65,7 +65,7 @@ function getErrorTitle(error: string): string {
   if (e.includes("invalid request") || e.includes("bad request") || e.includes("400")) return "Invalid request";
   if (e.includes("500") || e.includes("server") || e.includes("internal")) return "Server error";
   if (e.includes("502") || e.includes("503") || e.includes("504")) return "Service unavailable";
-  return "Something went wrong";
+  return `Something went wrong: ${error}`;
 }
 
 type PromptMenuProps = {
