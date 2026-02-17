@@ -7,16 +7,6 @@ const VIDEO_PAUSE_MS = 3000;
 const PRE_SUBMIT_PAUSE_MS = 1000;
 
 test.describe("Chat", () => {
-  // Log failed network requests to diagnose CI "Failed to fetch" errors
-  test.beforeEach(async ({ page }) => {
-    page.on("requestfailed", (request) => {
-      const url = request.url();
-      const postData = request.postData();
-      const bodySize = postData ? `${(postData.length / 1024).toFixed(1)}KB` : "no body";
-      process.stderr.write(`[NETWORK FAILED] ${request.method()} ${url} (${bodySize}) — ${request.failure()?.errorText}\n`);
-    });
-  });
-
   test("authenticated user sees chat interface", async ({ page }) => {
     await page.goto("/");
 
