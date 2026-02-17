@@ -435,12 +435,15 @@ const ChatBotDemo = () => {
 
   const handleFilesChange = useCallback(
     (files: { mediaType?: string }[]) => {
-      const hasFiles = files.length > 0;
-      if (hasFiles && !thinkingEnabled) {
+      // Only auto-enable thinking for image files — images need a vision-capable model
+      // (Fireworks). Non-image files (PDF, DOCX, XLSX, ZIP) are preprocessed client-side
+      // by the SDK into text, so the fast model (Cerebras) handles them fine.
+      const hasImages = files.some((f) => f.mediaType?.startsWith("image/"));
+      if (hasImages && !thinkingEnabled) {
         thinkingEnabledBeforeAutoRef.current = false;
         setThinkingEnabled(true);
         localStorage.setItem("chat_thinkingEnabled", "true");
-      } else if (!hasFiles && thinkingEnabledBeforeAutoRef.current === false) {
+      } else if (!hasImages && thinkingEnabledBeforeAutoRef.current === false) {
         thinkingEnabledBeforeAutoRef.current = null;
         setThinkingEnabled(false);
         localStorage.setItem("chat_thinkingEnabled", "false");
