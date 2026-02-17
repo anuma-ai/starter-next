@@ -227,6 +227,50 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
+  test("memory is retrieved across conversations", async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto("/");
+
+    const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
+    await expect(promptInput).toBeVisible();
+
+    // Send a message with distinctive personal information
+    const infoPrompt =
+      "Remember this: my name is Bartholomew Finnegan, I work at Nebula Dynamics as a senior quantum engineer, and my favorite color is turquoise.";
+    await promptInput.fill(infoPrompt);
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
+    await page.getByRole("button", { name: "Submit" }).click();
+
+    // Wait for the assistant to acknowledge the message
+    await expect(page.locator(".is-assistant")).toBeVisible({ timeout: 30000 });
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
+
+    // Start a new chat by clicking "New chat" in the sidebar
+    await page.getByText("New chat").first().click();
+
+    // Wait for the new chat to load (input should be visible and empty)
+    await expect(promptInput).toBeVisible({ timeout: 10000 });
+    await expect(promptInput).toHaveValue("");
+
+    // Ask about the information from the previous conversation
+    const recallPrompt = "What is my name and where do I work?";
+    await promptInput.fill(recallPrompt);
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
+    await page.getByRole("button", { name: "Submit" }).click();
+
+    // Verify the assistant recalls the information from the previous conversation
+    await expect(page.locator(".is-assistant")).toContainText(
+      /Bartholomew|Finnegan/i,
+      { timeout: 60000 }
+    );
+    await expect(page.locator(".is-assistant")).toContainText(
+      /Nebula Dynamics/i,
+      { timeout: 10000 }
+    );
+
+    await page.waitForTimeout(VIDEO_PAUSE_MS);
+  });
+
   test("user can attach a zip file and ask about its contents", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
