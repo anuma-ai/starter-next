@@ -111,21 +111,28 @@ const hasImages = enrichedFiles.some((f) => f.mediaType?.startsWith("image/"));
 const effectiveApiType =
   model?.startsWith("fireworks/") && hasImages ? "completions" : apiType;
 
-// Images become input_image parts (Responses API) or image_url parts (Completions API)
-const useResponsesFormat = effectiveApiType !== "completions";
+// File types the SDK can preprocess (text extraction). These are passed via the
+// files parameter only — adding input_file parts would conflict with preprocessing.
+const sdkPreprocessable = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+]);
+
+// Images become image_url content parts.
+// Non-image files the SDK can't preprocess (e.g. ZIP) become input_file parts
+// so the model can still see them. SDK-preprocessable files are handled via the
+// files parameter below.
 enrichedFiles.forEach((file) => {
   if (file.mediaType?.startsWith("image/")) {
-    contentParts.push(
-      useResponsesFormat
-        ? { type: "input_image", image_url: file.url }
-        : { type: "image_url", image_url: { url: file.url } }
-    );
-  } else {
+    contentParts.push({ type: "image_url", image_url: { url: file.url } });
+  } else if (!sdkPreprocessable.has(file.mediaType || "")) {
     contentParts.push({ type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } });
   }
 });
 
-// SDK file metadata — the SDK encrypts and stores these in OPFS automatically
+// SDK file metadata — the SDK preprocesses non-image files (PDF, Word, Excel) automatically
 const sdkFiles = enrichedFiles.map((file) => ({
   id: file.stableId,
   name: file.filename || file.stableId,
