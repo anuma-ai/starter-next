@@ -703,21 +703,15 @@ export function useAppChatStorage({
       const effectiveApiType =
         model?.startsWith("fireworks/") && hasImages ? "completions" : apiType;
 
-      // Images become input_image parts (Responses API) or image_url parts (Completions API)
-      const useResponsesFormat = effectiveApiType !== "completions";
+      // Images use image_url format in content parts.
+      // Non-image files are handled by the SDK via the files parameter (preprocessing/text extraction).
       enrichedFiles.forEach((file) => {
         if (file.mediaType?.startsWith("image/")) {
-          contentParts.push(
-            useResponsesFormat
-              ? { type: "input_image", image_url: file.url }
-              : { type: "image_url", image_url: { url: file.url } }
-          );
-        } else {
-          contentParts.push({ type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } });
+          contentParts.push({ type: "image_url", image_url: { url: file.url } });
         }
       });
 
-      // SDK file metadata — the SDK encrypts and stores these in OPFS automatically
+      // SDK file metadata — the SDK preprocesses non-image files (PDF, Word, Excel) automatically
       const sdkFiles = enrichedFiles.map((file) => ({
         id: file.stableId,
         name: file.filename || file.stableId,
