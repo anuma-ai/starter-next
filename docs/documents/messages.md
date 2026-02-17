@@ -173,12 +173,24 @@ const sendArgs = {
 
 let response = await sendMessage(sendArgs);
 
-// Retry on empty responses — some models (e.g. Fireworks) intermittently
-// return a successful SSE stream with no output text.
-const MAX_EMPTY_RETRIES = 2;
-for (let retry = 0; retry < MAX_EMPTY_RETRIES; retry++) {
-  if (response?.error || streamingTextRef.current.trim()) break;
-  console.warn(`[useAppChatStorage] Empty response from model, retrying (${retry + 1}/${MAX_EMPTY_RETRIES})`);
+// Retry on transient failures:
+// 1. Empty responses — some models (e.g. Fireworks) intermittently return
+//    a successful SSE stream with no output text.
+// 2. Network errors — "Failed to fetch" can occur transiently in CI or
+//    under load. These are worth retrying.
+const isTransientError = (r: typeof response) => {
+  if (!r?.error) return false;
+  const e = r.error.toLowerCase();
+  return e.includes("failed to fetch") || e.includes("fetch failed") ||
+         e.includes("econnreset") || e.includes("econnrefused") ||
+         e.includes("network");
+};
+const MAX_RETRIES = 2;
+for (let retry = 0; retry < MAX_RETRIES; retry++) {
+  const emptyResponse = !response?.error && !streamingTextRef.current.trim();
+  const transientError = isTransientError(response);
+  if (!emptyResponse && !transientError) break;
+  console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
   streamingTextRef.current = "";
   response = await sendMessage(sendArgs);
 }
