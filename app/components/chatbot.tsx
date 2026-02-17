@@ -61,7 +61,7 @@ function getErrorTitle(error: string): string {
   if (e.includes("rate limit") || e.includes("429")) return "Rate limit exceeded";
   if (e.includes("authenticat") || e.includes("unauthorized") || e.includes("401")) return "Authentication error";
   if (e.includes("payment") || e.includes("402") || e.includes("out of credits")) return "Out of credits";
-  if (e.includes("connect") || e.includes("econnrefused") || e.includes("econnreset") || e.includes("fetch failed")) return "Connection error";
+  if (e.includes("connect") || e.includes("econnrefused") || e.includes("econnreset") || e.includes("fetch failed") || e.includes("failed to fetch")) return "Connection error";
   if (e.includes("invalid request") || e.includes("bad request") || e.includes("400")) return "Invalid request";
   if (e.includes("500") || e.includes("server") || e.includes("internal")) return "Server error";
   if (e.includes("502") || e.includes("503") || e.includes("504")) return "Service unavailable";
