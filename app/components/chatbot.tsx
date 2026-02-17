@@ -532,7 +532,11 @@ const ChatBotDemo = () => {
 
       // Step 3: Send to API (skip adding user message to UI again since we already did)
       // Get the resolved model config based on thinking toggle
-      const modelConfig = getModelConfig(selectedModel, thinkingEnabled);
+      // Force thinking mode for image attachments — Anuma Fast (Cerebras) has no vision support,
+      // so we route to the thinking variant (e.g. Fireworks) which does.
+      const hasImages = message.files?.some((f) => f.mediaType?.startsWith("image/"));
+      const effectiveThinking = hasImages || thinkingEnabled;
+      const modelConfig = getModelConfig(selectedModel, effectiveThinking);
       // Persist voice chat mode across navigation (home → conversation page remount)
       if (voiceChatModeRef.current && voiceEnabled && isModelLoaded) {
         sessionStorage.setItem("voiceChatPending", "true");
@@ -551,7 +555,7 @@ const ChatBotDemo = () => {
           maxOutputTokens: 32000,
           toolChoice: "auto",
           // Only include reasoning params for models that use API-level reasoning (Claude, GPT)
-          ...(thinkingEnabled && modelConfig?.useReasoning && {
+          ...(effectiveThinking && modelConfig?.useReasoning && {
             reasoning: { effort: "high", summary: "detailed" },
             thinking: { type: "enabled", budget_tokens: 10000 },
           }),
