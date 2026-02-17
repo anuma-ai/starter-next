@@ -110,7 +110,7 @@ API.
 
 Configure test credentials in `.env.local`:
 
-```bash
+```
 NEXT_PUBLIC_PRIVY_TEST_MODE=true
 TEST_USER_EMAIL=test@example.com
 TEST_USER_OTP=your-test-otp

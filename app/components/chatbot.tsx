@@ -61,11 +61,11 @@ function getErrorTitle(error: string): string {
   if (e.includes("rate limit") || e.includes("429")) return "Rate limit exceeded";
   if (e.includes("authenticat") || e.includes("unauthorized") || e.includes("401")) return "Authentication error";
   if (e.includes("payment") || e.includes("402") || e.includes("out of credits")) return "Out of credits";
-  if (e.includes("connect") || e.includes("econnrefused") || e.includes("econnreset") || e.includes("fetch failed")) return "Connection error";
+  if (e.includes("connect") || e.includes("econnrefused") || e.includes("econnreset") || e.includes("fetch failed") || e.includes("failed to fetch")) return "Connection error";
   if (e.includes("invalid request") || e.includes("bad request") || e.includes("400")) return "Invalid request";
   if (e.includes("500") || e.includes("server") || e.includes("internal")) return "Server error";
   if (e.includes("502") || e.includes("503") || e.includes("504")) return "Service unavailable";
-  return "Something went wrong";
+  return `Something went wrong: ${error}`;
 }
 
 type PromptMenuProps = {
@@ -435,12 +435,15 @@ const ChatBotDemo = () => {
 
   const handleFilesChange = useCallback(
     (files: { mediaType?: string }[]) => {
-      const hasFiles = files.length > 0;
-      if (hasFiles && !thinkingEnabled) {
+      // Only auto-enable thinking for image files — images need a vision-capable model
+      // (Fireworks). Non-image files (PDF, DOCX, XLSX, ZIP) are preprocessed client-side
+      // by the SDK into text, so the fast model (Cerebras) handles them fine.
+      const hasImages = files.some((f) => f.mediaType?.startsWith("image/"));
+      if (hasImages && !thinkingEnabled) {
         thinkingEnabledBeforeAutoRef.current = false;
         setThinkingEnabled(true);
         localStorage.setItem("chat_thinkingEnabled", "true");
-      } else if (!hasFiles && thinkingEnabledBeforeAutoRef.current === false) {
+      } else if (!hasImages && thinkingEnabledBeforeAutoRef.current === false) {
         thinkingEnabledBeforeAutoRef.current = null;
         setThinkingEnabled(false);
         localStorage.setItem("chat_thinkingEnabled", "false");
@@ -532,7 +535,8 @@ const ChatBotDemo = () => {
 
       // Step 3: Send to API (skip adding user message to UI again since we already did)
       // Get the resolved model config based on thinking toggle
-      // Force thinking mode for image attachments — Anuma Fast (Cerebras) has no vision support
+      // Force thinking mode for image attachments — Anuma Fast (Cerebras) has no vision support,
+      // so we route to the thinking variant (e.g. Fireworks) which does.
       const hasImages = message.files?.some((f) => f.mediaType?.startsWith("image/"));
       const effectiveThinking = hasImages || thinkingEnabled;
       const modelConfig = getModelConfig(selectedModel, effectiveThinking);

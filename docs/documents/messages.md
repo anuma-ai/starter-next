@@ -111,21 +111,16 @@ const hasImages = enrichedFiles.some((f) => f.mediaType?.startsWith("image/"));
 const effectiveApiType =
   model?.startsWith("fireworks/") && hasImages ? "completions" : apiType;
 
-// Images become input_image parts (Responses API) or image_url parts (Completions API)
-const useResponsesFormat = effectiveApiType !== "completions";
+// Images are sent as image_url content parts for vision models.
+// Non-image files (PDF, DOCX, XLSX, ZIP) are handled by the SDK's client-side
+// preprocessing via the files parameter below.
 enrichedFiles.forEach((file) => {
   if (file.mediaType?.startsWith("image/")) {
-    contentParts.push(
-      useResponsesFormat
-        ? { type: "input_image", image_url: file.url }
-        : { type: "image_url", image_url: { url: file.url } }
-    );
-  } else {
-    contentParts.push({ type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } });
+    contentParts.push({ type: "image_url", image_url: { url: file.url } });
   }
 });
 
-// SDK file metadata — the SDK encrypts and stores these in OPFS automatically
+// SDK file metadata — the SDK preprocesses non-image files (PDF, Word, Excel) automatically
 const sdkFiles = enrichedFiles.map((file) => ({
   id: file.stableId,
   name: file.filename || file.stableId,
@@ -151,7 +146,7 @@ if (systemPrompt) {
 messagesArray.push({ role: "user", content: contentParts });
 
 // See SendMessageWithStorageArgs in the SDK docs for the full list of options
-const response = await sendMessage({
+const sendArgs = {
   messages: messagesArray,
   model,
   includeHistory: true,
@@ -174,7 +169,31 @@ const response = await sendMessage({
       onStreamingData(chunk, streamingTextRef.current);
     }
   },
-});
+};
+
+let response = await sendMessage(sendArgs);
+
+// Retry on transient failures:
+// 1. Empty responses — some models (e.g. Fireworks) intermittently return
+//    a successful SSE stream with no output text.
+// 2. Network errors — "Failed to fetch" can occur transiently in CI or
+//    under load. These are worth retrying.
+const isTransientError = (r: typeof response) => {
+  if (!r?.error) return false;
+  const e = r.error.toLowerCase();
+  return e.includes("failed to fetch") || e.includes("fetch failed") ||
+         e.includes("econnreset") || e.includes("econnrefused") ||
+         e.includes("network");
+};
+const MAX_RETRIES = 2;
+for (let retry = 0; retry < MAX_RETRIES; retry++) {
+  const emptyResponse = !response?.error && !streamingTextRef.current.trim();
+  const transientError = isTransientError(response);
+  if (!emptyResponse && !transientError) break;
+  console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
+  streamingTextRef.current = "";
+  response = await sendMessage(sendArgs);
+}
 ```
 
 ## Tool Calling
