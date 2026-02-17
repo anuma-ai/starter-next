@@ -105,13 +105,24 @@ const enrichedFiles = (files || []).map((file) => ({
   stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
 }));
 
-// Images become image_url parts; other files become input_file parts
+// Fireworks models require Chat Completions API for vision/images;
+// their Responses API doesn't support multimodal content.
+const hasImages = enrichedFiles.some((f) => f.mediaType?.startsWith("image/"));
+const effectiveApiType =
+  model?.startsWith("fireworks/") && hasImages ? "completions" : apiType;
+
+// Images become input_image parts (Responses API) or image_url parts (Completions API)
+const useResponsesFormat = effectiveApiType !== "completions";
 enrichedFiles.forEach((file) => {
-  contentParts.push(
-    file.mediaType?.startsWith("image/")
-      ? { type: "image_url", image_url: { url: file.url } }
-      : { type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } }
-  );
+  if (file.mediaType?.startsWith("image/")) {
+    contentParts.push(
+      useResponsesFormat
+        ? { type: "input_image", image_url: file.url }
+        : { type: "image_url", image_url: { url: file.url } }
+    );
+  } else {
+    contentParts.push({ type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } });
+  }
 });
 
 // SDK file metadata — the SDK encrypts and stores these in OPFS automatically
@@ -155,7 +166,7 @@ const response = await sendMessage({
   ...(onThinking && { onThinking }),
   ...(memoryContext && { memoryContext }),
   ...(toolChoice && { toolChoice }),
-  ...(apiType && { apiType }),
+  ...(effectiveApiType && { apiType: effectiveApiType }),
   ...(explicitConversationId && { conversationId: explicitConversationId }),
   onData: (chunk: string) => {
     streamingTextRef.current += chunk;
@@ -225,7 +236,7 @@ if (onToolCall && clientTools && clientTools.length > 0) {
           parameters: (t as any).function?.arguments || t.parameters,
         })),
         toolChoice: 'auto',
-        ...(apiType && { apiType }),
+        ...(effectiveApiType && { apiType: effectiveApiType }),
         ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
           streamingTextRef.current += chunk;
