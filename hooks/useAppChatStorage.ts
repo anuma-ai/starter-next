@@ -697,13 +697,18 @@ export function useAppChatStorage({
         stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       }));
 
-      // Images become image_url parts; other files become input_file parts
+      // Images become input_image parts (Responses API) or image_url parts (Completions API)
+      const useResponsesFormat = apiType !== "completions";
       enrichedFiles.forEach((file) => {
-        contentParts.push(
-          file.mediaType?.startsWith("image/")
-            ? { type: "image_url", image_url: { url: file.url } }
-            : { type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } }
-        );
+        if (file.mediaType?.startsWith("image/")) {
+          contentParts.push(
+            useResponsesFormat
+              ? { type: "input_image", image_url: file.url }
+              : { type: "image_url", image_url: { url: file.url } }
+          );
+        } else {
+          contentParts.push({ type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } });
+        }
       });
 
       // SDK file metadata — the SDK encrypts and stores these in OPFS automatically

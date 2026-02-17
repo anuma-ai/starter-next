@@ -16,7 +16,7 @@ export const MODELS: ModelConfig[] = [
     id: "anuma",
     name: "Anuma",
     fast: { modelId: "cerebras/qwen-3-235b-a22b-instruct-2507", apiType: "responses" },
-    thinking: { modelId: "fireworks/accounts/fireworks/models/kimi-k2p5", apiType: "responses" },
+    thinking: { modelId: "fireworks/accounts/fireworks/models/kimi-k2p5", apiType: "completions" },
   },
   {
     id: "gpt",
