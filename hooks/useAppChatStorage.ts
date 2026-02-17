@@ -733,7 +733,7 @@ export function useAppChatStorage({
       messagesArray.push({ role: "user", content: contentParts });
 
       // See SendMessageWithStorageArgs in the SDK docs for the full list of options
-      const response = await sendMessage({
+      const sendArgs = {
         messages: messagesArray,
         model,
         includeHistory: true,
@@ -756,7 +756,19 @@ export function useAppChatStorage({
             onStreamingData(chunk, streamingTextRef.current);
           }
         },
-      });
+      };
+
+      let response = await sendMessage(sendArgs);
+
+      // Retry on empty responses — some models (e.g. Fireworks) intermittently
+      // return a successful SSE stream with no output text.
+      const MAX_EMPTY_RETRIES = 2;
+      for (let retry = 0; retry < MAX_EMPTY_RETRIES; retry++) {
+        if (response?.error || streamingTextRef.current.trim()) break;
+        console.warn(`[useAppChatStorage] Empty response from model, retrying (${retry + 1}/${MAX_EMPTY_RETRIES})`);
+        streamingTextRef.current = "";
+        response = await sendMessage(sendArgs);
+      }
       //#endregion sendCall
 
       //#region toolCalling
