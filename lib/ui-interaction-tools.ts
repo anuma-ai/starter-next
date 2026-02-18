@@ -299,7 +299,7 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
   const chartTool = createDisplayTool(options, {
     name: "display_chart",
     description:
-      "Renders a chart inline in the chat. Supports bar, line, area, and pie charts. CRITICAL RULES: (1) You may only call this tool ONCE per user request — it is impossible to update or replace a chart after it renders. (2) If you need to search or fetch data first, complete ALL data gathering BEFORE calling this tool. (3) Do NOT call this tool with estimated, placeholder, or approximate data — only use verified data. (4) After calling this tool, do NOT call it again or attempt to 'update' it. (5) Do NOT repeat the chart data as text in your response. Use simple alphanumeric keys without spaces (e.g. 'revenue', 'users', 'q1Sales').",
+      "Renders a chart inline in the chat. Supports bar, line, area, and pie charts. RULES: (1) Call this tool ONCE per request — you cannot update a chart after it renders. (2) When the user provides data in their message, call this tool immediately with that data — do NOT search or verify it. (3) Only search/fetch if the user asks for data you don't have. (4) Do NOT repeat the chart data as text in your response. Just add a brief conversational comment about the chart. Use simple alphanumeric keys without spaces (e.g. 'revenue', 'users', 'q1Sales').",
     parameters: {
       type: "object",
       properties: {

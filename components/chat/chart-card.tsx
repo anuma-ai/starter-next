@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState, useEffect } from "react";
 import type { DisplayChartResult } from "@/lib/ui-interaction-tools";
 import {
   ChartContainer,
@@ -51,6 +52,16 @@ function buildChartConfig(
 }
 
 export function ChartCard({ data }: ChartCardProps) {
+  // Delay chart rendering until the container has been laid out.
+  // ResponsiveContainer logs warnings when it mounts with 0x0 dimensions,
+  // which happens during page transitions and conversation switches.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   if ("error" in data) {
     return (
       <div className="my-4 max-w-lg">
@@ -65,12 +76,13 @@ export function ChartCard({ data }: ChartCardProps) {
   const chartConfig = buildChartConfig(dataKeys, colors);
 
   return (
-    <div className="my-4 max-w-lg">
+    <div className="my-4 max-w-lg" ref={containerRef}>
       <div className="rounded-xl bg-sidebar dark:bg-card px-5 py-4">
         {title && (
           <p className="text-sm font-medium mb-3">{title}</p>
         )}
-        <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+        {ready ? (
+        <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
           {chartType === "bar" ? (
             <BarChart data={chartData}>
               <CartesianGrid vertical={false} />
@@ -170,6 +182,9 @@ export function ChartCard({ data }: ChartCardProps) {
             </PieChart>
           )}
         </ChartContainer>
+        ) : (
+          <div className="h-[250px] w-full" />
+        )}
       </div>
     </div>
   );
