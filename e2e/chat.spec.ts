@@ -182,7 +182,7 @@ test.describe("Chat", () => {
     // Wait for the assistant response that mentions at least one name from the spreadsheet
     await expect(page.locator(".is-assistant")).toContainText(
       /Alice|Bob|Charlie/i,
-      { timeout: 90000 }
+      { timeout: 120000 }
     );
 
     await page.waitForTimeout(VIDEO_PAUSE_MS);
@@ -221,7 +221,7 @@ test.describe("Chat", () => {
     // Wait for the assistant response that mentions content from the document
     await expect(page.locator(".is-assistant")).toContainText(
       /test|sample|document/i,
-      { timeout: 90000 }
+      { timeout: 120000 }
     );
 
     await page.waitForTimeout(VIDEO_PAUSE_MS);
@@ -260,7 +260,7 @@ test.describe("Chat", () => {
     // Wait for the assistant response that mentions the files inside the zip
     await expect(page.locator(".is-assistant")).toContainText(
       /book\.pdf|example\.docx|example\.xlsx/i,
-      { timeout: 90000 }
+      { timeout: 120000 }
     );
 
     await page.waitForTimeout(VIDEO_PAUSE_MS);

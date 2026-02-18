@@ -89,6 +89,8 @@ type ChatState = {
   triggerProjectConversationsRefresh: () => void;
   // Encryption state
   encryptionReady: boolean;
+  // Stop streaming
+  stop: () => void;
 };
 
 const ChatContext = createContext<ChatState | null>(null);
@@ -443,27 +445,33 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Ref for accessing messages inside tool callbacks without causing re-creation
   const messagesRef = useRef<any[]>([]);
 
-  // Create Google tools with auth (these are client-side tools with local executors)
+  // Create Google tools with auth (these are client-side tools with local executors).
+  // Only include Calendar/Drive tools when the user has connected them in Settings → Apps.
+  // This prevents the model from triggering an OAuth redirect mid-conversation.
   const clientTools = useMemo(() => {
-    // Google Calendar tools
-    const calendarTools = createChatTools(
-      () => calendarToken,
-      requestCalendarAccess
-    );
+    const allTools: any[] = [];
 
-    // Google Drive tools (using our custom auth with drive.readonly scope)
-    const driveTools = createDriveTools(
-      () => driveToken,
-      requestDriveAccess
-    );
+    // Google Calendar tools — only when connected
+    if (calendarToken || hasCalendarCredentials()) {
+      allTools.push(...createChatTools(
+        () => calendarToken,
+        requestCalendarAccess
+      ));
+    }
+
+    // Google Drive tools — only when connected
+    if (driveToken || hasDriveCredentials()) {
+      allTools.push(...createDriveTools(
+        () => driveToken,
+        requestDriveAccess
+      ));
+    }
 
     // UI interaction tools (choice menus, forms, display cards)
-    const uiInteractionTools = createUIInteractionTools({
+    allTools.push(...createUIInteractionTools({
       getContext: () => uiInteraction,
       getLastMessageId: () => messagesRef.current.at(-1)?.id,
-    });
-
-    const allTools = [...calendarTools, ...driveTools, ...uiInteractionTools];
+    }));
 
     return allTools;
   }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess, uiInteraction]);
