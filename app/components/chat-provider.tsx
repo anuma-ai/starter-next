@@ -89,6 +89,8 @@ type ChatState = {
   triggerProjectConversationsRefresh: () => void;
   // Encryption state
   encryptionReady: boolean;
+  // Stop streaming
+  stop: () => void;
 };
 
 const ChatContext = createContext<ChatState | null>(null);

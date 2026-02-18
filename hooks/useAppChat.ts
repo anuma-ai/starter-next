@@ -146,6 +146,7 @@ export function useAppChat({
     getMessages,
     getConversation,
     createMemoryRetrievalTool,
+    stop,
   } = useAppChatStorage({
     database,
     getToken,
@@ -395,5 +396,6 @@ export function useAppChat({
     subscribeToThinking,
     getMessages,
     getConversation,
+    stop,
   };
 }

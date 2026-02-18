@@ -289,6 +289,7 @@ export function useAppChatStorage({
   const {
     sendMessage,
     isLoading,
+    stop,
     conversationId,
     getMessages,
     getConversation,
@@ -584,6 +585,18 @@ export function useAppChatStorage({
   //#region sendMessage
   const streamingTextRef = useRef<string>("");
   const currentAssistantMessageIdRef = useRef<string | null>(null);
+  const stoppedRef = useRef<boolean>(false);
+
+  // Wrap SDK stop to also clear streaming state
+  const handleStop = useCallback(() => {
+    stoppedRef.current = true;
+    stop();
+
+    // Clear streaming state so UI updates immediately
+    streamingConversationIdRef.current = null;
+    setStreamingConversationIdState(null);
+    isSendingMessageRef.current = false;
+  }, [stop]);
 
   //#region optimisticUpdate
   const addMessageOptimistically = useCallback(
@@ -625,6 +638,8 @@ export function useAppChatStorage({
   //#region handleSend
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
+      stoppedRef.current = false;
+
       //#region sendSetup
       const {
         model,
@@ -774,6 +789,7 @@ export function useAppChatStorage({
       };
       const MAX_RETRIES = 2;
       for (let retry = 0; retry < MAX_RETRIES; retry++) {
+        if (stoppedRef.current) break;
         const emptyResponse = !response?.error && !streamingTextRef.current.trim();
         const transientError = isTransientError(response);
         if (!emptyResponse && !transientError) break;
@@ -785,11 +801,12 @@ export function useAppChatStorage({
 
       //#region toolCalling
       // Multi-turn tool calling loop (max 10 iterations)
-      if (onToolCall && clientTools && clientTools.length > 0) {
+      if (!stoppedRef.current && onToolCall && clientTools && clientTools.length > 0) {
         let currentResponse: any = response;
         let iteration = 0;
 
         while (iteration++ < 10) {
+          if (stoppedRef.current) break;
           // extractToolCalls normalizes across Responses API, Chat Completions, and SDK formats
           const toolCalls = extractToolCalls(currentResponse);
           if (toolCalls.length === 0) break;
@@ -1069,5 +1086,6 @@ export function useAppChatStorage({
     getMessages,
     getConversation,
     createMemoryRetrievalTool,
+    stop: handleStop,
   };
 }
