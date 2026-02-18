@@ -14,6 +14,7 @@ See Setup for how to obtain `database`, `getToken`, and the wallet fields.
 const {
   sendMessage,
   isLoading,
+  stop,
   conversationId,
   getMessages,
   getConversation,
@@ -187,6 +188,7 @@ const isTransientError = (r: typeof response) => {
 };
 const MAX_RETRIES = 2;
 for (let retry = 0; retry < MAX_RETRIES; retry++) {
+  if (stoppedRef.current) break;
   const emptyResponse = !response?.error && !streamingTextRef.current.trim();
   const transientError = isTransientError(response);
   if (!emptyResponse && !transientError) break;
@@ -194,6 +196,32 @@ for (let retry = 0; retry < MAX_RETRIES; retry++) {
   streamingTextRef.current = "";
   response = await sendMessage(sendArgs);
 }
+```
+
+## Stopping a Response
+
+The SDK's `useChatStorage` returns a `stop` function that aborts the active
+stream via an `AbortController`. Calling it cancels the HTTP request and the
+SDK stores the partial response with `wasStopped: true`.
+
+Because the SDK treats aborted requests as successful (returning
+`{ error: null }`), the retry loop would interpret an early stop as an empty
+response and re-send. A `stoppedRef` flag prevents this and also
+short-circuits the tool calling loop. In the UI, conditionally render a stop
+button when `isLoading` is true using a plain `<button type="button">` to
+avoid triggering form submission.
+
+```ts
+// Wrap SDK stop to also clear streaming state
+const handleStop = useCallback(() => {
+  stoppedRef.current = true;
+  stop();
+
+  // Clear streaming state so UI updates immediately
+  streamingConversationIdRef.current = null;
+  setStreamingConversationIdState(null);
+  isSendingMessageRef.current = false;
+}, [stop]);
 ```
 
 ## Tool Calling
@@ -207,11 +235,12 @@ SDK-wrapped responses.
 
 ```ts
 // Multi-turn tool calling loop (max 10 iterations)
-if (onToolCall && clientTools && clientTools.length > 0) {
+if (!stoppedRef.current && onToolCall && clientTools && clientTools.length > 0) {
   let currentResponse: any = response;
   let iteration = 0;
 
   while (iteration++ < 10) {
+    if (stoppedRef.current) break;
     // extractToolCalls normalizes across Responses API, Chat Completions, and SDK formats
     const toolCalls = extractToolCalls(currentResponse);
     if (toolCalls.length === 0) break;

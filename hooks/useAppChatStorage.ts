@@ -587,6 +587,7 @@ export function useAppChatStorage({
   const currentAssistantMessageIdRef = useRef<string | null>(null);
   const stoppedRef = useRef<boolean>(false);
 
+  //#region stopResponse
   // Wrap SDK stop to also clear streaming state
   const handleStop = useCallback(() => {
     stoppedRef.current = true;
@@ -597,6 +598,7 @@ export function useAppChatStorage({
     setStreamingConversationIdState(null);
     isSendingMessageRef.current = false;
   }, [stop]);
+  //#endregion stopResponse
 
   //#region optimisticUpdate
   const addMessageOptimistically = useCallback(

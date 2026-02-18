@@ -42,6 +42,21 @@ the full list of options.
 
 {@includeCode ../hooks/useAppChatStorage.ts#sendCall}
 
+## Stopping a Response
+
+The SDK's `useChatStorage` returns a `stop` function that aborts the active
+stream via an `AbortController`. Calling it cancels the HTTP request and the
+SDK stores the partial response with `wasStopped: true`.
+
+Because the SDK treats aborted requests as successful (returning
+`{ error: null }`), the retry loop would interpret an early stop as an empty
+response and re-send. A `stoppedRef` flag prevents this and also
+short-circuits the tool calling loop. In the UI, conditionally render a stop
+button when `isLoading` is true using a plain `<button type="button">` to
+avoid triggering form submission.
+
+{@includeCode ../hooks/useAppChatStorage.ts#stopResponse}
+
 ## Tool Calling
 
 When client tools are provided and the model returns tool calls, a loop
