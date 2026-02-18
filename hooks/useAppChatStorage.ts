@@ -763,11 +763,11 @@ export function useAppChatStorage({
         if (onThinking) onThinking(chunk);
       };
 
-      // When files are attached, exclude UI interaction tools (prompt_user_choice,
-      // prompt_user_form) so the model analyzes file contents directly instead of
-      // presenting interactive menus asking the user to pick a file.
+      // When files are attached, exclude UI interaction and display tools so
+      // the model analyzes file contents directly instead of presenting
+      // interactive menus or rendering charts/cards.
       const hasAttachments = sdkFiles.length > 0 || hasImages;
-      const UI_INTERACTION_TOOLS = ["prompt_user_choice", "prompt_user_form"];
+      const UI_INTERACTION_TOOLS = ["prompt_user_choice", "prompt_user_form", "display_chart", "display_weather"];
       const effectiveClientTools = hasAttachments && clientTools
         ? clientTools.filter((t: any) => {
             const toolName = t.function?.name || t.name;
