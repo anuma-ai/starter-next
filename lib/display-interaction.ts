@@ -73,30 +73,24 @@ export function restoreDisplayInteractions(
 ) {
   try {
     const stored = localStorage.getItem(`display:${conversationId}`);
-    console.log(`[DISPLAY-DEBUG] restoreDisplayInteractions: convId=${conversationId}, localStorage has data=${!!stored}, messages.length=${messages.length}`);
     if (!stored) return;
     const items = JSON.parse(stored);
-    let created = 0;
-    let skipped = 0;
     for (const item of items) {
       const exists = uiInteraction.getInteraction(item.id);
-      if (exists) { skipped++; continue; }
+      if (exists) continue;
       const anchorMsg =
         item.anchorMessageIndex != null
           ? messages[item.anchorMessageIndex]
           : undefined;
-      console.log(`[DISPLAY-DEBUG]   creating: id=${item.id}, type=${item.displayType}, anchorIdx=${item.anchorMessageIndex}, anchorMsgId=${anchorMsg?.id}`);
       uiInteraction.createDisplayInteraction(
         item.id,
         item.displayType,
         { afterMessageId: anchorMsg?.id },
         item.result,
       );
-      created++;
     }
-    console.log(`[DISPLAY-DEBUG]   result: created=${created}, skipped=${skipped}`);
   } catch (e) {
-    console.error(`[DISPLAY-DEBUG] restoreDisplayInteractions error:`, e);
+    console.error("restoreDisplayInteractions error:", e);
   }
 }
 // #endregion restoreDisplayInteractions
@@ -119,14 +113,11 @@ export function useDisplayPersistence(
   const saveConvRef = useRef<string | null>(null);
   useEffect(() => {
     if (!conversationId) return;
-    const allDisplays = Array.from(uiInteraction.pendingInteractions.values()).filter((i) => i.type === "display");
-    console.log(`[DISPLAY-DEBUG] SAVE effect: convId=${conversationId}, saveConvRef=${saveConvRef.current}, displays=${allDisplays.length}, prevCount=${prevDisplayCountRef.current}, total=${uiInteraction.pendingInteractions.size}`);
     // When conversation changes, reset the counter and skip this run.
     // The pendingInteractions still reference the OLD conversation's data
     // (state update from clearInteractions hasn't been applied yet), so
     // saving now would write stale data under the new conversation's key.
     if (saveConvRef.current !== conversationId) {
-      console.log(`[DISPLAY-DEBUG] SAVE: conv changed, skipping save`);
       prevDisplayCountRef.current = 0;
       saveConvRef.current = conversationId;
       return;
@@ -146,7 +137,6 @@ export function useDisplayPersistence(
         };
       });
       try {
-        console.log(`[DISPLAY-DEBUG] SAVE: writing ${data.length} displays to localStorage for convId=${conversationId}`, data.map(d => d.id));
         localStorage.setItem(
           `display:${conversationId}`,
           JSON.stringify(data),
@@ -156,19 +146,21 @@ export function useDisplayPersistence(
     prevDisplayCountRef.current = displays.length;
   }, [uiInteraction.pendingInteractions, conversationId, messages]);
 
-  // Restore: recreate display interactions from localStorage on load.
-  // No dedup guard — the restore function is idempotent (skips items
-  // that already exist via getInteraction check), and we must always
-  // restore after clearInteractions wipes the map on conversation switch.
+  // Restore: when conversation changes, remove stale display interactions
+  // from the previous conversation and recreate from localStorage.
+  const restoreConvRef = useRef<string | null>(null);
   useEffect(() => {
-    const mapSize = uiInteraction.pendingInteractions.size;
-    const displayCount = Array.from(uiInteraction.pendingInteractions.values()).filter(i => i.type === "display").length;
-    console.log(`[DISPLAY-DEBUG] RESTORE effect: convId=${conversationId}, messages.length=${messages.length}, mapSize=${mapSize}, displaysInMap=${displayCount}`);
-    if (!conversationId || messages.length === 0) {
-      console.log(`[DISPLAY-DEBUG] RESTORE: early return (no convId or no messages)`);
-      return;
+    if (!conversationId || messages.length === 0) return;
+    // On conversation switch, cancel display interactions from the old conversation
+    if (restoreConvRef.current !== null && restoreConvRef.current !== conversationId) {
+      for (const [id, interaction] of uiInteraction.pendingInteractions) {
+        if (interaction.type === "display") {
+          uiInteraction.cancelInteraction(id);
+        }
+      }
     }
+    restoreConvRef.current = conversationId;
     restoreDisplayInteractions(uiInteraction, conversationId, messages);
-  }, [conversationId, messages.length, uiInteraction.pendingInteractions]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conversationId, messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 // #endregion useDisplayPersistence

@@ -349,11 +349,15 @@ const ChatBotDemo = () => {
   const inputRef = useRef(input);
   inputRef.current = input;
 
-  // Clear UI interactions when conversation changes to prevent cross-conversation leaks
+  // Clear interactive (non-display) UI interactions when conversation changes
+  // to prevent cross-conversation leaks. Display interactions are left alone
+  // and replaced by the persistence hook, avoiding a flash of empty state.
   useEffect(() => {
-    const displayCount = Array.from(uiInteraction.pendingInteractions.values()).filter(i => i.type === "display").length;
-    console.log(`[DISPLAY-DEBUG] CLEAR effect fired. convId=${conversationId}, displays in map=${displayCount}, total=${uiInteraction.pendingInteractions.size}`);
-    uiInteraction.clearInteractions();
+    for (const [id, interaction] of uiInteraction.pendingInteractions) {
+      if (interaction.type !== "display") {
+        uiInteraction.cancelInteraction(id);
+      }
+    }
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist display interactions to localStorage so they survive page refresh
