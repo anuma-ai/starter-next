@@ -45,6 +45,7 @@ import { useUIInteraction } from "@reverbia/sdk/react";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { FormInteraction } from "@/components/chat/form-interaction";
 import { WeatherCard } from "@/components/chat/weather-card";
+import { ChartCard } from "@/components/chat/chart-card";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
@@ -349,9 +350,15 @@ const ChatBotDemo = () => {
   const inputRef = useRef(input);
   inputRef.current = input;
 
-  // Clear UI interactions when conversation changes to prevent cross-conversation leaks
+  // Clear interactive (non-display) UI interactions when conversation changes
+  // to prevent cross-conversation leaks. Display interactions are left alone
+  // and replaced by the persistence hook, avoiding a flash of empty state.
   useEffect(() => {
-    uiInteraction.clearInteractions();
+    for (const [id, interaction] of uiInteraction.pendingInteractions) {
+      if (interaction.type !== "display") {
+        uiInteraction.cancelInteraction(id);
+      }
+    }
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist display interactions to localStorage so they survive page refresh
@@ -965,7 +972,7 @@ const ChatBotDemo = () => {
 
               // Display tool results are rendered via the interaction system
               // (persisted in localStorage), not from [Tool Execution Results] messages
-              if (text.includes("[Tool Execution Results]") && text.includes("display_weather")) {
+              if (text.includes("[Tool Execution Results]") && (text.includes("display_weather") || text.includes("display_chart"))) {
                 return null;
               }
 
@@ -1320,6 +1327,8 @@ const ChatBotDemo = () => {
                   {displaysBeforeThisMsg.map(interaction =>
                     interaction.data.displayType === "weather" ? (
                       <WeatherCard key={interaction.id} data={interaction.result} />
+                    ) : interaction.data.displayType === "chart" ? (
+                      <ChartCard key={interaction.id} data={interaction.result} />
                     ) : null
                   )}
                   <div>{messageContent}</div>
@@ -1410,6 +1419,8 @@ const ChatBotDemo = () => {
             .map((interaction) =>
               interaction.data.displayType === "weather" ? (
                 <WeatherCard key={interaction.id} data={interaction.result} />
+              ) : interaction.data.displayType === "chart" ? (
+                <ChartCard key={interaction.id} data={interaction.result} />
               ) : null
             )}
         </div>

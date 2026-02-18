@@ -62,6 +62,39 @@ export function getUnanchoredDisplays(
 }
 // #endregion getUnanchoredDisplays
 
+// #region restoreDisplayInteractions
+// Restore display interactions from localStorage for the given
+// conversation. Called after clearing interactions on conversation
+// switch to immediately repopulate display results.
+export function restoreDisplayInteractions(
+  uiInteraction: UIInteractionContextValue,
+  conversationId: string,
+  messages: { id: string }[],
+) {
+  try {
+    const stored = localStorage.getItem(`display:${conversationId}`);
+    if (!stored) return;
+    const items = JSON.parse(stored);
+    for (const item of items) {
+      const exists = uiInteraction.getInteraction(item.id);
+      if (exists) continue;
+      const anchorMsg =
+        item.anchorMessageIndex != null
+          ? messages[item.anchorMessageIndex]
+          : undefined;
+      uiInteraction.createDisplayInteraction(
+        item.id,
+        item.displayType,
+        { afterMessageId: anchorMsg?.id },
+        item.result,
+      );
+    }
+  } catch (e) {
+    console.error("restoreDisplayInteractions error:", e);
+  }
+}
+// #endregion restoreDisplayInteractions
+
 // #region useDisplayPersistence
 // Persist display interactions to localStorage so they survive page
 // refresh. The SDK stores results only in the in-memory
@@ -77,8 +110,18 @@ export function useDisplayPersistence(
 ) {
   // Save: write to localStorage when new display interactions appear
   const prevDisplayCountRef = useRef(0);
+  const saveConvRef = useRef<string | null>(null);
   useEffect(() => {
     if (!conversationId) return;
+    // When conversation changes, reset the counter and skip this run.
+    // The pendingInteractions still reference the OLD conversation's data
+    // (state update from clearInteractions hasn't been applied yet), so
+    // saving now would write stale data under the new conversation's key.
+    if (saveConvRef.current !== conversationId) {
+      prevDisplayCountRef.current = 0;
+      saveConvRef.current = conversationId;
+      return;
+    }
     const displays = Array.from(uiInteraction.pendingInteractions.values())
       .filter((i) => i.type === "display" && i.resolved);
     if (displays.length > 0 && displays.length > prevDisplayCountRef.current) {
@@ -103,30 +146,35 @@ export function useDisplayPersistence(
     prevDisplayCountRef.current = displays.length;
   }, [uiInteraction.pendingInteractions, conversationId, messages]);
 
-  // Restore: recreate display interactions from localStorage on load
-  const restoredConvRef = useRef<string | null>(null);
+  // Restore: when conversation changes, remove stale display interactions
+  // from the previous conversation and recreate from localStorage.
+  const restoreConvRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!conversationId || messages.length === 0) return;
-    if (restoredConvRef.current === conversationId) return;
-    restoredConvRef.current = conversationId;
-    try {
-      const stored = localStorage.getItem(`display:${conversationId}`);
-      if (!stored) return;
-      const items = JSON.parse(stored);
-      for (const item of items) {
-        if (uiInteraction.getInteraction(item.id)) continue;
-        const anchorMsg =
-          item.anchorMessageIndex != null
-            ? messages[item.anchorMessageIndex]
-            : undefined;
-        uiInteraction.createDisplayInteraction(
-          item.id,
-          item.displayType,
-          { afterMessageId: anchorMsg?.id },
-          item.result,
-        );
+    // When conversationId becomes null (new conversation created), cancel all
+    // display interactions from the previous conversation immediately. There's
+    // nothing to restore for a blank conversation.
+    if (!conversationId) {
+      if (restoreConvRef.current !== null) {
+        for (const [id, interaction] of uiInteraction.pendingInteractions) {
+          if (interaction.type === "display") {
+            uiInteraction.cancelInteraction(id);
+          }
+        }
       }
-    } catch {}
+      restoreConvRef.current = null;
+      return;
+    }
+    if (messages.length === 0) return;
+    // On conversation switch, cancel display interactions from the old conversation
+    if (restoreConvRef.current !== null && restoreConvRef.current !== conversationId) {
+      for (const [id, interaction] of uiInteraction.pendingInteractions) {
+        if (interaction.type === "display") {
+          uiInteraction.cancelInteraction(id);
+        }
+      }
+    }
+    restoreConvRef.current = conversationId;
+    restoreDisplayInteractions(uiInteraction, conversationId, messages);
   }, [conversationId, messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 // #endregion useDisplayPersistence

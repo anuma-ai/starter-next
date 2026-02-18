@@ -151,11 +151,11 @@ if (systemPrompt) {
 }
 messagesArray.push({ role: "user", content: contentParts });
 
-// When files are attached, exclude UI interaction tools (prompt_user_choice,
-// prompt_user_form) so the model analyzes file contents directly instead of
-// presenting interactive menus asking the user to pick a file.
+// When files are attached, exclude UI interaction and display tools so
+// the model analyzes file contents directly instead of presenting
+// interactive menus or rendering charts/cards.
 const hasAttachments = sdkFiles.length > 0 || hasImages;
-const UI_INTERACTION_TOOLS = ["prompt_user_choice", "prompt_user_form"];
+const UI_INTERACTION_TOOLS = ["prompt_user_choice", "prompt_user_form", "display_chart", "display_weather"];
 const effectiveClientTools = hasAttachments && clientTools
   ? clientTools.filter((t: any) => {
       const toolName = t.function?.name || t.name;
@@ -268,7 +268,10 @@ if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClient
     const toolCalls = extractToolCalls(currentResponse);
     if (toolCalls.length === 0) break;
 
-    // Execute each tool and collect results
+    // Execute each tool and collect results.
+    // Tools that return undefined (e.g. auto-execute tools already handled
+    // by the SDK's internal tool loop) are skipped to avoid sending garbage
+    // results back to the model.
     const toolResults: Array<{ call_id: string; output: string }> = [];
     for (const call of toolCalls) {
       try {
@@ -278,6 +281,7 @@ if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClient
           arguments: safeParseArgs(call.arguments ?? call.function?.arguments),
         };
         const result = await onToolCall(toolCall, effectiveClientTools);
+        if (result === undefined) continue;
         toolResults.push({ call_id: toolCall.id, output: JSON.stringify(result) });
       } catch (error) {
         toolResults.push({
@@ -286,6 +290,9 @@ if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClient
         });
       }
     }
+
+    // If no actionable tool results (all were auto-execute / undefined), stop the loop
+    if (toolResults.length === 0) break;
 
     // Send results back to the model as a continuation message
     const summary = toolResults.map((tr) => {
