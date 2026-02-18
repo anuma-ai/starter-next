@@ -736,8 +736,10 @@ export function useAppChatStorage({
       // When auto-execute tools run, the model may return empty text (the visual
       // result IS the response), so we should NOT retry as "empty response".
       let hadAutoExecuteTools = false;
+      let accumulatedThinking = '';
       const wrappedOnThinking = (chunk: string) => {
-        if (chunk.includes('Executing tool:')) hadAutoExecuteTools = true;
+        accumulatedThinking += chunk;
+        if (accumulatedThinking.includes('Executing tool:')) hadAutoExecuteTools = true;
         if (onThinking) onThinking(chunk);
       };
 
