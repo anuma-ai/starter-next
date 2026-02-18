@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, AudioLinesIcon } from "lucide-react";
+import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, AudioLinesIcon, SquareIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 
@@ -343,6 +343,7 @@ const ChatBotDemo = () => {
     setConversationId,
     getConversation,
     createConversation,
+    stop,
   } = chatState;
 
   const inputRef = useRef(input);
@@ -1539,15 +1540,20 @@ const ChatBotDemo = () => {
                 )
               )}
               {!isVoiceActive && !voiceChatMode && (
-                <PromptInputSubmit
-                  disabled={
-                    !input ||
-                    isLoading ||
-                    !authenticated ||
-                    voiceChatMode
-                  }
-                  status={status}
-                />
+                isLoading ? (
+                  <button
+                    type="button"
+                    onClick={() => stop()}
+                    aria-label="Stop generating"
+                    className="inline-flex items-center justify-center size-8 rounded-full bg-primary text-primary-foreground hover:opacity-80 transition-opacity cursor-pointer"
+                  >
+                    <SquareIcon className="size-3" fill="currentColor" strokeWidth={0} />
+                  </button>
+                ) : (
+                  <PromptInputSubmit
+                    disabled={!input || !authenticated || voiceChatMode}
+                  />
+                )
               )}
             </div>
           </PromptInput>
