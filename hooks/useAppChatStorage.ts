@@ -929,9 +929,13 @@ export function useAppChatStorage({
 
       // Now that messages are in state, allow future reloads
       // Use setTimeout to ensure this happens after the conversationId might have changed
-      setTimeout(() => {
-        isSendingMessageRef.current = false;
-      }, 100);
+      // Skip if stopped — handleStop already cleared the flag, and a delayed reset
+      // could clobber a new message's guard if the user resends quickly.
+      if (!stoppedRef.current) {
+        setTimeout(() => {
+          isSendingMessageRef.current = false;
+        }, 100);
+      }
 
       // Clear streaming state - streaming is complete
       if (messageConversationId) {
