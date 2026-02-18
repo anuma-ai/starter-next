@@ -88,48 +88,15 @@ const addMessageOptimistically = useCallback(
 
 While the optimistic update builds parts for the UI, the API payload needs a
 different format. Text is the same, but files are included as content parts
-in the messages array — images as `image_url`, other files as `input_file`.
-Each file gets a stable ID so the SDK can match it back to extracted text
-after file preprocessing (see `preprocessFiles` in the SDK docs). A separate
-`sdkFiles` array provides metadata so the SDK can encrypt and store files
-in OPFS.
+in the messages array as `image_url` content parts. Fireworks models
+(Anuma) require the Chat Completions API for vision, so the hook
+switches to `completions` when images are attached. Each file gets a
+stable ID so the SDK can match it back to
+extracted text after file preprocessing (see `preprocessFiles` in the SDK
+docs). A separate `sdkFiles` array provides metadata so the SDK can encrypt
+and store non-image files in OPFS.
 
-```ts
-const contentParts: any[] = [];
-if (textForStorage) {
-  contentParts.push({ type: "text", text: textForStorage });
-}
-
-// Stable IDs let the SDK match files back to their extracted text after preprocessing
-const enrichedFiles = (files || []).map((file) => ({
-  ...file,
-  stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-}));
-
-// Fireworks models require Chat Completions API for vision/images;
-// their Responses API doesn't support multimodal content.
-const hasImages = enrichedFiles.some((f) => f.mediaType?.startsWith("image/"));
-const effectiveApiType =
-  model?.startsWith("fireworks/") && hasImages ? "completions" : apiType;
-
-// Images are sent as image_url content parts for vision models.
-// Non-image files (PDF, DOCX, XLSX, ZIP) are handled by the SDK's client-side
-// preprocessing via the files parameter below.
-enrichedFiles.forEach((file) => {
-  if (file.mediaType?.startsWith("image/")) {
-    contentParts.push({ type: "image_url", image_url: { url: file.url } });
-  }
-});
-
-// SDK file metadata — the SDK preprocesses non-image files (PDF, Word, Excel) automatically
-const sdkFiles = enrichedFiles.map((file) => ({
-  id: file.stableId,
-  name: file.filename || file.stableId,
-  type: file.mediaType || "application/octet-stream",
-  size: 0,
-  url: file.url,
-}));
-```
+{@includeCode ../hooks/useAppChatStorage.ts#contentParts}
 
 ## Calling sendMessage
 
@@ -162,7 +129,7 @@ const sendArgs = {
   ...(onThinking && { onThinking }),
   ...(memoryContext && { memoryContext }),
   ...(toolChoice && { toolChoice }),
-  ...(effectiveApiType && { apiType: effectiveApiType }),
+  ...(apiType && { apiType }),
   ...(explicitConversationId && { conversationId: explicitConversationId }),
   onData: (chunk: string) => {
     streamingTextRef.current += chunk;
@@ -186,6 +153,12 @@ const isTransientError = (r: typeof response) => {
          e.includes("econnreset") || e.includes("econnrefused") ||
          e.includes("network");
 };
+// Retries should not re-preprocess files — the SDK extracts text and stores
+// files on the first call.  Re-sending with files causes duplicate storage
+// entries and wastes 10-30 s per file on redundant preprocessing.
+const retryArgs = sdkFiles.length > 0
+  ? { ...sendArgs, files: undefined }
+  : sendArgs;
 const MAX_RETRIES = 2;
 for (let retry = 0; retry < MAX_RETRIES; retry++) {
   if (stoppedRef.current) break;
@@ -194,7 +167,7 @@ for (let retry = 0; retry < MAX_RETRIES; retry++) {
   if (!emptyResponse && !transientError) break;
   console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
   streamingTextRef.current = "";
-  response = await sendMessage(sendArgs);
+  response = await sendMessage(retryArgs);
 }
 ```
 
@@ -284,7 +257,7 @@ if (!stoppedRef.current && onToolCall && clientTools && clientTools.length > 0) 
           parameters: (t as any).function?.arguments || t.parameters,
         })),
         toolChoice: 'auto',
-        ...(effectiveApiType && { apiType: effectiveApiType }),
+        ...(apiType && { apiType }),
         ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
           streamingTextRef.current += chunk;

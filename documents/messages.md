@@ -24,11 +24,13 @@ empty assistant placeholder that will be filled as the response streams in.
 
 While the optimistic update builds parts for the UI, the API payload needs a
 different format. Text is the same, but files are included as content parts
-in the messages array — images as `image_url`, other files as `input_file`.
-Each file gets a stable ID so the SDK can match it back to extracted text
-after file preprocessing (see `preprocessFiles` in the SDK docs). A separate
-`sdkFiles` array provides metadata so the SDK can encrypt and store files
-in OPFS.
+in the messages array as `image_url` content parts. Fireworks models
+(Anuma) require the Chat Completions API for vision, so the hook
+switches to `completions` when images are attached. Each file gets a
+stable ID so the SDK can match it back to
+extracted text after file preprocessing (see `preprocessFiles` in the SDK
+docs). A separate `sdkFiles` array provides metadata so the SDK can encrypt
+and store non-image files in OPFS.
 
 {@includeCode ../hooks/useAppChatStorage.ts#contentParts}
 
