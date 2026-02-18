@@ -145,6 +145,17 @@ if (systemPrompt) {
 }
 messagesArray.push({ role: "user", content: contentParts });
 
+// Track whether the SDK auto-executed any tools (e.g. display_chart).
+// When auto-execute tools run, the model may return empty text (the visual
+// result IS the response), so we should NOT retry as "empty response".
+let hadAutoExecuteTools = false;
+let accumulatedThinking = '';
+const wrappedOnThinking = (chunk: string) => {
+  accumulatedThinking += chunk;
+  if (accumulatedThinking.includes('Executing tool:')) hadAutoExecuteTools = true;
+  if (onThinking) onThinking(chunk);
+};
+
 // See SendMessageWithStorageArgs in the SDK docs for the full list of options
 const sendArgs = {
   messages: messagesArray,
@@ -158,7 +169,7 @@ const sendArgs = {
   ...(clientTools && clientTools.length > 0 && { clientTools }),
   ...(store !== undefined && { store }),
   ...(thinking && { thinking }),
-  ...(onThinking && { onThinking }),
+  onThinking: wrappedOnThinking,
   ...(memoryContext && { memoryContext }),
   ...(toolChoice && { toolChoice }),
   ...(effectiveApiType && { apiType: effectiveApiType }),
@@ -178,6 +189,8 @@ let response = await sendMessage(sendArgs);
 //    a successful SSE stream with no output text.
 // 2. Network errors — "Failed to fetch" can occur transiently in CI or
 //    under load. These are worth retrying.
+// Skip retries when auto-execute tools ran — empty text is expected for
+// display tools (the rendered card IS the response).
 const isTransientError = (r: typeof response) => {
   if (!r?.error) return false;
   const e = r.error.toLowerCase();
@@ -187,11 +200,12 @@ const isTransientError = (r: typeof response) => {
 };
 const MAX_RETRIES = 2;
 for (let retry = 0; retry < MAX_RETRIES; retry++) {
-  const emptyResponse = !response?.error && !streamingTextRef.current.trim();
+  const emptyResponse = !response?.error && !streamingTextRef.current.trim() && !hadAutoExecuteTools;
   const transientError = isTransientError(response);
   if (!emptyResponse && !transientError) break;
   console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
   streamingTextRef.current = "";
+  hadAutoExecuteTools = false;
   response = await sendMessage(sendArgs);
 }
 ```
@@ -216,7 +230,10 @@ if (onToolCall && clientTools && clientTools.length > 0) {
     const toolCalls = extractToolCalls(currentResponse);
     if (toolCalls.length === 0) break;
 
-    // Execute each tool and collect results
+    // Execute each tool and collect results.
+    // Tools that return undefined (e.g. auto-execute tools already handled
+    // by the SDK's internal tool loop) are skipped to avoid sending garbage
+    // results back to the model.
     const toolResults: Array<{ call_id: string; output: string }> = [];
     for (const call of toolCalls) {
       try {
@@ -226,6 +243,7 @@ if (onToolCall && clientTools && clientTools.length > 0) {
           arguments: safeParseArgs(call.arguments ?? call.function?.arguments),
         };
         const result = await onToolCall(toolCall, clientTools);
+        if (result === undefined) continue;
         toolResults.push({ call_id: toolCall.id, output: JSON.stringify(result) });
       } catch (error) {
         toolResults.push({
@@ -234,6 +252,9 @@ if (onToolCall && clientTools && clientTools.length > 0) {
         });
       }
     }
+
+    // If no actionable tool results (all were auto-execute / undefined), stop the loop
+    if (toolResults.length === 0) break;
 
     // Send results back to the model as a continuation message
     const summary = toolResults.map((tr) => {
