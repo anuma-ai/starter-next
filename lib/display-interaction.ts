@@ -150,7 +150,21 @@ export function useDisplayPersistence(
   // from the previous conversation and recreate from localStorage.
   const restoreConvRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!conversationId || messages.length === 0) return;
+    // When conversationId becomes null (new conversation created), cancel all
+    // display interactions from the previous conversation immediately. There's
+    // nothing to restore for a blank conversation.
+    if (!conversationId) {
+      if (restoreConvRef.current !== null) {
+        for (const [id, interaction] of uiInteraction.pendingInteractions) {
+          if (interaction.type === "display") {
+            uiInteraction.cancelInteraction(id);
+          }
+        }
+      }
+      restoreConvRef.current = null;
+      return;
+    }
+    if (messages.length === 0) return;
     // On conversation switch, cancel display interactions from the old conversation
     if (restoreConvRef.current !== null && restoreConvRef.current !== conversationId) {
       for (const [id, interaction] of uiInteraction.pendingInteractions) {
