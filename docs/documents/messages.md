@@ -151,22 +151,11 @@ if (systemPrompt) {
 }
 messagesArray.push({ role: "user", content: contentParts });
 
-// Track whether the SDK auto-executed any tools (e.g. display_chart).
-// When auto-execute tools run, the model may return empty text (the visual
-// result IS the response), so we should NOT retry as "empty response".
-let hadAutoExecuteTools = false;
-let accumulatedThinking = '';
-const wrappedOnThinking = (chunk: string) => {
-  accumulatedThinking += chunk;
-  if (accumulatedThinking.includes('Executing tool:')) hadAutoExecuteTools = true;
-  if (onThinking) onThinking(chunk);
-};
-
-// When files are attached, exclude UI interaction tools (prompt_user_choice,
-// prompt_user_form) so the model analyzes file contents directly instead of
-// presenting interactive menus asking the user to pick a file.
+// When files are attached, exclude UI interaction and display tools so
+// the model analyzes file contents directly instead of presenting
+// interactive menus or rendering charts/cards.
 const hasAttachments = sdkFiles.length > 0 || hasImages;
-const UI_INTERACTION_TOOLS = ["prompt_user_choice", "prompt_user_form"];
+const UI_INTERACTION_TOOLS = ["prompt_user_choice", "prompt_user_form", "display_chart", "display_weather"];
 const effectiveClientTools = hasAttachments && clientTools
   ? clientTools.filter((t: any) => {
       const toolName = t.function?.name || t.name;
@@ -187,7 +176,7 @@ const sendArgs = {
   ...(effectiveClientTools && effectiveClientTools.length > 0 && { clientTools: effectiveClientTools }),
   ...(store !== undefined && { store }),
   ...(thinking && { thinking }),
-  onThinking: wrappedOnThinking,
+  ...(onThinking && { onThinking }),
   ...(memoryContext && { memoryContext }),
   ...(toolChoice && { toolChoice }),
   ...(effectiveApiType && { apiType: effectiveApiType }),
@@ -207,8 +196,6 @@ let response = await sendMessage(sendArgs);
 //    a successful SSE stream with no output text.
 // 2. Network errors — "Failed to fetch" can occur transiently in CI or
 //    under load. These are worth retrying.
-// Skip retries when auto-execute tools ran — empty text is expected for
-// display tools (the rendered card IS the response).
 const isTransientError = (r: typeof response) => {
   if (!r?.error) return false;
   const e = r.error.toLowerCase();
@@ -225,12 +212,11 @@ const retryArgs = sdkFiles.length > 0
 const MAX_RETRIES = 2;
 for (let retry = 0; retry < MAX_RETRIES; retry++) {
   if (stoppedRef.current) break;
-  const emptyResponse = !response?.error && !streamingTextRef.current.trim() && !hadAutoExecuteTools;
+  const emptyResponse = !response?.error && !streamingTextRef.current.trim();
   const transientError = isTransientError(response);
   if (!emptyResponse && !transientError) break;
   console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
   streamingTextRef.current = "";
-  hadAutoExecuteTools = false;
   response = await sendMessage(retryArgs);
 }
 ```
