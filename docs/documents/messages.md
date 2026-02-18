@@ -96,7 +96,45 @@ extracted text after file preprocessing (see `preprocessFiles` in the SDK
 docs). A separate `sdkFiles` array provides metadata so the SDK can encrypt
 and store non-image files in OPFS.
 
-{@includeCode ../hooks/useAppChatStorage.ts#contentParts}
+```ts
+const contentParts: any[] = [];
+if (textForStorage) {
+  contentParts.push({ type: "text", text: textForStorage });
+}
+
+// Stable IDs let the SDK match files back to their extracted text after preprocessing
+const enrichedFiles = (files || []).map((file) => ({
+  ...file,
+  stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+}));
+
+// Fireworks models require Chat Completions API for vision/images;
+// their Responses API doesn't support multimodal content.
+const hasImages = enrichedFiles.some((f) => f.mediaType?.startsWith("image/"));
+const effectiveApiType =
+  model?.startsWith("fireworks/") && hasImages ? "completions" as const : apiType;
+
+// Images are sent as image_url content parts (Chat Completions format).
+// Non-image files (PDF, DOCX, XLSX, ZIP) are handled by the SDK's client-side
+// preprocessing via the files parameter below.
+enrichedFiles.forEach((file) => {
+  if (file.mediaType?.startsWith("image/")) {
+    contentParts.push({ type: "image_url", image_url: { url: file.url, detail: "high" } });
+  }
+});
+
+// SDK file metadata — the SDK preprocesses non-image files (PDF, Word, Excel) automatically.
+// Images are already included as content parts above, so exclude them here.
+const sdkFiles = enrichedFiles
+  .filter((file) => !file.mediaType?.startsWith("image/"))
+  .map((file) => ({
+    id: file.stableId,
+    name: file.filename || file.stableId,
+    type: file.mediaType || "application/octet-stream",
+    size: 0,
+    url: file.url,
+  }));
+```
 
 ## Calling sendMessage
 
@@ -113,6 +151,18 @@ if (systemPrompt) {
 }
 messagesArray.push({ role: "user", content: contentParts });
 
+// When files are attached, exclude UI interaction tools (prompt_user_choice,
+// prompt_user_form) so the model analyzes file contents directly instead of
+// presenting interactive menus asking the user to pick a file.
+const hasAttachments = sdkFiles.length > 0 || hasImages;
+const UI_INTERACTION_TOOLS = ["prompt_user_choice", "prompt_user_form"];
+const effectiveClientTools = hasAttachments && clientTools
+  ? clientTools.filter((t: any) => {
+      const toolName = t.function?.name || t.name;
+      return !UI_INTERACTION_TOOLS.includes(toolName);
+    })
+  : clientTools;
+
 // See SendMessageWithStorageArgs in the SDK docs for the full list of options
 const sendArgs = {
   messages: messagesArray,
@@ -123,13 +173,13 @@ const sendArgs = {
   ...(reasoning && { reasoning }),
   ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
   ...(serverTools && (typeof serverTools === "function" || serverTools.length > 0) && { serverTools }),
-  ...(clientTools && clientTools.length > 0 && { clientTools }),
+  ...(effectiveClientTools && effectiveClientTools.length > 0 && { clientTools: effectiveClientTools }),
   ...(store !== undefined && { store }),
   ...(thinking && { thinking }),
   ...(onThinking && { onThinking }),
   ...(memoryContext && { memoryContext }),
   ...(toolChoice && { toolChoice }),
-  ...(apiType && { apiType }),
+  ...(effectiveApiType && { apiType: effectiveApiType }),
   ...(explicitConversationId && { conversationId: explicitConversationId }),
   onData: (chunk: string) => {
     streamingTextRef.current += chunk;
@@ -208,7 +258,7 @@ SDK-wrapped responses.
 
 ```ts
 // Multi-turn tool calling loop (max 10 iterations)
-if (!stoppedRef.current && onToolCall && clientTools && clientTools.length > 0) {
+if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClientTools.length > 0) {
   let currentResponse: any = response;
   let iteration = 0;
 
@@ -227,7 +277,7 @@ if (!stoppedRef.current && onToolCall && clientTools && clientTools.length > 0) 
           name: call.name || call.function?.name,
           arguments: safeParseArgs(call.arguments ?? call.function?.arguments),
         };
-        const result = await onToolCall(toolCall, clientTools);
+        const result = await onToolCall(toolCall, effectiveClientTools);
         toolResults.push({ call_id: toolCall.id, output: JSON.stringify(result) });
       } catch (error) {
         toolResults.push({
@@ -249,7 +299,7 @@ if (!stoppedRef.current && onToolCall && clientTools && clientTools.length > 0) 
         model: model || 'openai/gpt-5.2-2025-12-11',
         maxOutputTokens: maxOutputTokens || 16000,
         includeHistory: true,
-        clientTools: clientTools?.map((t) => ({
+        clientTools: effectiveClientTools?.map((t) => ({
           type: t.type || 'function',
           // Handle both nested (SDK tools) and flat (app-builder tools) structures
           name: (t as any).function?.name || t.name,
@@ -257,7 +307,7 @@ if (!stoppedRef.current && onToolCall && clientTools && clientTools.length > 0) 
           parameters: (t as any).function?.arguments || t.parameters,
         })),
         toolChoice: 'auto',
-        ...(apiType && { apiType }),
+        ...(effectiveApiType && { apiType: effectiveApiType }),
         ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
           streamingTextRef.current += chunk;
