@@ -41,6 +41,20 @@ export type DisplayWeatherResult = {
 };
 // #endregion displayToolTypes
 
+// Result types for the chart display tool.
+export type ChartDataPoint = Record<string, string | number>;
+
+export type DisplayChartResult = {
+  chartType: "bar" | "line" | "area" | "pie";
+  title?: string;
+  data: ChartDataPoint[];
+  dataKeys: string[];
+  xAxisKey?: string;
+  colors?: Record<string, string>;
+} | {
+  error: string;
+};
+
 /**
  * Create UI interaction tools for the chat.
  * These are client-side tools that execute locally and render UI inline.
@@ -282,5 +296,77 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
   });
   // #endregion displayToolDefinition
 
-  return [choiceTool, formTool, weatherTool];
+  const chartTool = createDisplayTool(options, {
+    name: "display_chart",
+    description:
+      "Renders a chart inline in the chat. Supports bar, line, area, and pie charts. CRITICAL RULES: (1) You may only call this tool ONCE per user request — it is impossible to update or replace a chart after it renders. (2) If you need to search or fetch data first, complete ALL data gathering BEFORE calling this tool. (3) Do NOT call this tool with estimated, placeholder, or approximate data — only use verified data. (4) After calling this tool, do NOT call it again or attempt to 'update' it. (5) Do NOT repeat the chart data as text in your response. Use simple alphanumeric keys without spaces (e.g. 'revenue', 'users', 'q1Sales').",
+    parameters: {
+      type: "object",
+      properties: {
+        chartType: {
+          type: "string",
+          enum: ["bar", "line", "area", "pie"],
+          description: "Type of chart to render",
+        },
+        title: {
+          type: "string",
+          description: "Optional title displayed above the chart",
+        },
+        data: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+          },
+          description:
+            "Array of data points. Each object should have a label key and one or more numeric value keys.",
+        },
+        dataKeys: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Which keys in each data object to chart as series/bars/slices (the numeric values).",
+        },
+        xAxisKey: {
+          type: "string",
+          description:
+            "Which key in each data object to use for x-axis labels (for bar, line, area charts). For pie charts, this is the name/label key for each slice.",
+        },
+        colors: {
+          type: "object",
+          additionalProperties: { type: "string" },
+          description:
+            "Optional color overrides. Map of dataKey to CSS color value (e.g. { 'revenue': '#2563eb' }). If omitted, uses theme chart colors.",
+        },
+      },
+      required: ["chartType", "data", "dataKeys"],
+    },
+    displayType: "chart",
+    execute: async (args: Record<string, unknown>): Promise<DisplayChartResult> => {
+      const chartType = args.chartType as string;
+      const data = args.data as ChartDataPoint[];
+      const dataKeys = args.dataKeys as string[];
+
+      if (!chartType || !["bar", "line", "area", "pie"].includes(chartType)) {
+        return { error: `Unsupported chart type: ${chartType}` };
+      }
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return { error: "Invalid or empty chart data" };
+      }
+      if (!dataKeys || !Array.isArray(dataKeys) || dataKeys.length === 0) {
+        return { error: "No data keys specified for charting" };
+      }
+
+      return {
+        chartType: chartType as "bar" | "line" | "area" | "pie",
+        title: args.title as string | undefined,
+        data,
+        dataKeys,
+        xAxisKey: args.xAxisKey as string | undefined,
+        colors: args.colors as Record<string, string> | undefined,
+      };
+    },
+  });
+
+  return [choiceTool, formTool, weatherTool, chartTool];
 }

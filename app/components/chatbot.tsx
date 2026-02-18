@@ -45,6 +45,7 @@ import { useUIInteraction } from "@reverbia/sdk/react";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { FormInteraction } from "@/components/chat/form-interaction";
 import { WeatherCard } from "@/components/chat/weather-card";
+import { ChartCard } from "@/components/chat/chart-card";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
@@ -350,6 +351,8 @@ const ChatBotDemo = () => {
 
   // Clear UI interactions when conversation changes to prevent cross-conversation leaks
   useEffect(() => {
+    const displayCount = Array.from(uiInteraction.pendingInteractions.values()).filter(i => i.type === "display").length;
+    console.log(`[DISPLAY-DEBUG] CLEAR effect fired. convId=${conversationId}, displays in map=${displayCount}, total=${uiInteraction.pendingInteractions.size}`);
     uiInteraction.clearInteractions();
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -964,7 +967,7 @@ const ChatBotDemo = () => {
 
               // Display tool results are rendered via the interaction system
               // (persisted in localStorage), not from [Tool Execution Results] messages
-              if (text.includes("[Tool Execution Results]") && text.includes("display_weather")) {
+              if (text.includes("[Tool Execution Results]") && (text.includes("display_weather") || text.includes("display_chart"))) {
                 return null;
               }
 
@@ -1319,6 +1322,8 @@ const ChatBotDemo = () => {
                   {displaysBeforeThisMsg.map(interaction =>
                     interaction.data.displayType === "weather" ? (
                       <WeatherCard key={interaction.id} data={interaction.result} />
+                    ) : interaction.data.displayType === "chart" ? (
+                      <ChartCard key={interaction.id} data={interaction.result} />
                     ) : null
                   )}
                   <div>{messageContent}</div>
@@ -1409,6 +1414,8 @@ const ChatBotDemo = () => {
             .map((interaction) =>
               interaction.data.displayType === "weather" ? (
                 <WeatherCard key={interaction.id} data={interaction.result} />
+              ) : interaction.data.displayType === "chart" ? (
+                <ChartCard key={interaction.id} data={interaction.result} />
               ) : null
             )}
         </div>
