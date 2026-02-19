@@ -45,7 +45,7 @@ import { useUIInteraction } from "@reverbia/sdk/react";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { FormInteraction } from "@/components/chat/form-interaction";
 import { WeatherCard } from "@/components/chat/weather-card";
-import { ChartCard } from "@/components/chat/chart-card";
+import { ChartCard } from "@reverbia/sdk/react";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
