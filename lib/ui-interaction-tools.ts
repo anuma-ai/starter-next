@@ -211,7 +211,7 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
   });
 
   // #region displayToolDefinition
-  const weatherTool = createDisplayTool(options, {
+  const weatherToolBase = createDisplayTool(options, {
     name: "display_weather",
     description:
       "Fetches and displays current weather as a visual card in the chat. ALWAYS call this tool when the user asks about weather, even if you already have weather data from another tool. The card displays temperature, conditions, and a 7-day forecast visually — do NOT repeat this data in your text response. Just add a brief conversational comment if appropriate.",
@@ -282,6 +282,10 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
       }
     },
   });
+  const weatherTool = {
+    ...weatherToolBase,
+    excludeServerTools: ["OpenMeteoMCP_"],
+  };
   // #endregion displayToolDefinition
 
   const chartTool = createChartTool(options);
