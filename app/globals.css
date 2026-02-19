@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@source "../node_modules/@reverbia/sdk/dist";
+
 @custom-variant dark (&:is(.dark *, .theme-dark *, .theme-orange *, .theme-green *, .theme-blue *));
 
 @theme inline {
