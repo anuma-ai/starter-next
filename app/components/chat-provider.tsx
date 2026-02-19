@@ -662,11 +662,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [baseChatState]
   );
 
-  // Wrap deleteConversation to trigger sidebar refresh after deletion
+  // Wrap deleteConversation to trigger sidebar refresh
   const deleteConversation = useCallback(
     async (id: string) => {
       await baseChatState.deleteConversation(id);
-      // Trigger sidebar refresh so deleted conversations disappear
       triggerProjectConversationsRefresh();
     },
     [baseChatState, triggerProjectConversationsRefresh]

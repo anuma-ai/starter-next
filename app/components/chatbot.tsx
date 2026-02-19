@@ -49,12 +49,7 @@ import { ChartCard } from "@reverbia/sdk/react";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
-import {
-  collectDisplayInteractions,
-  getDisplaysForMessage,
-  getUnanchoredDisplays,
-  useDisplayPersistence,
-} from "@/lib/display-interaction";
+import { parseDisplayResults } from "@/lib/display-interaction";
 
 function getErrorTitle(error: string): string {
   const e = error.toLowerCase();
@@ -361,8 +356,6 @@ const ChatBotDemo = () => {
     }
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist display interactions to localStorage so they survive page refresh
-  useDisplayPersistence(uiInteraction, conversationId, messages);
 
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
@@ -961,18 +954,27 @@ const ChatBotDemo = () => {
             let resolvedIdx = 0;
             const renderedInlineIds = new Set<string>();
 
-            // Display-only interactions (e.g. weather cards)
-            const displayInteractions = collectDisplayInteractions(uiInteraction.pendingInteractions);
-            const renderedDisplayIds = new Set<string>();
-
             return messages.map((message: any) => {
             // At tool result message positions, render custom components instead of raw text
             if (message.role === "user" && message.parts.length > 0 && message.parts[0].type === "text") {
               const text = message.parts[0].text || "";
 
-              // Display tool results are rendered via the interaction system
-              // (persisted in localStorage), not from [Tool Execution Results] messages
+              // Display tool results: parse data from the message and render the component
               if (text.includes("[Tool Execution Results]") && (text.includes("display_weather") || text.includes("display_chart"))) {
+                const parsed = parseDisplayResults(text);
+                if (parsed.length > 0) {
+                  return (
+                    <div key={message.id}>
+                      {parsed.map((p, idx) =>
+                        p.displayType === "weather" ? (
+                          <WeatherCard key={idx} data={p.result} />
+                        ) : p.displayType === "chart" ? (
+                          <ChartCard key={idx} data={p.result} />
+                        ) : null
+                      )}
+                    </div>
+                  );
+                }
                 return null;
               }
 
@@ -1291,10 +1293,7 @@ const ChatBotDemo = () => {
               i => !renderedInlineIds.has(i.id) && i.data.afterMessageId === message.id
             );
 
-            // Display interactions anchored to this message (e.g. weather cards)
-            const displaysBeforeThisMsg = getDisplaysForMessage(message.id, displayInteractions, renderedDisplayIds);
-
-            const hasInjections = interactionsBeforeThisMsg.length > 0 || displaysBeforeThisMsg.length > 0;
+            const hasInjections = interactionsBeforeThisMsg.length > 0;
 
             if (hasInjections) {
               interactionsBeforeThisMsg.forEach(i => renderedInlineIds.add(i.id));
@@ -1323,13 +1322,6 @@ const ChatBotDemo = () => {
                         result={interaction.result}
                       />
                     )
-                  )}
-                  {displaysBeforeThisMsg.map(interaction =>
-                    interaction.data.displayType === "weather" ? (
-                      <WeatherCard key={interaction.id} data={interaction.result} />
-                    ) : interaction.data.displayType === "chart" ? (
-                      <ChartCard key={interaction.id} data={interaction.result} />
-                    ) : null
                   )}
                   <div>{messageContent}</div>
                 </Fragment>
@@ -1415,14 +1407,6 @@ const ChatBotDemo = () => {
               )
             )}
           {/* Render display interactions at bottom when anchor message not found */}
-          {getUnanchoredDisplays(uiInteraction.pendingInteractions, messages)
-            .map((interaction) =>
-              interaction.data.displayType === "weather" ? (
-                <WeatherCard key={interaction.id} data={interaction.result} />
-              ) : interaction.data.displayType === "chart" ? (
-                <ChartCard key={interaction.id} data={interaction.result} />
-              ) : null
-            )}
         </div>
       </div>
 

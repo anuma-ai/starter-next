@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@reverbia/sdk': file:../ai-sdk
+
 importers:
 
   .:
@@ -93,8 +96,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.7)(react@19.2.3)
       '@reverbia/sdk':
-        specifier: 1.0.0-next.20260217125211
-        version: 1.0.0-next.20260217125211(ba9b1e58bb454398245a38a94d90826b)
+        specifier: file:../ai-sdk
+        version: file:../ai-sdk(09ba3ed4e2a7b5182cef810fe5554721)
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.7)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -2097,8 +2100,8 @@ packages:
   '@reverbia/portal@1.0.0-next.20260211161039':
     resolution: {integrity: sha512-8CbNRV1LHhPn9NzsBK2+lPvN2WFzzl9V+iXFCPdHMBiaz8WuBRL3DtBeIzyergY14O6izRBLOVVwvhxr75NWPQ==}
 
-  '@reverbia/sdk@1.0.0-next.20260217125211':
-    resolution: {integrity: sha512-petEBPMU+Hacq9g3hIxAaVm8dO/6WAhv09wN7Pb36iVeojBZlhCaKwdO6t6bD7PUwQSBLwy7VmaQhhXPzWekyg==}
+  '@reverbia/sdk@file:../ai-sdk':
+    resolution: {directory: ../ai-sdk, type: directory}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -2106,6 +2109,7 @@ packages:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
       react-native: '>=0.70.0'
+      recharts: ^2.0.0
     peerDependenciesMeta:
       '@huggingface/transformers':
         optional: true
@@ -2116,6 +2120,8 @@ packages:
       react-dom:
         optional: true
       react-native:
+        optional: true
+      recharts:
         optional: true
 
   '@rtsao/scc@1.1.0':
@@ -9972,7 +9978,7 @@ snapshots:
 
   '@reverbia/portal@1.0.0-next.20260211161039': {}
 
-  '@reverbia/sdk@1.0.0-next.20260217125211(ba9b1e58bb454398245a38a94d90826b)':
+  '@reverbia/sdk@file:../ai-sdk(09ba3ed4e2a7b5182cef810fe5554721)':
     dependencies:
       '@reverbia/portal': 1.0.0-next.20260211161039
       ai: 5.0.93(zod@4.3.5)
@@ -9988,6 +9994,7 @@ snapshots:
       '@nozbe/watermelondb': 0.28.0
       '@privy-io/react-auth': 3.10.1(@solana-program/system@0.8.1(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana-program/token@0.9.0(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)))(@solana/sysvars@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.16)(@tanstack/react-query@5.90.16(react@19.2.3))(@types/react@19.2.7)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(utf-8-validate@5.0.10)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.3.5)
       react-dom: 19.2.3(react@19.2.3)
+      recharts: 2.15.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     transitivePeerDependencies:
       - encoding
       - zod

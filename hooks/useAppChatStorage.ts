@@ -896,6 +896,28 @@ export function useAppChatStorage({
       }
       //#endregion toolCalling
 
+      // Persist auto-executed tool results (e.g. display_chart, display_weather)
+      // as [Tool Execution Results] messages so they survive page refresh.
+      const autoResults = (response as any)?.autoExecutedToolResults;
+      if (autoResults && autoResults.length > 0) {
+        const summary = autoResults
+          .map((r: any) => `Tool "${r.name}" returned: ${JSON.stringify(r.result)}`)
+          .join('\n\n');
+        const toolResultMessage = {
+          id: `tool-result-${Date.now()}`,
+          role: 'user' as const,
+          parts: [{ type: 'text' as const, text: `[Tool Execution Results]\n\n${summary}\n\nBased on these results, continue with the task.` }],
+          createdAt: new Date(),
+        };
+        setMessages((prev: any[]) => {
+          const assistantIdx = prev.findIndex((m: any) => m.id === assistantMessageId);
+          if (assistantIdx > 0) {
+            return [...prev.slice(0, assistantIdx), toolResultMessage, ...prev.slice(assistantIdx)];
+          }
+          return [...prev, toolResultMessage];
+        });
+      }
+
       //#region postStreamCleanup
       const finalText = streamingTextRef.current;
       const messageConversationId = explicitConversationId;
