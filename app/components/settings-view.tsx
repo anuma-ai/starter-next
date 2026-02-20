@@ -97,6 +97,22 @@ export function SettingsView() {
               />
             </button>
             <button
+              onClick={() => router.push("/settings/prompt")}
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <div className="space-y-0.5 text-left">
+                <span className="text-base">System Prompt</span>
+                <p className="text-sm text-muted-foreground">
+                  Customize instructions sent to the AI
+                </p>
+              </div>
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={20}
+                className="text-muted-foreground"
+              />
+            </button>
+            <button
               onClick={() => router.push("/settings/voice")}
               className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
             >
@@ -133,9 +149,25 @@ export function SettingsView() {
               className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
             >
               <div className="space-y-0.5 text-left">
-                <span className="text-base">Memories</span>
+                <span className="text-base">Memory Engine</span>
                 <p className="text-sm text-muted-foreground">
                   Configure how the AI recalls past conversations
+                </p>
+              </div>
+              <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                size={20}
+                className="text-muted-foreground"
+              />
+            </button>
+            <button
+              onClick={() => router.push("/settings/vault")}
+              className="flex w-full items-center justify-between px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <div className="space-y-0.5 text-left">
+                <span className="text-base">Memory Vault</span>
+                <p className="text-sm text-muted-foreground">
+                  View and manage saved facts and preferences
                 </p>
               </div>
               <HugeiconsIcon

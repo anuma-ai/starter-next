@@ -93,8 +93,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.7)(react@19.2.3)
       '@reverbia/sdk':
-        specifier: 1.0.0-next.20260217125211
-        version: 1.0.0-next.20260217125211(ba9b1e58bb454398245a38a94d90826b)
+        specifier: 1.0.0-next.20260220062617
+        version: 1.0.0-next.20260220062617(ba9b1e58bb454398245a38a94d90826b)
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.7)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -2097,8 +2097,8 @@ packages:
   '@reverbia/portal@1.0.0-next.20260211161039':
     resolution: {integrity: sha512-8CbNRV1LHhPn9NzsBK2+lPvN2WFzzl9V+iXFCPdHMBiaz8WuBRL3DtBeIzyergY14O6izRBLOVVwvhxr75NWPQ==}
 
-  '@reverbia/sdk@1.0.0-next.20260217125211':
-    resolution: {integrity: sha512-petEBPMU+Hacq9g3hIxAaVm8dO/6WAhv09wN7Pb36iVeojBZlhCaKwdO6t6bD7PUwQSBLwy7VmaQhhXPzWekyg==}
+  '@reverbia/sdk@1.0.0-next.20260220062617':
+    resolution: {integrity: sha512-gfChLYwo0JX0K1aRd8I/uhegaNzBkPHlbXWl6y+AukhZR48mpZjpqP4FR23DbGu/Orw943RvpQNfiBsV8yVbdA==}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -9972,7 +9972,7 @@ snapshots:
 
   '@reverbia/portal@1.0.0-next.20260211161039': {}
 
-  '@reverbia/sdk@1.0.0-next.20260217125211(ba9b1e58bb454398245a38a94d90826b)':
+  '@reverbia/sdk@1.0.0-next.20260220062617(ba9b1e58bb454398245a38a94d90826b)':
     dependencies:
       '@reverbia/portal': 1.0.0-next.20260211161039
       ai: 5.0.93(zod@4.3.5)
