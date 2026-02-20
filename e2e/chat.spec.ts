@@ -17,7 +17,7 @@ test.describe("Chat", () => {
     });
   });
 
-  test("authenticated user sees chat interface", async ({ page }) => {
+  test("authenticated user sees chat interface @light", async ({ page }) => {
     await page.goto("/");
 
     // Verify the chat input is visible
@@ -34,7 +34,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can send a prompt and receive a response", async ({ page }) => {
+  test("user can send a prompt and receive a response @full", async ({ page }) => {
     await page.goto("/");
 
     // Wait for the chat interface to be ready
@@ -60,7 +60,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("chat input clears after sending", async ({ page }) => {
+  test("chat input clears after sending @light", async ({ page }) => {
     await page.goto("/");
 
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
@@ -82,7 +82,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can attach an image and ask about it", async ({ page }) => {
+  test("user can attach an image and ask about it @full", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
 
@@ -119,37 +119,37 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  // test("user can ask to generate an image", async ({ page }) => {
-  //   test.setTimeout(120000);
-  //   await page.goto("/");
+  test("user can ask to generate an image @full", async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto("/");
 
-  //   // Wait for the chat interface to be ready
-  //   const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-  //   await expect(promptInput).toBeVisible();
+    // Wait for the chat interface to be ready
+    const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
+    await expect(promptInput).toBeVisible();
 
-  //   // Ask to generate an image of a cat (explicit request for actual image generation)
-  //   const prompt = "Generate an actual image of a cat. Use image generation, not ASCII art.";
-  //   await promptInput.fill(prompt);
-  //   await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
+    // Ask to generate an image of a cat (explicit request for actual image generation)
+    const prompt = "Generate an actual image of a cat. Use image generation, not ASCII art.";
+    await promptInput.fill(prompt);
+    await page.waitForTimeout(PRE_SUBMIT_PAUSE_MS);
 
-  //   // Submit the prompt
-  //   await page.getByRole("button", { name: "Submit" }).click();
+    // Submit the prompt
+    await page.getByRole("button", { name: "Submit" }).click();
 
-  //   // Wait for the user message to appear
-  //   await expect(page.getByRole("main").getByText(prompt)).toBeVisible({
-  //     timeout: 10000,
-  //   });
+    // Wait for the user message to appear
+    await expect(page.getByRole("main").getByText(prompt)).toBeVisible({
+      timeout: 10000,
+    });
 
-  //   // Wait for the generated image to appear in the assistant's response
-  //   // The image may be rendered inline via markdown or as a separate image part
-  //   await expect(page.locator(".is-assistant img")).toBeVisible({
-  //     timeout: 90000,
-  //   });
+    // Wait for the generated image to appear in the assistant's response
+    // The image may be rendered inline via markdown or as a separate image part
+    await expect(page.locator(".is-assistant img")).toBeVisible({
+      timeout: 90000,
+    });
 
-  //   await page.waitForTimeout(VIDEO_PAUSE_MS);
-  // });
+    await page.waitForTimeout(VIDEO_PAUSE_MS);
+  });
 
-  test("user can attach an Excel file and ask about it", async ({ page }) => {
+  test("user can attach an Excel file and ask about it @full", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
 
@@ -188,7 +188,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can attach a Word document and ask about it", async ({ page }) => {
+  test("user can attach a Word document and ask about it @full", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
 
@@ -227,7 +227,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can attach a zip file and ask about its contents", async ({ page }) => {
+  test("user can attach a zip file and ask about its contents @full", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
 
