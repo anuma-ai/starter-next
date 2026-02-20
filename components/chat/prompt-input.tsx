@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/image-compression";
 import type { ChatStatus, FileUIPart } from "@/types/chat";
 import {
   CornerDownLeftIcon,
@@ -158,14 +159,17 @@ export function PromptInputProvider({
     const incoming = Array.from(files);
     if (incoming.length === 0) return;
 
-    // Convert files to data URLs immediately to avoid blob URL lifecycle issues
+    // Convert files to data URLs immediately to avoid blob URL lifecycle issues.
+    // Images are compressed to reduce payload size for vision models.
     const fileDataPromises = incoming.map(async (file) => {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const dataUrl = file.type.startsWith("image/")
+        ? await compressImage(file)
+        : await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
 
       return {
         id: nanoid(),
@@ -352,14 +356,17 @@ export const PromptInput = ({
         });
       }
 
-      // Convert files to data URLs immediately
+      // Convert files to data URLs immediately.
+      // Images are compressed to reduce payload size for vision models.
       const fileDataPromises = capped.map(async (file) => {
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        const dataUrl = file.type.startsWith("image/")
+          ? await compressImage(file)
+          : await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
 
         return {
           id: nanoid(),

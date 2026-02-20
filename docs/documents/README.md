@@ -110,7 +110,7 @@ API.
 
 Configure test credentials in `.env.local`:
 
-```bash
+```
 NEXT_PUBLIC_PRIVY_TEST_MODE=true
 TEST_USER_EMAIL=test@example.com
 TEST_USER_OTP=your-test-otp
@@ -133,13 +133,13 @@ pnpm test:e2e:headed
 
 The app connects to the following external services:
 
-| Service        | Purpose                          | Required |
-| -------------- | -------------------------------- | -------- |
-| Portal API     | AI chat completions and tools    | Yes      |
-| Privy          | Authentication and wallet        | Yes      |
-| Google Drive   | Backup/export conversations      | No       |
-| Google Calendar| Calendar integration             | No       |
-| Dropbox        | Alternative backup destination   | No       |
+| Service         | Purpose                        | Required |
+| --------------- | ------------------------------ | -------- |
+| Portal API      | AI chat completions and tools  | Yes      |
+| Privy           | Authentication and wallet      | Yes      |
+| Google Drive    | Backup/export conversations    | No       |
+| Google Calendar | Calendar integration           | No       |
+| Dropbox         | Alternative backup destination | No       |
 
 ## Resources
 

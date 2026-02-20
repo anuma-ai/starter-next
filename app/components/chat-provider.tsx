@@ -46,6 +46,8 @@ import type {
   ServerTool,
 } from "@reverbia/sdk/react";
 import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
+import { useUIInteraction } from "@reverbia/sdk/react";
+import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -112,6 +114,8 @@ type ChatState = {
   triggerProjectConversationsRefresh: () => void;
   // Encryption state
   encryptionReady: boolean;
+  // Stop streaming
+  stop: () => void;
 };
 
 const ChatContext = createContext<ChatState | null>(null);
@@ -133,6 +137,7 @@ export {
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();
   const { user, signMessage: privySignMessage, ready: privyReady } = usePrivy();
+  const uiInteraction = useUIInteraction();
 
   // Wrap Privy's signMessage to match SDK's expected signature
   const signMessage = useCallback(
@@ -462,22 +467,39 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return new Promise(() => { });
   }, [driveToken]);
 
-  // Create Google tools with auth (these are client-side tools with local executors)
+  // Ref for accessing messages inside tool callbacks without causing re-creation
+  const messagesRef = useRef<any[]>([]);
+
+  // Create Google tools with auth (these are client-side tools with local executors).
+  // Only include Calendar/Drive tools when the user has connected them in Settings → Apps.
+  // This prevents the model from triggering an OAuth redirect mid-conversation.
   const clientTools = useMemo(() => {
-    // Google Calendar tools
-    const calendarTools = createChatTools(
-      () => calendarToken,
-      requestCalendarAccess
-    );
+    const allTools: any[] = [];
 
-    // Google Drive tools (using our custom auth with drive.readonly scope)
-    const driveTools = createDriveTools(
-      () => driveToken,
-      requestDriveAccess
-    );
+    // Google Calendar tools — only when connected
+    if (calendarToken || hasCalendarCredentials()) {
+      allTools.push(...createChatTools(
+        () => calendarToken,
+        requestCalendarAccess
+      ));
+    }
 
-    return [...calendarTools, ...driveTools];
-  }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess]);
+    // Google Drive tools — only when connected
+    if (driveToken || hasDriveCredentials()) {
+      allTools.push(...createDriveTools(
+        () => driveToken,
+        requestDriveAccess
+      ));
+    }
+
+    // UI interaction tools (choice menus, forms, display cards)
+    allTools.push(...createUIInteractionTools({
+      getContext: () => uiInteraction,
+      getLastMessageId: () => messagesRef.current.at(-1)?.id,
+    }));
+
+    return allTools;
+  }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess, uiInteraction]);
 
   // Memory vault: auto-save with undo
   const [recentVaultSave, setRecentVaultSave] = useState<{ content: string; memoryId: string } | null>(null);
@@ -539,6 +561,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     getVaultMemoriesRef.current = baseChatState.getVaultMemories;
     deleteVaultMemoryRef.current = baseChatState.deleteVaultMemory;
   });
+
+  // Keep messages ref in sync for tool callbacks
+  messagesRef.current = baseChatState.messages;
 
   useEffect(() => {
     if (!pendingVaultContentRef.current) return;
@@ -719,7 +744,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [encryptionReady, baseChatState.conversationId, baseChatState.switchConversation]);
 
-  // Wrap handleSubmit to track the current message for OAuth retry
+  // Wrap handleSubmit to track the current message for OAuth retry and add onToolCall handler
   const handleSubmit = useCallback(
     async (message: any, options?: any) => {
       // Track the message text for potential OAuth redirect
@@ -727,7 +752,27 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         currentMessageRef.current = message.text;
       }
       try {
-        await baseChatState.handleSubmit(message, options);
+        await baseChatState.handleSubmit(message, {
+          ...options,
+          // Add onToolCall handler for client-side tool execution.
+          // Supports both flat format (name/execute) and SDK ToolConfig
+          // format (function.name/executor).
+          onToolCall: async (toolCall: { id: string; name: string; arguments: Record<string, any> }, tools: any[]) => {
+            const tool = tools.find((t: any) =>
+              (t.function?.name || t.name) === toolCall.name
+            );
+            // Skip server-side tools (not in clientTools) and auto-executed
+            // tools (already handled by SDK's internal tool loop)
+            if (!tool || tool.autoExecute) return undefined;
+            const executor = tool?.executor || tool?.execute;
+            if (!executor) return undefined;
+            try {
+              return await executor(toolCall.arguments);
+            } catch (error) {
+              return { error: String(error) };
+            }
+          },
+        });
       } finally {
         // Clear after successful send (or error)
         currentMessageRef.current = null;

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon, NoteEditIcon } from "@hugeicons/core-free-icons";
 import { AnimatePresence, motion } from "motion/react";
-import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, AudioLinesIcon } from "lucide-react";
+import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, AudioLinesIcon, SquareIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 
@@ -42,9 +42,20 @@ import {
 import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
+import { useUIInteraction } from "@reverbia/sdk/react";
+import { ChoiceInteraction } from "@/components/chat/choice-interaction";
+import { FormInteraction } from "@/components/chat/form-interaction";
+import { WeatherCard } from "@/components/chat/weather-card";
+import { ChartCard } from "@/components/chat/chart-card";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
+import {
+  collectDisplayInteractions,
+  getDisplaysForMessage,
+  getUnanchoredDisplays,
+  useDisplayPersistence,
+} from "@/lib/display-interaction";
 
 function getErrorTitle(error: string): string {
   const e = error.toLowerCase();
@@ -52,11 +63,11 @@ function getErrorTitle(error: string): string {
   if (e.includes("rate limit") || e.includes("429")) return "Rate limit exceeded";
   if (e.includes("authenticat") || e.includes("unauthorized") || e.includes("401")) return "Authentication error";
   if (e.includes("payment") || e.includes("402") || e.includes("out of credits")) return "Out of credits";
-  if (e.includes("connect") || e.includes("econnrefused") || e.includes("econnreset") || e.includes("fetch failed")) return "Connection error";
+  if (e.includes("connect") || e.includes("econnrefused") || e.includes("econnreset") || e.includes("fetch failed") || e.includes("failed to fetch")) return "Connection error";
   if (e.includes("invalid request") || e.includes("bad request") || e.includes("400")) return "Invalid request";
   if (e.includes("500") || e.includes("server") || e.includes("internal")) return "Server error";
   if (e.includes("502") || e.includes("503") || e.includes("504")) return "Service unavailable";
-  return "Something went wrong";
+  return `Something went wrong: ${error}`;
 }
 
 type PromptMenuProps = {
@@ -147,6 +158,7 @@ const ChatBotDemo = () => {
   const chatState = useChatContext();
   const { authenticated, user } = usePrivy();
   const thinkingPanel = useThinkingPanel();
+  const uiInteraction = useUIInteraction();
   const hasRedirectedRef = useRef(false);
   const database = useDatabase();
   const walletAddress = user?.wallet?.address;
@@ -338,10 +350,25 @@ const ChatBotDemo = () => {
     dismissVaultSave,
     pauseVaultDismiss,
     resumeVaultDismiss,
+    stop,
   } = chatState;
 
   const inputRef = useRef(input);
   inputRef.current = input;
+
+  // Clear interactive (non-display) UI interactions when conversation changes
+  // to prevent cross-conversation leaks. Display interactions are left alone
+  // and replaced by the persistence hook, avoiding a flash of empty state.
+  useEffect(() => {
+    for (const [id, interaction] of uiInteraction.pendingInteractions) {
+      if (interaction.type !== "display") {
+        uiInteraction.cancelInteraction(id);
+      }
+    }
+  }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist display interactions to localStorage so they survive page refresh
+  useDisplayPersistence(uiInteraction, conversationId, messages);
 
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
@@ -422,12 +449,15 @@ const ChatBotDemo = () => {
 
   const handleFilesChange = useCallback(
     (files: { mediaType?: string }[]) => {
-      const hasFiles = files.length > 0;
-      if (hasFiles && !thinkingEnabled) {
+      // Only auto-enable thinking for image files — images need a vision-capable model
+      // (Fireworks). Non-image files (PDF, DOCX, XLSX, ZIP) are preprocessed client-side
+      // by the SDK into text, so the fast model (Cerebras) handles them fine.
+      const hasImages = files.some((f) => f.mediaType?.startsWith("image/"));
+      if (hasImages && !thinkingEnabled) {
         thinkingEnabledBeforeAutoRef.current = false;
         setThinkingEnabled(true);
         localStorage.setItem("chat_thinkingEnabled", "true");
-      } else if (!hasFiles && thinkingEnabledBeforeAutoRef.current === false) {
+      } else if (!hasImages && thinkingEnabledBeforeAutoRef.current === false) {
         thinkingEnabledBeforeAutoRef.current = null;
         setThinkingEnabled(false);
         localStorage.setItem("chat_thinkingEnabled", "false");
@@ -524,7 +554,11 @@ const ChatBotDemo = () => {
 
       // Step 3: Send to API (skip adding user message to UI again since we already did)
       // Get the resolved model config based on thinking toggle
-      const modelConfig = getModelConfig(selectedModel, thinkingEnabled);
+      // Force thinking mode for image attachments — Anuma Fast (Cerebras) has no vision support,
+      // so we route to the thinking variant (e.g. Fireworks) which does.
+      const hasImages = message.files?.some((f) => f.mediaType?.startsWith("image/"));
+      const effectiveThinking = hasImages || thinkingEnabled;
+      const modelConfig = getModelConfig(selectedModel, effectiveThinking);
       // Persist voice chat mode across navigation (home → conversation page remount)
       if (voiceChatModeRef.current && voiceEnabled && isModelLoaded) {
         sessionStorage.setItem("voiceChatPending", "true");
@@ -543,7 +577,7 @@ const ChatBotDemo = () => {
           maxOutputTokens: 32000,
           toolChoice: "auto",
           // Only include reasoning params for models that use API-level reasoning (Claude, GPT)
-          ...(thinkingEnabled && modelConfig?.useReasoning && {
+          ...(effectiveThinking && modelConfig?.useReasoning && {
             reasoning: { effort: "high", summary: "detailed" },
             thinking: { type: "enabled", budget_tokens: 10000 },
           }),
@@ -930,9 +964,112 @@ const ChatBotDemo = () => {
           }`}
       >
         <div className="mx-auto max-w-3xl pb-52 flex flex-col gap-8 p-4">
-          {messages.map((message: any) => (
-            <div key={message.id}>
-              {message.parts.map((part: any, i: number) => {
+          {(() => {
+            // Build a queue of resolved interactions for inline rendering
+            const resolvedInteractions = Array.from(uiInteraction.pendingInteractions.values())
+              .filter(i => (i.type === "choice" || i.type === "form") && i.resolved)
+              .sort((a, b) => a.createdAt - b.createdAt);
+            let resolvedIdx = 0;
+            const renderedInlineIds = new Set<string>();
+
+            // Display-only interactions (e.g. weather cards)
+            const displayInteractions = collectDisplayInteractions(uiInteraction.pendingInteractions);
+            const renderedDisplayIds = new Set<string>();
+
+            return messages.map((message: any) => {
+            // At tool result message positions, render custom components instead of raw text
+            if (message.role === "user" && message.parts.length > 0 && message.parts[0].type === "text") {
+              const text = message.parts[0].text || "";
+
+              // Display tool results are rendered via the interaction system
+              // (persisted in localStorage), not from [Tool Execution Results] messages
+              if (text.includes("[Tool Execution Results]") && (text.includes("display_weather") || text.includes("display_chart"))) {
+                return null;
+              }
+
+              if (text.includes("[Tool Execution Results]") && (text.includes("prompt_user_choice") || text.includes("prompt_user_form"))) {
+                const interaction = resolvedInteractions[resolvedIdx];
+                if (interaction) {
+                  resolvedIdx++;
+                  renderedInlineIds.add(interaction.id);
+                  if (interaction.type === "form") {
+                    return (
+                      <div key={message.id}>
+                        <FormInteraction
+                          id={interaction.id}
+                          title={interaction.data.title}
+                          description={interaction.data.description}
+                          fields={interaction.data.fields}
+                          resolved={true}
+                          result={interaction.result}
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={message.id}>
+                      <ChoiceInteraction
+                        id={interaction.id}
+                        title={interaction.data.title}
+                        description={interaction.data.description}
+                        options={interaction.data.options}
+                        allowMultiple={interaction.data.allowMultiple}
+                        resolved={true}
+                        result={interaction.result}
+                      />
+                    </div>
+                  );
+                }
+                // Fallback: parse result from persisted message and render the
+                // same components used during the live session for consistent styling.
+                try {
+                  const choiceMatch = text.match(/Tool "prompt_user_choice" returned: (.+)/);
+                  if (choiceMatch) {
+                    const parsed = JSON.parse(choiceMatch[1]);
+                    const meta = parsed._meta || {};
+                    return (
+                      <div key={message.id}>
+                        <ChoiceInteraction
+                          id={message.id}
+                          title={meta.title || ""}
+                          description={meta.description}
+                          options={meta.options || []}
+                          allowMultiple={meta.allowMultiple}
+                          resolved={true}
+                          result={parsed}
+                        />
+                      </div>
+                    );
+                  }
+                  const formMatch = text.match(/Tool "prompt_user_form" returned: (.+)/);
+                  if (formMatch) {
+                    const parsed = JSON.parse(formMatch[1]);
+                    const meta = parsed._meta || {};
+                    return (
+                      <div key={message.id}>
+                        <FormInteraction
+                          id={message.id}
+                          title={meta.title || ""}
+                          description={meta.description}
+                          fields={meta.fields || []}
+                          resolved={true}
+                          result={parsed}
+                        />
+                      </div>
+                    );
+                  }
+                } catch {}
+                return null;
+              }
+
+              // Hide remaining [Tool Execution Results] (server-side tools, etc.)
+              if (text.includes("[Tool Execution Results]")) {
+                return null;
+              }
+            }
+
+            // Compute message content (shared between normal and injection paths)
+            const messageContent = message.parts.map((part: any, i: number) => {
                 switch (part.type) {
                   case "text": {
                     const isLastAssistantMessage =
@@ -1157,9 +1294,62 @@ const ChatBotDemo = () => {
                   default:
                     return null;
                 }
-              })}
-            </div>
-          ))}
+              });
+
+            // Inject resolved interactions before the message they were anchored to
+            // This ensures the choice summary appears above the follow-up response
+            const interactionsBeforeThisMsg = resolvedInteractions.filter(
+              i => !renderedInlineIds.has(i.id) && i.data.afterMessageId === message.id
+            );
+
+            // Display interactions anchored to this message (e.g. weather cards)
+            const displaysBeforeThisMsg = getDisplaysForMessage(message.id, displayInteractions, renderedDisplayIds);
+
+            const hasInjections = interactionsBeforeThisMsg.length > 0 || displaysBeforeThisMsg.length > 0;
+
+            if (hasInjections) {
+              interactionsBeforeThisMsg.forEach(i => renderedInlineIds.add(i.id));
+              return (
+                <Fragment key={message.id}>
+                  {interactionsBeforeThisMsg.map(interaction =>
+                    interaction.type === "form" ? (
+                      <FormInteraction
+                        key={interaction.id}
+                        id={interaction.id}
+                        title={interaction.data.title}
+                        description={interaction.data.description}
+                        fields={interaction.data.fields}
+                        resolved={true}
+                        result={interaction.result}
+                      />
+                    ) : (
+                      <ChoiceInteraction
+                        key={interaction.id}
+                        id={interaction.id}
+                        title={interaction.data.title}
+                        description={interaction.data.description}
+                        options={interaction.data.options}
+                        allowMultiple={interaction.data.allowMultiple}
+                        resolved={true}
+                        result={interaction.result}
+                      />
+                    )
+                  )}
+                  {displaysBeforeThisMsg.map(interaction =>
+                    interaction.data.displayType === "weather" ? (
+                      <WeatherCard key={interaction.id} data={interaction.result} />
+                    ) : interaction.data.displayType === "chart" ? (
+                      <ChartCard key={interaction.id} data={interaction.result} />
+                    ) : null
+                  )}
+                  <div>{messageContent}</div>
+                </Fragment>
+              );
+            }
+
+            return <div key={message.id}>{messageContent}</div>;
+          });
+          })()}
           {/* File preprocessing is now handled automatically by the SDK */}
           {/* Standalone loading indicator when submitting but before assistant message appears */}
           {isSubmitting && !isLoading && messages.at(-1)?.role === "user" && (
@@ -1174,6 +1364,76 @@ const ChatBotDemo = () => {
               <span>{getErrorTitle(error)}</span>
             </div>
           )}
+          {/* Render unresolved (pending) UI interactions at the bottom */}
+          {Array.from(uiInteraction.pendingInteractions.values())
+            .filter((interaction) => !interaction.resolved)
+            .map((interaction) =>
+              interaction.type === "form" ? (
+                <FormInteraction
+                  key={interaction.id}
+                  id={interaction.id}
+                  title={interaction.data.title}
+                  description={interaction.data.description}
+                  fields={interaction.data.fields}
+                />
+              ) : (
+                <ChoiceInteraction
+                  key={interaction.id}
+                  id={interaction.id}
+                  title={interaction.data.title}
+                  description={interaction.data.description}
+                  options={interaction.data.options}
+                  allowMultiple={interaction.data.allowMultiple}
+                />
+              )
+            )}
+          {/* Fallback: render resolved interactions at bottom when anchor message not found */}
+          {Array.from(uiInteraction.pendingInteractions.values())
+            .filter((interaction) => interaction.resolved && interaction.type !== "display")
+            .filter((interaction) => {
+              const anchorId = interaction.data.afterMessageId;
+              if (!anchorId) return true;
+              const anchorExists = messages.some((m: any) => m.id === anchorId);
+              const toolResultExists = messages.some((m: any) =>
+                m.role === "user" && m.parts?.[0]?.type === "text" &&
+                m.parts[0].text?.includes("[Tool Execution Results]") &&
+                (m.parts[0].text?.includes("prompt_user_choice") || m.parts[0].text?.includes("prompt_user_form"))
+              );
+              return !anchorExists && !toolResultExists;
+            })
+            .map((interaction) =>
+              interaction.type === "form" ? (
+                <FormInteraction
+                  key={interaction.id}
+                  id={interaction.id}
+                  title={interaction.data.title}
+                  description={interaction.data.description}
+                  fields={interaction.data.fields}
+                  resolved={true}
+                  result={interaction.result}
+                />
+              ) : (
+                <ChoiceInteraction
+                  key={interaction.id}
+                  id={interaction.id}
+                  title={interaction.data.title}
+                  description={interaction.data.description}
+                  options={interaction.data.options}
+                  allowMultiple={interaction.data.allowMultiple}
+                  resolved={true}
+                  result={interaction.result}
+                />
+              )
+            )}
+          {/* Render display interactions at bottom when anchor message not found */}
+          {getUnanchoredDisplays(uiInteraction.pendingInteractions, messages)
+            .map((interaction) =>
+              interaction.data.displayType === "weather" ? (
+                <WeatherCard key={interaction.id} data={interaction.result} />
+              ) : interaction.data.displayType === "chart" ? (
+                <ChartCard key={interaction.id} data={interaction.result} />
+              ) : null
+            )}
         </div>
       </div>
 
@@ -1337,15 +1597,20 @@ const ChatBotDemo = () => {
                 )
               )}
               {!isVoiceActive && !voiceChatMode && (
-                <PromptInputSubmit
-                  disabled={
-                    !input ||
-                    isLoading ||
-                    !authenticated ||
-                    voiceChatMode
-                  }
-                  status={status}
-                />
+                isLoading ? (
+                  <button
+                    type="button"
+                    onClick={() => stop()}
+                    aria-label="Stop generating"
+                    className="inline-flex items-center justify-center size-8 rounded-full bg-primary text-primary-foreground hover:opacity-80 transition-opacity cursor-pointer"
+                  >
+                    <SquareIcon className="size-3" fill="currentColor" strokeWidth={0} />
+                  </button>
+                ) : (
+                  <PromptInputSubmit
+                    disabled={!input || !authenticated || voiceChatMode}
+                  />
+                )
               )}
             </div>
           </PromptInput>

@@ -14,6 +14,7 @@ See Setup for how to obtain `database`, `getToken`, and the wallet fields.
 const {
   sendMessage,
   isLoading,
+  stop,
   conversationId,
   getMessages,
   getConversation,
@@ -87,11 +88,13 @@ const addMessageOptimistically = useCallback(
 
 While the optimistic update builds parts for the UI, the API payload needs a
 different format. Text is the same, but files are included as content parts
-in the messages array — images as `image_url`, other files as `input_file`.
-Each file gets a stable ID so the SDK can match it back to extracted text
-after file preprocessing (see `preprocessFiles` in the SDK docs). A separate
-`sdkFiles` array provides metadata so the SDK can encrypt and store files
-in OPFS.
+in the messages array as `image_url` content parts. Fireworks models
+(Anuma) require the Chat Completions API for vision, so the hook
+switches to `completions` when images are attached. Each file gets a
+stable ID so the SDK can match it back to
+extracted text after file preprocessing (see `preprocessFiles` in the SDK
+docs). A separate `sdkFiles` array provides metadata so the SDK can encrypt
+and store non-image files in OPFS.
 
 ```ts
 const contentParts: any[] = [];
@@ -105,23 +108,32 @@ const enrichedFiles = (files || []).map((file) => ({
   stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
 }));
 
-// Images become image_url parts; other files become input_file parts
+// Fireworks models require Chat Completions API for vision/images;
+// their Responses API doesn't support multimodal content.
+const hasImages = enrichedFiles.some((f) => f.mediaType?.startsWith("image/"));
+const effectiveApiType =
+  model?.startsWith("fireworks/") && hasImages ? "completions" as const : apiType;
+
+// Images are sent as image_url content parts (Chat Completions format).
+// Non-image files (PDF, DOCX, XLSX, ZIP) are handled by the SDK's client-side
+// preprocessing via the files parameter below.
 enrichedFiles.forEach((file) => {
-  contentParts.push(
-    file.mediaType?.startsWith("image/")
-      ? { type: "image_url", image_url: { url: file.url } }
-      : { type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } }
-  );
+  if (file.mediaType?.startsWith("image/")) {
+    contentParts.push({ type: "image_url", image_url: { url: file.url, detail: "high" } });
+  }
 });
 
-// SDK file metadata — the SDK encrypts and stores these in OPFS automatically
-const sdkFiles = enrichedFiles.map((file) => ({
-  id: file.stableId,
-  name: file.filename || file.stableId,
-  type: file.mediaType || "application/octet-stream",
-  size: 0,
-  url: file.url,
-}));
+// SDK file metadata — the SDK preprocesses non-image files (PDF, Word, Excel) automatically.
+// Images are already included as content parts above, so exclude them here.
+const sdkFiles = enrichedFiles
+  .filter((file) => !file.mediaType?.startsWith("image/"))
+  .map((file) => ({
+    id: file.stableId,
+    name: file.filename || file.stableId,
+    type: file.mediaType || "application/octet-stream",
+    size: 0,
+    url: file.url,
+  }));
 ```
 
 ## Calling sendMessage
@@ -139,8 +151,20 @@ if (systemPrompt) {
 }
 messagesArray.push({ role: "user", content: contentParts });
 
+// When files are attached, exclude UI interaction and display tools so
+// the model analyzes file contents directly instead of presenting
+// interactive menus or rendering charts/cards.
+const hasAttachments = sdkFiles.length > 0 || hasImages;
+const UI_INTERACTION_TOOLS = ["prompt_user_choice", "prompt_user_form", "display_chart", "display_weather"];
+const effectiveClientTools = hasAttachments && clientTools
+  ? clientTools.filter((t: any) => {
+      const toolName = t.function?.name || t.name;
+      return !UI_INTERACTION_TOOLS.includes(toolName);
+    })
+  : clientTools;
+
 // See SendMessageWithStorageArgs in the SDK docs for the full list of options
-const response = await sendMessage({
+const sendArgs = {
   messages: messagesArray,
   model,
   includeHistory: true,
@@ -149,13 +173,13 @@ const response = await sendMessage({
   ...(reasoning && { reasoning }),
   ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
   ...(serverTools && (typeof serverTools === "function" || serverTools.length > 0) && { serverTools }),
-  ...(clientTools && clientTools.length > 0 && { clientTools }),
+  ...(effectiveClientTools && effectiveClientTools.length > 0 && { clientTools: effectiveClientTools }),
   ...(store !== undefined && { store }),
   ...(thinking && { thinking }),
   ...(onThinking && { onThinking }),
   ...(memoryContext && { memoryContext }),
   ...(toolChoice && { toolChoice }),
-  ...(apiType && { apiType }),
+  ...(effectiveApiType && { apiType: effectiveApiType }),
   ...(explicitConversationId && { conversationId: explicitConversationId }),
   onData: (chunk: string) => {
     streamingTextRef.current += chunk;
@@ -163,7 +187,64 @@ const response = await sendMessage({
       onStreamingData(chunk, streamingTextRef.current);
     }
   },
-});
+};
+
+let response = await sendMessage(sendArgs);
+
+// Retry on transient failures:
+// 1. Empty responses — some models (e.g. Fireworks) intermittently return
+//    a successful SSE stream with no output text.
+// 2. Network errors — "Failed to fetch" can occur transiently in CI or
+//    under load. These are worth retrying.
+const isTransientError = (r: typeof response) => {
+  if (!r?.error) return false;
+  const e = r.error.toLowerCase();
+  return e.includes("failed to fetch") || e.includes("fetch failed") ||
+         e.includes("econnreset") || e.includes("econnrefused") ||
+         e.includes("network");
+};
+// Retries should not re-preprocess files — the SDK extracts text and stores
+// files on the first call.  Re-sending with files causes duplicate storage
+// entries and wastes 10-30 s per file on redundant preprocessing.
+const retryArgs = sdkFiles.length > 0
+  ? { ...sendArgs, files: undefined }
+  : sendArgs;
+const MAX_RETRIES = 2;
+for (let retry = 0; retry < MAX_RETRIES; retry++) {
+  if (stoppedRef.current) break;
+  const emptyResponse = !response?.error && !streamingTextRef.current.trim();
+  const transientError = isTransientError(response);
+  if (!emptyResponse && !transientError) break;
+  console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
+  streamingTextRef.current = "";
+  response = await sendMessage(retryArgs);
+}
+```
+
+## Stopping a Response
+
+The SDK's `useChatStorage` returns a `stop` function that aborts the active
+stream via an `AbortController`. Calling it cancels the HTTP request and the
+SDK stores the partial response with `wasStopped: true`.
+
+Because the SDK treats aborted requests as successful (returning
+`{ error: null }`), the retry loop would interpret an early stop as an empty
+response and re-send. A `stoppedRef` flag prevents this and also
+short-circuits the tool calling loop. In the UI, conditionally render a stop
+button when `isLoading` is true using a plain `<button type="button">` to
+avoid triggering form submission.
+
+```ts
+// Wrap SDK stop to also clear streaming state
+const handleStop = useCallback(() => {
+  stoppedRef.current = true;
+  stop();
+
+  // Clear streaming state so UI updates immediately
+  streamingConversationIdRef.current = null;
+  setStreamingConversationIdState(null);
+  isSendingMessageRef.current = false;
+}, [stop]);
 ```
 
 ## Tool Calling
@@ -177,16 +258,20 @@ SDK-wrapped responses.
 
 ```ts
 // Multi-turn tool calling loop (max 10 iterations)
-if (onToolCall && clientTools && clientTools.length > 0) {
+if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClientTools.length > 0) {
   let currentResponse: any = response;
   let iteration = 0;
 
   while (iteration++ < 10) {
+    if (stoppedRef.current) break;
     // extractToolCalls normalizes across Responses API, Chat Completions, and SDK formats
     const toolCalls = extractToolCalls(currentResponse);
     if (toolCalls.length === 0) break;
 
-    // Execute each tool and collect results
+    // Execute each tool and collect results.
+    // Tools that return undefined (e.g. auto-execute tools already handled
+    // by the SDK's internal tool loop) are skipped to avoid sending garbage
+    // results back to the model.
     const toolResults: Array<{ call_id: string; output: string }> = [];
     for (const call of toolCalls) {
       try {
@@ -195,7 +280,8 @@ if (onToolCall && clientTools && clientTools.length > 0) {
           name: call.name || call.function?.name,
           arguments: safeParseArgs(call.arguments ?? call.function?.arguments),
         };
-        const result = await onToolCall(toolCall, clientTools);
+        const result = await onToolCall(toolCall, effectiveClientTools);
+        if (result === undefined) continue;
         toolResults.push({ call_id: toolCall.id, output: JSON.stringify(result) });
       } catch (error) {
         toolResults.push({
@@ -204,6 +290,9 @@ if (onToolCall && clientTools && clientTools.length > 0) {
         });
       }
     }
+
+    // If no actionable tool results (all were auto-execute / undefined), stop the loop
+    if (toolResults.length === 0) break;
 
     // Send results back to the model as a continuation message
     const summary = toolResults.map((tr) => {
@@ -217,14 +306,15 @@ if (onToolCall && clientTools && clientTools.length > 0) {
         model: model || 'openai/gpt-5.2-2025-12-11',
         maxOutputTokens: maxOutputTokens || 16000,
         includeHistory: true,
-        clientTools: clientTools?.map((t) => ({
+        clientTools: effectiveClientTools?.map((t) => ({
           type: t.type || 'function',
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters,
+          // Handle both nested (SDK tools) and flat (app-builder tools) structures
+          name: (t as any).function?.name || t.name,
+          description: (t as any).function?.description || t.description,
+          parameters: (t as any).function?.arguments || t.parameters,
         })),
         toolChoice: 'auto',
-        ...(apiType && { apiType }),
+        ...(effectiveApiType && { apiType: effectiveApiType }),
         ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
           streamingTextRef.current += chunk;
@@ -233,7 +323,9 @@ if (onToolCall && clientTools && clientTools.length > 0) {
           }
         },
       });
-    } catch { break; }
+    } catch {
+      break;
+    }
   }
 }
 ```

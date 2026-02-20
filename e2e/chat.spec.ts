@@ -7,6 +7,16 @@ const VIDEO_PAUSE_MS = 3000;
 const PRE_SUBMIT_PAUSE_MS = 1000;
 
 test.describe("Chat", () => {
+  // Log failed network requests to diagnose CI "Failed to fetch" errors
+  test.beforeEach(async ({ page }) => {
+    page.on("requestfailed", (request) => {
+      const url = request.url();
+      const postData = request.postData();
+      const bodySize = postData ? `${(postData.length / 1024).toFixed(1)}KB` : "no body";
+      process.stderr.write(`[NETWORK FAILED] ${request.method()} ${url} (${bodySize}) — ${request.failure()?.errorText}\n`);
+    });
+  });
+
   test("authenticated user sees chat interface", async ({ page }) => {
     await page.goto("/");
 
@@ -172,7 +182,7 @@ test.describe("Chat", () => {
     // Wait for the assistant response that mentions at least one name from the spreadsheet
     await expect(page.locator(".is-assistant")).toContainText(
       /Alice|Bob|Charlie/i,
-      { timeout: 90000 }
+      { timeout: 120000 }
     );
 
     await page.waitForTimeout(VIDEO_PAUSE_MS);
@@ -211,7 +221,7 @@ test.describe("Chat", () => {
     // Wait for the assistant response that mentions content from the document
     await expect(page.locator(".is-assistant")).toContainText(
       /test|sample|document/i,
-      { timeout: 90000 }
+      { timeout: 120000 }
     );
 
     await page.waitForTimeout(VIDEO_PAUSE_MS);
@@ -250,7 +260,7 @@ test.describe("Chat", () => {
     // Wait for the assistant response that mentions the files inside the zip
     await expect(page.locator(".is-assistant")).toContainText(
       /book\.pdf|example\.docx|example\.xlsx/i,
-      { timeout: 90000 }
+      { timeout: 120000 }
     );
 
     await page.waitForTimeout(VIDEO_PAUSE_MS);

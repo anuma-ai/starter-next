@@ -230,6 +230,7 @@ export function useAppChat({
     createVaultMemory,
     updateVaultMemory,
     deleteVaultMemory,
+    stop,
   } = useAppChatStorage({
     database,
     getToken,
@@ -519,6 +520,7 @@ export function useAppChat({
     subscribeToThinking,
     getMessages,
     getConversation,
+    stop,
 
     // Memory vault
     getVaultMemories,

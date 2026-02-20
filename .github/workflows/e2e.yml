@@ -1,0 +1,66 @@
+name: E2E Tests
+permissions:
+  contents: read
+on:
+  merge_group:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-24.04
+    env:
+      NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_PRIVY_APP_ID: ${{ secrets.NEXT_PUBLIC_PRIVY_APP_ID }}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+      TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+      TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+      NEXT_PUBLIC_DROPBOX_APP_KEY: ${{ secrets.NEXT_PUBLIC_DROPBOX_APP_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: pnpm test:e2e
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  e2e-status:
+    if: always()
+    needs: [e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check e2e result
+        run: |
+          if [[ "${{ needs.e2e.result }}" == "failure" ]]; then
+            echo "E2E tests failed"
+            exit 1
+          fi
+          echo "E2E tests passed (or skipped on PR)"

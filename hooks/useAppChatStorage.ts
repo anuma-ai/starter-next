@@ -291,6 +291,7 @@ export function useAppChatStorage({
   const {
     sendMessage,
     isLoading,
+    stop,
     conversationId,
     getMessages,
     getConversation,
@@ -593,6 +594,20 @@ export function useAppChatStorage({
   //#region sendMessage
   const streamingTextRef = useRef<string>("");
   const currentAssistantMessageIdRef = useRef<string | null>(null);
+  const stoppedRef = useRef<boolean>(false);
+
+  //#region stopResponse
+  // Wrap SDK stop to also clear streaming state
+  const handleStop = useCallback(() => {
+    stoppedRef.current = true;
+    stop();
+
+    // Clear streaming state so UI updates immediately
+    streamingConversationIdRef.current = null;
+    setStreamingConversationIdState(null);
+    isSendingMessageRef.current = false;
+  }, [stop]);
+  //#endregion stopResponse
 
   //#region optimisticUpdate
   const addMessageOptimistically = useCallback(
@@ -634,6 +649,8 @@ export function useAppChatStorage({
   //#region handleSend
   const handleSendMessage = useCallback(
     async (text: string, options: SendMessageOptions = {}) => {
+      stoppedRef.current = false;
+
       //#region sendSetup
       const {
         model,
@@ -707,23 +724,32 @@ export function useAppChatStorage({
         stableId: (file as any).id || `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       }));
 
-      // Images become image_url parts; other files become input_file parts
+      // Fireworks models require Chat Completions API for vision/images;
+      // their Responses API doesn't support multimodal content.
+      const hasImages = enrichedFiles.some((f) => f.mediaType?.startsWith("image/"));
+      const effectiveApiType =
+        model?.startsWith("fireworks/") && hasImages ? "completions" as const : apiType;
+
+      // Images are sent as image_url content parts (Chat Completions format).
+      // Non-image files (PDF, DOCX, XLSX, ZIP) are handled by the SDK's client-side
+      // preprocessing via the files parameter below.
       enrichedFiles.forEach((file) => {
-        contentParts.push(
-          file.mediaType?.startsWith("image/")
-            ? { type: "image_url", image_url: { url: file.url } }
-            : { type: "input_file", file: { file_id: file.stableId, file_url: file.url, filename: file.filename } }
-        );
+        if (file.mediaType?.startsWith("image/")) {
+          contentParts.push({ type: "image_url", image_url: { url: file.url, detail: "high" } });
+        }
       });
 
-      // SDK file metadata — the SDK encrypts and stores these in OPFS automatically
-      const sdkFiles = enrichedFiles.map((file) => ({
-        id: file.stableId,
-        name: file.filename || file.stableId,
-        type: file.mediaType || "application/octet-stream",
-        size: 0,
-        url: file.url,
-      }));
+      // SDK file metadata — the SDK preprocesses non-image files (PDF, Word, Excel) automatically.
+      // Images are already included as content parts above, so exclude them here.
+      const sdkFiles = enrichedFiles
+        .filter((file) => !file.mediaType?.startsWith("image/"))
+        .map((file) => ({
+          id: file.stableId,
+          name: file.filename || file.stableId,
+          type: file.mediaType || "application/octet-stream",
+          size: 0,
+          url: file.url,
+        }));
       //#endregion contentParts
 
       // Combine OCR context (when text differs from displayText) with any additional memory context (e.g. vault)
@@ -737,8 +763,20 @@ export function useAppChatStorage({
       }
       messagesArray.push({ role: "user", content: contentParts });
 
+      // When files are attached, exclude UI interaction and display tools so
+      // the model analyzes file contents directly instead of presenting
+      // interactive menus or rendering charts/cards.
+      const hasAttachments = sdkFiles.length > 0 || hasImages;
+      const UI_INTERACTION_TOOLS = ["prompt_user_choice", "prompt_user_form", "display_chart", "display_weather"];
+      const effectiveClientTools = hasAttachments && clientTools
+        ? clientTools.filter((t: any) => {
+            const toolName = t.function?.name || t.name;
+            return !UI_INTERACTION_TOOLS.includes(toolName);
+          })
+        : clientTools;
+
       // See SendMessageWithStorageArgs in the SDK docs for the full list of options
-      const response = await sendMessage({
+      const sendArgs = {
         messages: messagesArray,
         model,
         includeHistory: true,
@@ -747,13 +785,13 @@ export function useAppChatStorage({
         ...(reasoning && { reasoning }),
         ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
         ...(serverTools && (typeof serverTools === "function" || serverTools.length > 0) && { serverTools }),
-        ...(clientTools && clientTools.length > 0 && { clientTools }),
+        ...(effectiveClientTools && effectiveClientTools.length > 0 && { clientTools: effectiveClientTools }),
         ...(store !== undefined && { store }),
         ...(thinking && { thinking }),
         ...(onThinking && { onThinking }),
         ...(memoryContext && { memoryContext }),
         ...(toolChoice && { toolChoice }),
-        ...(apiType && { apiType }),
+        ...(effectiveApiType && { apiType: effectiveApiType }),
         ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
           streamingTextRef.current += chunk;
@@ -761,21 +799,56 @@ export function useAppChatStorage({
             onStreamingData(chunk, streamingTextRef.current);
           }
         },
-      });
+      };
+
+      let response = await sendMessage(sendArgs);
+
+      // Retry on transient failures:
+      // 1. Empty responses — some models (e.g. Fireworks) intermittently return
+      //    a successful SSE stream with no output text.
+      // 2. Network errors — "Failed to fetch" can occur transiently in CI or
+      //    under load. These are worth retrying.
+      const isTransientError = (r: typeof response) => {
+        if (!r?.error) return false;
+        const e = r.error.toLowerCase();
+        return e.includes("failed to fetch") || e.includes("fetch failed") ||
+               e.includes("econnreset") || e.includes("econnrefused") ||
+               e.includes("network");
+      };
+      // Retries should not re-preprocess files — the SDK extracts text and stores
+      // files on the first call.  Re-sending with files causes duplicate storage
+      // entries and wastes 10-30 s per file on redundant preprocessing.
+      const retryArgs = sdkFiles.length > 0
+        ? { ...sendArgs, files: undefined }
+        : sendArgs;
+      const MAX_RETRIES = 2;
+      for (let retry = 0; retry < MAX_RETRIES; retry++) {
+        if (stoppedRef.current) break;
+        const emptyResponse = !response?.error && !streamingTextRef.current.trim();
+        const transientError = isTransientError(response);
+        if (!emptyResponse && !transientError) break;
+        console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
+        streamingTextRef.current = "";
+        response = await sendMessage(retryArgs);
+      }
       //#endregion sendCall
 
       //#region toolCalling
       // Multi-turn tool calling loop (max 10 iterations)
-      if (onToolCall && clientTools && clientTools.length > 0) {
+      if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClientTools.length > 0) {
         let currentResponse: any = response;
         let iteration = 0;
 
         while (iteration++ < 10) {
+          if (stoppedRef.current) break;
           // extractToolCalls normalizes across Responses API, Chat Completions, and SDK formats
           const toolCalls = extractToolCalls(currentResponse);
           if (toolCalls.length === 0) break;
 
-          // Execute each tool and collect results
+          // Execute each tool and collect results.
+          // Tools that return undefined (e.g. auto-execute tools already handled
+          // by the SDK's internal tool loop) are skipped to avoid sending garbage
+          // results back to the model.
           const toolResults: Array<{ call_id: string; output: string }> = [];
           for (const call of toolCalls) {
             try {
@@ -784,7 +857,8 @@ export function useAppChatStorage({
                 name: call.name || call.function?.name,
                 arguments: safeParseArgs(call.arguments ?? call.function?.arguments),
               };
-              const result = await onToolCall(toolCall, clientTools);
+              const result = await onToolCall(toolCall, effectiveClientTools);
+              if (result === undefined) continue;
               toolResults.push({ call_id: toolCall.id, output: JSON.stringify(result) });
             } catch (error) {
               toolResults.push({
@@ -793,6 +867,9 @@ export function useAppChatStorage({
               });
             }
           }
+
+          // If no actionable tool results (all were auto-execute / undefined), stop the loop
+          if (toolResults.length === 0) break;
 
           // Send results back to the model as a continuation message
           const summary = toolResults.map((tr) => {
@@ -806,14 +883,15 @@ export function useAppChatStorage({
               model: model || 'openai/gpt-5.2-2025-12-11',
               maxOutputTokens: maxOutputTokens || 16000,
               includeHistory: true,
-              clientTools: clientTools?.map((t) => ({
+              clientTools: effectiveClientTools?.map((t) => ({
                 type: t.type || 'function',
-                name: t.name,
-                description: t.description,
-                parameters: t.parameters,
+                // Handle both nested (SDK tools) and flat (app-builder tools) structures
+                name: (t as any).function?.name || t.name,
+                description: (t as any).function?.description || t.description,
+                parameters: (t as any).function?.arguments || t.parameters,
               })),
               toolChoice: 'auto',
-              ...(apiType && { apiType }),
+              ...(effectiveApiType && { apiType: effectiveApiType }),
               ...(explicitConversationId && { conversationId: explicitConversationId }),
               onData: (chunk: string) => {
                 streamingTextRef.current += chunk;
@@ -822,7 +900,9 @@ export function useAppChatStorage({
                 }
               },
             });
-          } catch { break; }
+          } catch {
+            break;
+          }
         }
       }
       //#endregion toolCalling
@@ -888,9 +968,13 @@ export function useAppChatStorage({
 
       // Now that messages are in state, allow future reloads
       // Use setTimeout to ensure this happens after the conversationId might have changed
-      setTimeout(() => {
-        isSendingMessageRef.current = false;
-      }, 100);
+      // Skip if stopped — handleStop already cleared the flag, and a delayed reset
+      // could clobber a new message's guard if the user resends quickly.
+      if (!stoppedRef.current) {
+        setTimeout(() => {
+          isSendingMessageRef.current = false;
+        }, 100);
+      }
 
       // Clear streaming state - streaming is complete
       if (messageConversationId) {
@@ -1054,5 +1138,6 @@ export function useAppChatStorage({
     createVaultMemory,
     updateVaultMemory,
     deleteVaultMemory,
+    stop: handleStop,
   };
 }
