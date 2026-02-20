@@ -284,7 +284,9 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
   });
   // #endregion displayToolDefinition
 
+  // #region chartToolUsage
   const chartTool = createChartTool(options);
+  // #endregion chartToolUsage
 
   return [choiceTool, formTool, weatherToolBase, chartTool];
 }
