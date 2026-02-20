@@ -48,6 +48,7 @@ import type {
 import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
 import { useUIInteraction } from "@reverbia/sdk/react";
 import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
+import { useNotionTools } from "@/hooks/useNotionTools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -445,6 +446,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Ref for accessing messages inside tool callbacks without causing re-creation
   const messagesRef = useRef<any[]>([]);
 
+  // Notion tools (PKCE auth, no client ID needed)
+  const { tools: notionTools } = useNotionTools({ walletAddress });
+
   // Create Google tools with auth (these are client-side tools with local executors).
   // Only include Calendar/Drive tools when the user has connected them in Settings → Apps.
   // This prevents the model from triggering an OAuth redirect mid-conversation.
@@ -467,6 +471,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       ));
     }
 
+    // Notion tools — only when connected
+    if (notionTools.length > 0) {
+      allTools.push(...notionTools);
+    }
+
     // UI interaction tools (choice menus, forms, display cards)
     allTools.push(...createUIInteractionTools({
       getContext: () => uiInteraction,
@@ -474,7 +483,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }));
 
     return allTools;
-  }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess, uiInteraction]);
+  }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess, notionTools, uiInteraction]);
 
   const baseChatState = useAppChat({
     database,
