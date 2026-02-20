@@ -174,6 +174,7 @@ const sendArgs = {
   ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
   ...(serverTools && (typeof serverTools === "function" || serverTools.length > 0) && { serverTools }),
   ...(effectiveClientTools && effectiveClientTools.length > 0 && { clientTools: effectiveClientTools }),
+  ...(clientToolsFilter && { clientToolsFilter }),
   ...(store !== undefined && { store }),
   ...(thinking && { thinking }),
   ...(onThinking && { onThinking }),
@@ -212,7 +213,8 @@ const retryArgs = sdkFiles.length > 0
 const MAX_RETRIES = 2;
 for (let retry = 0; retry < MAX_RETRIES; retry++) {
   if (stoppedRef.current) break;
-  const emptyResponse = !response?.error && !streamingTextRef.current.trim();
+  const hasAutoExecutedTools = (response as any)?.autoExecutedToolResults?.length > 0;
+  const emptyResponse = !response?.error && !hasAutoExecutedTools && !streamingTextRef.current.trim();
   const transientError = isTransientError(response);
   if (!emptyResponse && !transientError) break;
   console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
@@ -314,6 +316,7 @@ if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClient
           parameters: (t as any).function?.arguments || t.parameters,
         })),
         toolChoice: 'auto',
+        ...(clientToolsFilter && { clientToolsFilter }),
         ...(effectiveApiType && { apiType: effectiveApiType }),
         ...(explicitConversationId && { conversationId: explicitConversationId }),
         onData: (chunk: string) => {
