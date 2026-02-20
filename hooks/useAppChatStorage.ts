@@ -7,6 +7,7 @@ import {
   getEncryptionKey,
   readEncryptedFile,
   type ServerToolsFilter,
+  type ClientToolsFilterFn,
 } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
@@ -88,6 +89,7 @@ type SendMessageOptions = {
   skipOptimisticUpdate?: boolean;
   serverTools?: ServerToolsFilter;
   clientTools?: any[];
+  clientToolsFilter?: ClientToolsFilterFn;
   toolChoice?: string;
   apiType?: "responses" | "completions";
   /** Explicitly specify the conversation ID to send this message to */
@@ -656,6 +658,7 @@ export function useAppChatStorage({
         skipOptimisticUpdate,
         serverTools,
         clientTools,
+        clientToolsFilter,
         toolChoice,
         apiType,
         conversationId: explicitConversationId,
@@ -775,6 +778,7 @@ export function useAppChatStorage({
         ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
         ...(serverTools && (typeof serverTools === "function" || serverTools.length > 0) && { serverTools }),
         ...(effectiveClientTools && effectiveClientTools.length > 0 && { clientTools: effectiveClientTools }),
+        ...(clientToolsFilter && { clientToolsFilter }),
         ...(store !== undefined && { store }),
         ...(thinking && { thinking }),
         ...(onThinking && { onThinking }),
@@ -881,6 +885,7 @@ export function useAppChatStorage({
                 parameters: (t as any).function?.arguments || t.parameters,
               })),
               toolChoice: 'auto',
+              ...(clientToolsFilter && { clientToolsFilter }),
               ...(effectiveApiType && { apiType: effectiveApiType }),
               ...(explicitConversationId && { conversationId: explicitConversationId }),
               onData: (chunk: string) => {

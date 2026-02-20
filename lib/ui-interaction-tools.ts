@@ -51,7 +51,7 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
   const choiceTool = createInteractiveTool(options, {
     name: "prompt_user_choice",
     description:
-      "ALWAYS use this tool instead of listing options as text whenever you want the user to pick from choices. This renders an interactive inline menu the user can click. Call this tool FIRST before generating any response text — do not list options as numbered text and then also call this tool. Examples: restaurant recommendations, travel destinations, preference selection, category picking, any scenario with 2+ options. After the user selects, you receive their choice and can respond based on it.",
+      "Renders an interactive inline menu the user can click to pick from choices. Use when the user's request naturally involves selecting between specific, concrete options — for example picking a restaurant, choosing a travel destination, or selecting a category. Call this tool FIRST before generating any response text. After the user selects, you receive their choice and can respond based on it.",
     parameters: {
       type: "object",
       properties: {
@@ -116,7 +116,7 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
   const formTool = createInteractiveTool(options, {
     name: "prompt_user_form",
     description:
-      "ALWAYS use this tool instead of asking the user multiple questions as text. This renders an interactive inline form the user can fill out and submit. Use it whenever you need 2 or more pieces of information from the user — do not ask questions one by one in text. Supports text inputs, textareas, dropdowns (select), toggles, date pickers, and sliders. Call this tool FIRST before generating any response text. Examples: trip planning (destination, dates, budget), profile info, booking details, configuration settings. After the user submits, you receive all their answers at once.",
+      "Renders an interactive inline form the user can fill out and submit. Use when you need to collect 2 or more specific pieces of structured information from the user — for example trip planning details (destination, dates, budget), booking info, or configuration settings. Supports text inputs, textareas, dropdowns (select), toggles, date pickers, and sliders. Call this tool FIRST before generating any response text. After the user submits, you receive all their answers at once.",
     parameters: {
       type: "object",
       properties: {

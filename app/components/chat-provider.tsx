@@ -36,6 +36,7 @@ import {
   getAndClearDrivePendingMessage,
   // Semantic tool matching
   findMatchingTools,
+  generateEmbeddings,
 } from "@reverbia/sdk/react";
 import { useAppProjects } from "@/hooks/useAppProjects";
 import { getEnabledTools, getDisabledTools, getSemanticSearchEnabled } from "@/hooks/useAppTools";
@@ -476,6 +477,73 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return allTools;
   }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess, uiInteraction]);
 
+  // Pre-compute embeddings for client tool descriptions (for semantic filtering)
+  const clientToolEmbeddingsRef = useRef<Map<string, number[]> | null>(null);
+  const FILTERABLE_TOOL_NAMES = useMemo(() => ["prompt_user_choice", "prompt_user_form", "display_weather", "display_chart", "search_memory"], []);
+
+  useEffect(() => {
+    const CACHE_KEY = "client_tool_embeddings";
+
+    // Collect filterable tool descriptions to embed
+    // Include tools from clientTools array plus search_memory (added dynamically in useAppChat)
+    const toolEntries: { name: string; description: string }[] = clientTools
+      .filter((t: any) => FILTERABLE_TOOL_NAMES.includes(t.function?.name || t.name))
+      .map((t: any) => ({
+        name: t.function?.name || t.name,
+        description: t.function?.description || t.description || "",
+      }));
+
+    // search_memory is created dynamically in useAppChat, so add its description here
+    if (!toolEntries.find((t) => t.name === "search_memory")) {
+      toolEntries.push({
+        name: "search_memory",
+        description: "Search past conversation chunks to find relevant context from previous discussions, such as user preferences, past discussions, or previously mentioned facts.",
+      });
+    }
+
+    if (toolEntries.length === 0) return;
+
+    const descriptions = toolEntries.map((t) => t.description);
+
+    // Hash descriptions so cache auto-invalidates when tool text changes
+    const descHash = descriptions.join("|").length + "_" + descriptions.map(d => d.slice(0, 20)).join(",");
+
+    // Try cache first
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed._hash === descHash) {
+          const { _hash, ...embeddings } = parsed;
+          clientToolEmbeddingsRef.current = new Map(Object.entries(embeddings));
+          return;
+        }
+      }
+    } catch {
+      // Cache read failed — generate fresh
+    }
+
+    generateEmbeddings(descriptions, {
+      getToken: getIdentityToken,
+      baseUrl: process.env.NEXT_PUBLIC_API_URL,
+    })
+      .then((embeddings) => {
+        const map: Record<string, number[]> = {};
+        toolEntries.forEach((t, i) => {
+          map[t.name] = embeddings[i];
+        });
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ _hash: descHash, ...map }));
+        } catch {
+          // localStorage full — still use in-memory
+        }
+        clientToolEmbeddingsRef.current = new Map(Object.entries(map));
+      })
+      .catch(() => {
+        // Non-fatal — will include all tools as fallback
+      });
+  }, [clientTools, getIdentityToken, FILTERABLE_TOOL_NAMES]);
+
   const baseChatState = useAppChat({
     database,
     model: "openai/gpt-5.2-2025-12-11",
@@ -512,6 +580,35 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return result;
     },
     clientTools,
+    clientToolsFilter: useCallback((embeddings: number[] | number[][] | null, tools: any[]) => {
+      // Non-UI tools (calendar, drive, memory) are always included
+      const nonUiNames = tools
+        .map((t: any) => t.function?.name || t.name)
+        .filter((name: string) => !FILTERABLE_TOOL_NAMES.includes(name));
+
+      // No embeddings (short message) → no client tools needed
+      if (!embeddings) return [];
+
+      // Embeddings not pre-computed yet → include all as fallback
+      const map = clientToolEmbeddingsRef.current;
+      if (!map) return tools.map((t: any) => t.function?.name || t.name);
+
+      // Build pseudo-ServerTool objects for findMatchingTools
+      const pseudoTools = tools
+        .map((t: any) => {
+          const name = t.function?.name || t.name;
+          const embedding = map.get(name);
+          return embedding ? { name, embedding } as ServerTool : null;
+        })
+        .filter(Boolean) as ServerTool[];
+
+      const matches = findMatchingTools(embeddings, pseudoTools, {
+        limit: 4,
+        minSimilarity: 0.35,
+      });
+
+      return [...nonUiNames, ...matches.map((m) => m.tool.name)];
+    }, [FILTERABLE_TOOL_NAMES]),
   });
 
   // Keep messages ref in sync for tool callbacks
