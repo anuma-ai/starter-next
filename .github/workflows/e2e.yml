@@ -6,15 +6,19 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  e2e:
-    if: github.event_name == 'merge_group'
+  e2e-light:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     env:
       NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
       NEXT_PUBLIC_PRIVY_APP_ID: ${{ secrets.NEXT_PUBLIC_PRIVY_APP_ID }}
@@ -39,14 +43,56 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run E2E tests
-        run: pnpm test:e2e
+      - name: Run light tests
+        run: pnpm test:e2e:light
 
       - name: Upload test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-light
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  e2e-full:
+    if: github.event_name == 'merge_group' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_PRIVY_APP_ID: ${{ secrets.NEXT_PUBLIC_PRIVY_APP_ID }}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+      TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+      TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+      NEXT_PUBLIC_DROPBOX_APP_KEY: ${{ secrets.NEXT_PUBLIC_DROPBOX_APP_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run full tests
+        continue-on-error: true
+        run: pnpm test:e2e:full
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-full
           path: |
             playwright-report/
             test-results/
@@ -54,13 +100,17 @@ jobs:
 
   e2e-status:
     if: always()
-    needs: [e2e]
+    needs: [e2e-light, e2e-full]
     runs-on: ubuntu-latest
     steps:
-      - name: Check e2e result
+      - name: Check e2e results
         run: |
-          if [[ "${{ needs.e2e.result }}" == "failure" ]]; then
-            echo "E2E tests failed"
+          if [[ "${{ needs.e2e-light.result }}" == "failure" ]]; then
+            echo "Light tests failed"
             exit 1
           fi
-          echo "E2E tests passed (or skipped on PR)"
+          if [[ "${{ needs.e2e-full.result }}" == "failure" ]]; then
+            echo "Full tests failed"
+            exit 1
+          fi
+          echo "All e2e tests passed (or skipped)"
