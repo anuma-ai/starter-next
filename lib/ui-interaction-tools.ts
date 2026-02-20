@@ -282,13 +282,9 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
       }
     },
   });
-  const weatherTool = {
-    ...weatherToolBase,
-    excludeServerTools: ["OpenMeteoMCP_"],
-  };
   // #endregion displayToolDefinition
 
   const chartTool = createChartTool(options);
 
-  return [choiceTool, formTool, weatherTool, chartTool];
+  return [choiceTool, formTool, weatherToolBase, chartTool];
 }

@@ -813,7 +813,8 @@ export function useAppChatStorage({
       const MAX_RETRIES = 2;
       for (let retry = 0; retry < MAX_RETRIES; retry++) {
         if (stoppedRef.current) break;
-        const emptyResponse = !response?.error && !streamingTextRef.current.trim();
+        const hasAutoExecutedTools = (response as any)?.autoExecutedToolResults?.length > 0;
+        const emptyResponse = !response?.error && !hasAutoExecutedTools && !streamingTextRef.current.trim();
         const transientError = isTransientError(response);
         if (!emptyResponse && !transientError) break;
         console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);

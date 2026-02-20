@@ -493,24 +493,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const disabledToolNames = getDisabledTools();
       const semanticEnabled = getSemanticSearchEnabled();
 
-      // Collect server tool exclusion prefixes declared by client tools.
-      // Client tools can set excludeServerTools to prevent the model from
-      // choosing overlapping server-side MCP tools over the client tool.
-      const excludedServerPrefixes: string[] = clientTools.flatMap(
-        (t: any) => t.excludeServerTools || []
-      );
-
       // Start with enabled tools
-      const result = [...enabledToolNames].filter(
-        (name) => !excludedServerPrefixes.some((p) => name.startsWith(p))
-      );
+      const result = [...enabledToolNames];
 
       // If semantic search is enabled, add semantic matches
       if (semanticEnabled) {
         const semanticMatches = findMatchingTools(embeddings, tools, { limit: 5 })
           .map((m: { tool: ServerTool }) => m.tool.name)
-          .filter((name: string) => !disabledToolNames.includes(name))
-          .filter((name: string) => !excludedServerPrefixes.some((p: string) => name.startsWith(p)));
+          .filter((name: string) => !disabledToolNames.includes(name));
 
         for (const name of semanticMatches) {
           if (!result.includes(name)) {
