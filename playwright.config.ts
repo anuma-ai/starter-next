@@ -16,6 +16,7 @@ if (fs.existsSync(envPath)) {
 
 const port = process.env.TEST_PORT || "3000";
 const baseURL = `http://localhost:${port}`;
+const authFile = path.resolve(__dirname, "playwright/.auth/user.json");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -47,7 +48,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
+        storageState: fs.existsSync(authFile) ? authFile : undefined,
         viewport: { width: 1920, height: 1080 },
       },
       dependencies: ["setup"],
