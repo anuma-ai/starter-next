@@ -9,6 +9,8 @@
     "lint": "eslint",
     "generate": "rimraf docs && typedoc && cp README.md documents/_meta.js docs/documents/",
     "test:e2e": "playwright test",
+    "test:e2e:light": "playwright test --grep @light",
+    "test:e2e:full": "playwright test --grep @full",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "seed": "open http://localhost:3000/dev/seed"
@@ -42,7 +44,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
-    "@reverbia/sdk": "1.0.0-next.20260217125211",
+    "@reverbia/sdk": "1.0.0-next.20260222153940",
     "@xyflow/react": "^12.9.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

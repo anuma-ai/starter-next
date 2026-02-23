@@ -36,6 +36,7 @@ import {
   getAndClearDrivePendingMessage,
   // Semantic tool matching
   findMatchingTools,
+  generateEmbeddings,
 } from "@reverbia/sdk/react";
 import { useAppProjects } from "@/hooks/useAppProjects";
 import { getEnabledTools, getDisabledTools, getSemanticSearchEnabled } from "@/hooks/useAppTools";
@@ -51,6 +52,21 @@ import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
 import { useNotionTools } from "@/hooks/useNotionTools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+
+type VaultSaveOperation = {
+  action: "add" | "update";
+  content: string;
+  id?: string;
+  previousContent?: string;
+};
+
+type StoredVaultMemory = {
+  uniqueId: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isDeleted: boolean;
+};
 
 type ChatState = {
   messages: any[];
@@ -72,6 +88,16 @@ type ChatState = {
   refreshConversations: () => Promise<void>;
   getMessages: (conversationId: string) => Promise<any[]>;
   getConversation: (id: string) => Promise<any>;
+  // Memory vault
+  getVaultMemories: () => Promise<StoredVaultMemory[]>;
+  createVaultMemory: (content: string) => Promise<StoredVaultMemory>;
+  updateVaultMemory: (id: string, content: string) => Promise<StoredVaultMemory | null>;
+  deleteVaultMemory: (id: string) => Promise<boolean>;
+  recentVaultSave: { content: string; memoryId: string } | null;
+  undoVaultSave: () => void;
+  dismissVaultSave: () => void;
+  pauseVaultDismiss: () => void;
+  resumeVaultDismiss: () => void;
   // Projects
   projects: StoredProject[];
   projectsLoading: boolean;
@@ -485,6 +511,87 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return allTools;
   }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess, notionTools, uiInteraction]);
 
+  // Pre-compute embeddings for client tool descriptions (for semantic filtering)
+  const clientToolEmbeddingsRef = useRef<Map<string, number[]> | null>(null);
+  const FILTERABLE_TOOL_NAMES = useMemo(() => ["prompt_user_choice", "prompt_user_form", "display_weather", "display_chart", "search_memory"], []);
+
+  useEffect(() => {
+    const CACHE_KEY = "client_tool_embeddings";
+
+    // Collect filterable tool descriptions to embed
+    // Include tools from clientTools array plus search_memory (added dynamically in useAppChat)
+    const toolEntries: { name: string; description: string }[] = clientTools
+      .filter((t: any) => FILTERABLE_TOOL_NAMES.includes(t.function?.name || t.name))
+      .map((t: any) => ({
+        name: t.function?.name || t.name,
+        description: t.function?.description || t.description || "",
+      }));
+
+    // search_memory is created dynamically in useAppChat, so add its description here
+    if (!toolEntries.find((t) => t.name === "search_memory")) {
+      toolEntries.push({
+        name: "search_memory",
+        description: "Search past conversation chunks to find relevant context from previous discussions, such as user preferences, past discussions, or previously mentioned facts.",
+      });
+    }
+
+    if (toolEntries.length === 0) return;
+
+    const descriptions = toolEntries.map((t) => t.description);
+
+    // Hash descriptions so cache auto-invalidates when tool text changes
+    const descHash = descriptions.join("|").length + "_" + descriptions.map(d => d.slice(0, 20)).join(",");
+
+    // Try cache first
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed._hash === descHash) {
+          const { _hash, ...embeddings } = parsed;
+          clientToolEmbeddingsRef.current = new Map(Object.entries(embeddings));
+          return;
+        }
+      }
+    } catch {
+      // Cache read failed — generate fresh
+    }
+
+    generateEmbeddings(descriptions, {
+      getToken: getIdentityToken,
+      baseUrl: process.env.NEXT_PUBLIC_API_URL,
+    })
+      .then((embeddings) => {
+        const map: Record<string, number[]> = {};
+        toolEntries.forEach((t, i) => {
+          map[t.name] = embeddings[i];
+        });
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ _hash: descHash, ...map }));
+        } catch {
+          // localStorage full — still use in-memory
+        }
+        clientToolEmbeddingsRef.current = new Map(Object.entries(map));
+      })
+      .catch(() => {
+        // Non-fatal — will include all tools as fallback
+      });
+  }, [clientTools, getIdentityToken, FILTERABLE_TOOL_NAMES]);
+
+  // Memory vault: auto-save with undo
+  const [recentVaultSave, setRecentVaultSave] = useState<{ content: string; memoryId: string } | null>(null);
+  const vaultDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const vaultDismissStartRef = useRef<number>(0);
+  const vaultDismissRemainingRef = useRef<number>(5000);
+  // Track content of pending save so we can find the memory ID after it's created
+  const pendingVaultContentRef = useRef<string | null>(null);
+
+  const onVaultSave = useCallback(async (operation: VaultSaveOperation): Promise<boolean> => {
+    // Remember what's being saved so we can find the memory ID after the SDK creates it
+    pendingVaultContentRef.current = operation.content;
+    return true;
+  }, []);
+
   const baseChatState = useAppChat({
     database,
     model: "openai/gpt-5.2-2025-12-11",
@@ -521,10 +628,119 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return result;
     },
     clientTools,
+    clientToolsFilter: useCallback((embeddings: number[] | number[][] | null, tools: any[]) => {
+      // Non-UI tools (calendar, drive, memory) are always included
+      const nonUiNames = tools
+        .map((t: any) => t.function?.name || t.name)
+        .filter((name: string) => !FILTERABLE_TOOL_NAMES.includes(name));
+
+      // No embeddings (short message) → no client tools needed
+      if (!embeddings) return [];
+
+      // Embeddings not pre-computed yet → include all as fallback
+      const map = clientToolEmbeddingsRef.current;
+      if (!map) return tools.map((t: any) => t.function?.name || t.name);
+
+      // Build pseudo-ServerTool objects for findMatchingTools
+      const pseudoTools = tools
+        .map((t: any) => {
+          const name = t.function?.name || t.name;
+          const embedding = map.get(name);
+          return embedding ? { name, embedding } as ServerTool : null;
+        })
+        .filter(Boolean) as ServerTool[];
+
+      const matches = findMatchingTools(embeddings, pseudoTools, {
+        limit: 4,
+        minSimilarity: 0.35,
+      });
+
+      return [...nonUiNames, ...matches.map((m) => m.tool.name)];
+    }, [FILTERABLE_TOOL_NAMES]),
+    onVaultSave,
+  });
+
+  // After the SDK saves a memory (onVaultSave returned true), find the new entry and show the undo banner.
+  const getVaultMemoriesRef = useRef(baseChatState.getVaultMemories);
+  const deleteVaultMemoryRef = useRef(baseChatState.deleteVaultMemory);
+  useEffect(() => {
+    getVaultMemoriesRef.current = baseChatState.getVaultMemories;
+    deleteVaultMemoryRef.current = baseChatState.deleteVaultMemory;
   });
 
   // Keep messages ref in sync for tool callbacks
   messagesRef.current = baseChatState.messages;
+
+  useEffect(() => {
+    if (!pendingVaultContentRef.current) return;
+    const content = pendingVaultContentRef.current;
+
+    const findSavedMemory = async () => {
+      try {
+        const memories = await getVaultMemoriesRef.current();
+        const match = memories.find((m: any) => m.content === content);
+        if (match) {
+          pendingVaultContentRef.current = null;
+          if (vaultDismissTimerRef.current) clearTimeout(vaultDismissTimerRef.current);
+          setRecentVaultSave({ content: match.content, memoryId: match.uniqueId });
+          vaultDismissRemainingRef.current = 5000;
+          vaultDismissStartRef.current = Date.now();
+          vaultDismissTimerRef.current = setTimeout(() => {
+            setRecentVaultSave(null);
+          }, 5000);
+          return true;
+        }
+      } catch {
+        // Will retry
+      }
+      return false;
+    };
+
+    const timer = setInterval(async () => {
+      const found = await findSavedMemory();
+      if (found) clearInterval(timer);
+    }, 500);
+
+    const cleanup = setTimeout(() => {
+      clearInterval(timer);
+      pendingVaultContentRef.current = null;
+    }, 5000);
+
+    return () => {
+      clearInterval(timer);
+      clearTimeout(cleanup);
+    };
+  }, [baseChatState.isLoading]);
+
+  const undoVaultSave = useCallback(() => {
+    if (!recentVaultSave) return;
+    deleteVaultMemoryRef.current?.(recentVaultSave.memoryId);
+    if (vaultDismissTimerRef.current) clearTimeout(vaultDismissTimerRef.current);
+    setRecentVaultSave(null);
+  }, [recentVaultSave]);
+
+  const dismissVaultSave = useCallback(() => {
+    if (vaultDismissTimerRef.current) clearTimeout(vaultDismissTimerRef.current);
+    setRecentVaultSave(null);
+  }, []);
+
+  const pauseVaultDismiss = useCallback(() => {
+    if (vaultDismissTimerRef.current) {
+      clearTimeout(vaultDismissTimerRef.current);
+      vaultDismissTimerRef.current = null;
+      const elapsed = Date.now() - vaultDismissStartRef.current;
+      vaultDismissRemainingRef.current = Math.max(0, vaultDismissRemainingRef.current - elapsed);
+    }
+  }, []);
+
+  const resumeVaultDismiss = useCallback(() => {
+    if (recentVaultSave && !vaultDismissTimerRef.current) {
+      vaultDismissStartRef.current = Date.now();
+      vaultDismissTimerRef.current = setTimeout(() => {
+        setRecentVaultSave(null);
+      }, vaultDismissRemainingRef.current);
+    }
+  }, [recentVaultSave]);
 
   // Projects state
   const {
@@ -671,11 +887,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [baseChatState]
   );
 
-  // Wrap deleteConversation to trigger sidebar refresh after deletion
+  // Wrap deleteConversation to trigger sidebar refresh
   const deleteConversation = useCallback(
     async (id: string) => {
       await baseChatState.deleteConversation(id);
-      // Trigger sidebar refresh so deleted conversations disappear
       triggerProjectConversationsRefresh();
     },
     [baseChatState, triggerProjectConversationsRefresh]
@@ -763,6 +978,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       triggerProjectConversationsRefresh,
       // Encryption
       encryptionReady,
+      // Memory vault
+      recentVaultSave,
+      undoVaultSave,
+      dismissVaultSave,
+      pauseVaultDismiss,
+      resumeVaultDismiss,
     }),
     [
       baseChatState,
@@ -784,6 +1005,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setPendingProjectAssignment,
       triggerProjectConversationsRefresh,
       encryptionReady,
+      recentVaultSave,
+      undoVaultSave,
+      dismissVaultSave,
+      pauseVaultDismiss,
+      resumeVaultDismiss,
     ]
   );
 

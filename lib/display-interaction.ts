@@ -1,180 +1,190 @@
 /**
- * Display interaction helpers for rendering and persisting weather cards
- * and other display-only tool results.
+ * Display interaction helpers.
  *
- * These helpers are used by the chatbot component to manage the lifecycle
- * of display interactions created by createDisplayTool.
+ * Display tool results (charts, weather cards) are persisted as part of the
+ * conversation messages. These helpers extract, anchor, persist and restore
+ * display results so the chatbot can render visual components inline.
  */
 
-import { useRef, useEffect } from "react";
-import type {
-  PendingInteraction,
-  UIInteractionContextValue,
-} from "@reverbia/sdk/react";
+import { useEffect, useRef } from "react";
+
+export type ParsedDisplayResult = {
+  displayType: string;
+  result: any;
+};
+
+/**
+ * A display interaction anchored to a message position.
+ */
+export type DisplayInteraction = {
+  id: string;
+  displayType: string;
+  result: any;
+  /** The message ID this display appears after */
+  afterMessageId?: string;
+};
+
+/**
+ * Extract display tool results embedded in a [Tool Execution Results] message.
+ *
+ * The message format is:
+ *   [Tool Execution Results]
+ *   Tool "display_chart" returned: { ... JSON ... }
+ *   Based on these results, continue with the task.
+ */
+export function parseDisplayResults(text: string): ParsedDisplayResult[] {
+  const results: ParsedDisplayResult[] = [];
+  const regex = /Tool "display_(\w+)" returned: (.+)/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    try {
+      results.push({
+        displayType: match[1],
+        result: JSON.parse(match[2]),
+      });
+    } catch {
+      // Skip malformed JSON
+    }
+  }
+  return results;
+}
 
 // #region collectDisplayInteractions
-// Collect all resolved display interactions from the provider, sorted
-// by creation time. Call this once per render to build a stable list,
-// then use getDisplaysForMessage to distribute them across the chat.
+/**
+ * Scan all messages and collect display interactions with their anchor
+ * positions.  Returns a flat list of DisplayInteraction objects and a Set
+ * you can use to track which ones have already been rendered inline.
+ */
 export function collectDisplayInteractions(
-  pendingInteractions: Map<string, PendingInteraction>,
-) {
-  return Array.from(pendingInteractions.values())
-    .filter((i) => i.type === "display" && i.resolved)
-    .sort((a, b) => a.createdAt - b.createdAt);
+  messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>
+): { displays: DisplayInteraction[]; renderedIds: Set<string> } {
+  const displays: DisplayInteraction[] = [];
+
+  for (const message of messages) {
+    if (message.role !== "user") continue;
+    const text = message.parts?.[0]?.text;
+    if (!text?.includes("[Tool Execution Results]")) continue;
+
+    const parsed = parseDisplayResults(text);
+    for (const p of parsed) {
+      displays.push({
+        id: `${message.id}-${p.displayType}`,
+        displayType: p.displayType,
+        result: p.result,
+        afterMessageId: message.id,
+      });
+    }
+  }
+
+  return { displays, renderedIds: new Set<string>() };
 }
 // #endregion collectDisplayInteractions
 
 // #region getDisplaysForMessage
-// Find display interactions anchored to a specific message. Each
-// interaction is anchored to the message that was last in the chat
-// when the tool was called (via afterMessageId). Marks matched
-// interactions as rendered to prevent duplicates.
+/**
+ * Get display interactions that should render before a given message.
+ * Marks returned interactions as rendered so they are not duplicated.
+ */
 export function getDisplaysForMessage(
   messageId: string,
-  displayInteractions: PendingInteraction[],
-  renderedIds: Set<string>,
-): PendingInteraction[] {
-  const displays = displayInteractions.filter(
-    (i) => !renderedIds.has(i.id) && i.data.afterMessageId === messageId,
+  displays: DisplayInteraction[],
+  renderedIds: Set<string>
+): DisplayInteraction[] {
+  const matching = displays.filter(
+    (d) => d.afterMessageId === messageId && !renderedIds.has(d.id)
   );
-  displays.forEach((i) => renderedIds.add(i.id));
-  return displays;
+  for (const d of matching) {
+    renderedIds.add(d.id);
+  }
+  return matching;
 }
 // #endregion getDisplaysForMessage
 
 // #region getUnanchoredDisplays
-// Find resolved display interactions whose anchor message isn't in
-// the current message list. This happens after a page refresh when
-// messages haven't fully loaded, or if the anchor was removed. Render
-// these at the bottom of the chat as a fallback.
+/**
+ * Get display interactions whose anchor message is not present in the
+ * current message list.  These are rendered at the bottom of the chat as a
+ * fallback (e.g. after a page refresh before messages finish loading).
+ */
 export function getUnanchoredDisplays(
-  pendingInteractions: Map<string, PendingInteraction>,
-  messages: { id: string }[],
-): PendingInteraction[] {
-  return Array.from(pendingInteractions.values())
-    .filter((i) => i.type === "display" && i.resolved)
-    .filter((i) => {
-      const anchorId = i.data.afterMessageId;
-      if (!anchorId) return true;
-      return !messages.some((m) => m.id === anchorId);
-    });
+  displays: DisplayInteraction[],
+  messageIds: Set<string>,
+  renderedIds: Set<string>
+): DisplayInteraction[] {
+  return displays.filter((d) => {
+    if (renderedIds.has(d.id)) return false;
+    if (!d.afterMessageId) return true;
+    return !messageIds.has(d.afterMessageId);
+  });
 }
 // #endregion getUnanchoredDisplays
 
-// #region restoreDisplayInteractions
-// Restore display interactions from localStorage for the given
-// conversation. Called after clearing interactions on conversation
-// switch to immediately repopulate display results.
-export function restoreDisplayInteractions(
-  uiInteraction: UIInteractionContextValue,
-  conversationId: string,
-  messages: { id: string }[],
-) {
-  try {
-    const stored = localStorage.getItem(`display:${conversationId}`);
-    if (!stored) return;
-    const items = JSON.parse(stored);
-    for (const item of items) {
-      const exists = uiInteraction.getInteraction(item.id);
-      if (exists) continue;
-      const anchorMsg =
-        item.anchorMessageIndex != null
-          ? messages[item.anchorMessageIndex]
-          : undefined;
-      uiInteraction.createDisplayInteraction(
-        item.id,
-        item.displayType,
-        { afterMessageId: anchorMsg?.id },
-        item.result,
-      );
-    }
-  } catch (e) {
-    console.error("restoreDisplayInteractions error:", e);
-  }
-}
-// #endregion restoreDisplayInteractions
-
 // #region useDisplayPersistence
-// Persist display interactions to localStorage so they survive page
-// refresh. The SDK stores results only in the in-memory
-// pendingInteractions map. This hook saves when new displays appear
-// and restores them when a conversation loads.
-//
-// Message IDs are ephemeral (regenerated each session), so we store
-// the message INDEX and re-map to the current ID on restore.
-export function useDisplayPersistence(
-  uiInteraction: UIInteractionContextValue,
-  conversationId: string | null,
-  messages: { id: string }[],
-) {
-  // Save: write to localStorage when new display interactions appear
-  const prevDisplayCountRef = useRef(0);
-  const saveConvRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!conversationId) return;
-    // When conversation changes, reset the counter and skip this run.
-    // The pendingInteractions still reference the OLD conversation's data
-    // (state update from clearInteractions hasn't been applied yet), so
-    // saving now would write stale data under the new conversation's key.
-    if (saveConvRef.current !== conversationId) {
-      prevDisplayCountRef.current = 0;
-      saveConvRef.current = conversationId;
-      return;
-    }
-    const displays = Array.from(uiInteraction.pendingInteractions.values())
-      .filter((i) => i.type === "display" && i.resolved);
-    if (displays.length > 0 && displays.length > prevDisplayCountRef.current) {
-      const data = displays.map((d) => {
-        const anchorIdx = messages.findIndex(
-          (m) => m.id === d.data.afterMessageId,
-        );
-        return {
-          id: d.id,
-          displayType: d.data.displayType,
-          anchorMessageIndex: anchorIdx >= 0 ? anchorIdx : undefined,
-          result: d.result,
-        };
-      });
-      try {
-        localStorage.setItem(
-          `display:${conversationId}`,
-          JSON.stringify(data),
-        );
-      } catch {}
-    }
-    prevDisplayCountRef.current = displays.length;
-  }, [uiInteraction.pendingInteractions, conversationId, messages]);
+type StoredInteraction = {
+  displayType: string;
+  result: any;
+  messageIndex: number;
+};
 
-  // Restore: when conversation changes, remove stale display interactions
-  // from the previous conversation and recreate from localStorage.
-  const restoreConvRef = useRef<string | null>(null);
+/**
+ * Persist display interactions to localStorage so they survive page
+ * refreshes.  Message IDs are ephemeral, so the hook stores the message
+ * index instead and re-maps to the current ID list on restore.
+ */
+export function useDisplayPersistence(
+  conversationId: string | undefined,
+  messages: Array<{ id: string }>,
+  displays: DisplayInteraction[]
+) {
+  const prevCountRef = useRef(0);
+
+  // Save when new display interactions appear
   useEffect(() => {
-    // When conversationId becomes null (new conversation created), cancel all
-    // display interactions from the previous conversation immediately. There's
-    // nothing to restore for a blank conversation.
-    if (!conversationId) {
-      if (restoreConvRef.current !== null) {
-        for (const [id, interaction] of uiInteraction.pendingInteractions) {
-          if (interaction.type === "display") {
-            uiInteraction.cancelInteraction(id);
-          }
-        }
+    if (!conversationId || displays.length === 0) return;
+    if (displays.length === prevCountRef.current) return;
+    prevCountRef.current = displays.length;
+
+    const stored: StoredInteraction[] = displays.map((d) => {
+      const idx = messages.findIndex((m) => m.id === d.afterMessageId);
+      return {
+        displayType: d.displayType,
+        result: d.result,
+        messageIndex: idx,
+      };
+    });
+
+    localStorage.setItem(
+      `display_interactions_${conversationId}`,
+      JSON.stringify(stored)
+    );
+  }, [conversationId, displays, messages]);
+
+  // Restore on conversation load
+  useEffect(() => {
+    if (!conversationId || messages.length === 0) return;
+
+    const raw = localStorage.getItem(
+      `display_interactions_${conversationId}`
+    );
+    if (!raw) return;
+
+    try {
+      const stored: StoredInteraction[] = JSON.parse(raw);
+      const restored: DisplayInteraction[] = stored
+        .filter((s) => s.messageIndex >= 0 && s.messageIndex < messages.length)
+        .map((s, i) => ({
+          id: `restored-${i}`,
+          displayType: s.displayType,
+          result: s.result,
+          afterMessageId: messages[s.messageIndex]?.id,
+        }));
+
+      if (restored.length > 0) {
+        prevCountRef.current = restored.length;
       }
-      restoreConvRef.current = null;
-      return;
+    } catch {
+      // Ignore corrupt data
     }
-    if (messages.length === 0) return;
-    // On conversation switch, cancel display interactions from the old conversation
-    if (restoreConvRef.current !== null && restoreConvRef.current !== conversationId) {
-      for (const [id, interaction] of uiInteraction.pendingInteractions) {
-        if (interaction.type === "display") {
-          uiInteraction.cancelInteraction(id);
-        }
-      }
-    }
-    restoreConvRef.current = conversationId;
-    restoreDisplayInteractions(uiInteraction, conversationId, messages);
-  }, [conversationId, messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conversationId, messages]);
 }
 // #endregion useDisplayPersistence

@@ -2,7 +2,13 @@
 
 import { useCallback, useState, useRef, useEffect } from "react";
 import { useAppChatStorage } from "./useAppChatStorage";
-import { useTools, type ServerToolsFilter } from "@reverbia/sdk/react";
+import {
+  useTools,
+  eagerEmbedContent,
+  type ServerToolsFilter,
+  type ClientToolsFilterFn,
+  type VaultSaveOperation,
+} from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
 
@@ -33,13 +39,29 @@ type UseAppChatProps = {
   serverTools?: ServerToolsFilter;
   // Client-side tools (with local executors)
   clientTools?: any[];
+  // Dynamic filter for client tools based on prompt embeddings
+  clientToolsFilter?: ClientToolsFilterFn;
   toolChoice?: string;
   // System prompt for the AI
   systemPrompt?: string;
+  // Callback when the vault tool wants to save a memory (for confirmation UI)
+  onVaultSave?: (operation: VaultSaveOperation) => Promise<boolean>;
 };
 
-// Default system prompt that includes memory retrieval instructions
+// Default system prompt (general instructions, without vault-specific rules)
 const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.`;
+
+// Default vault instructions appended when the vault is enabled
+const DEFAULT_VAULT_PROMPT = `You also have access to a memory vault for storing important facts and preferences the user shares. The vault has two tools:
+- memory_vault_search: Search existing vault memories by semantic similarity. Returns matching entries with their IDs.
+- memory_vault_save: Save or update a vault memory. Pass an "id" to update an existing entry.
+
+IMPORTANT — vault workflow:
+- When the user tells you something worth remembering, ALWAYS call memory_vault_search first to check if a related memory already exists.
+- If memory_vault_search returns a related entry, use its id with memory_vault_save to UPDATE it rather than creating a duplicate. Merge the new information into the existing text.
+- Only omit the "id" parameter when memory_vault_search confirms no existing entry is related.
+- The vault should stay compact: one entry per topic, updated over time.
+- When answering questions that might involve stored preferences or facts, call memory_vault_search to check.`;
 
 //#region hookInit
 export function useAppChat({
@@ -54,8 +76,10 @@ export function useAppChat({
   encryptionReady,
   serverTools,
   clientTools,
+  clientToolsFilter,
   toolChoice,
   systemPrompt,
+  onVaultSave,
 }: UseAppChatProps) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +87,11 @@ export function useAppChat({
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryLimit, setMemoryLimit] = useState(5);
   const [memoryThreshold, setMemoryThreshold] = useState(0.2);
+  const [vaultEnabled, setVaultEnabled] = useState(true);
+  const [vaultSearchLimit, setVaultSearchLimit] = useState(5);
+  const [vaultSearchThreshold, setVaultSearchThreshold] = useState(0.1);
+  const [customSystemPrompt, setCustomSystemPrompt] = useState<string | null>(null);
+  const [customVaultPrompt, setCustomVaultPrompt] = useState<string | null>(null);
   //#endregion memorySettings
   const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
@@ -92,6 +121,37 @@ export function useAppChat({
       }
     }
 
+    const savedVaultEnabled = localStorage.getItem("chat_vaultEnabled");
+    if (savedVaultEnabled !== null) {
+      setVaultEnabled(savedVaultEnabled === "true");
+    }
+
+    const savedVaultSearchLimit = localStorage.getItem("chat_vaultSearchLimit");
+    if (savedVaultSearchLimit) {
+      const limit = parseInt(savedVaultSearchLimit, 10);
+      if (!isNaN(limit) && limit > 0) {
+        setVaultSearchLimit(limit);
+      }
+    }
+
+    const savedVaultSearchThreshold = localStorage.getItem("chat_vaultSearchThreshold");
+    if (savedVaultSearchThreshold) {
+      const threshold = parseFloat(savedVaultSearchThreshold);
+      if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
+        setVaultSearchThreshold(threshold);
+      }
+    }
+
+    const savedSystemPrompt = localStorage.getItem("chat_systemPrompt");
+    if (savedSystemPrompt !== null) {
+      setCustomSystemPrompt(savedSystemPrompt);
+    }
+
+    const savedVaultPrompt = localStorage.getItem("chat_vaultPrompt");
+    if (savedVaultPrompt !== null) {
+      setCustomVaultPrompt(savedVaultPrompt);
+    }
+
     // Listen for changes from settings page
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "chat_memoryEnabled" && e.newValue !== null) {
@@ -108,6 +168,27 @@ export function useAppChat({
         if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
           setMemoryThreshold(threshold);
         }
+      }
+      if (e.key === "chat_vaultEnabled" && e.newValue !== null) {
+        setVaultEnabled(e.newValue === "true");
+      }
+      if (e.key === "chat_vaultSearchLimit" && e.newValue) {
+        const limit = parseInt(e.newValue, 10);
+        if (!isNaN(limit) && limit > 0) {
+          setVaultSearchLimit(limit);
+        }
+      }
+      if (e.key === "chat_vaultSearchThreshold" && e.newValue) {
+        const threshold = parseFloat(e.newValue);
+        if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
+          setVaultSearchThreshold(threshold);
+        }
+      }
+      if (e.key === "chat_systemPrompt") {
+        setCustomSystemPrompt(e.newValue);
+      }
+      if (e.key === "chat_vaultPrompt") {
+        setCustomVaultPrompt(e.newValue);
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -146,6 +227,13 @@ export function useAppChat({
     getMessages,
     getConversation,
     createMemoryRetrievalTool,
+    createMemoryVaultTool,
+    createMemoryVaultSearchTool,
+    vaultEmbeddingCache,
+    getVaultMemories,
+    createVaultMemory,
+    updateVaultMemory,
+    deleteVaultMemory,
     stop,
   } = useAppChatStorage({
     database,
@@ -157,8 +245,11 @@ export function useAppChat({
     embeddedWalletSigner,
     // Re-load messages when encryption becomes ready (to decrypt file attachments)
     encryptionReady,
-    // System prompt with memory retrieval instructions
-    systemPrompt: systemPrompt || DEFAULT_SYSTEM_PROMPT,
+    // Compose system prompt: base prompt + vault instructions (when enabled)
+    systemPrompt: [
+      customSystemPrompt || systemPrompt || DEFAULT_SYSTEM_PROMPT,
+      vaultEnabled ? (customVaultPrompt ?? DEFAULT_VAULT_PROMPT) : "",
+    ].filter(Boolean).join("\n\n"),
   });
 
   // Use tools hook for checksum-based refresh
@@ -166,6 +257,7 @@ export function useAppChat({
     getToken,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
+
   //#endregion hookInit
 
   //#region sendMessage
@@ -228,17 +320,46 @@ export function useAppChat({
           }
         }
 
-        // Only include memory tool if memory retrieval is enabled
-        const effectiveClientTools = memoryEnabled
-          ? [
-              createMemoryRetrievalTool({
-                limit: memoryLimit,
-                minSimilarity: memoryThreshold,
-                excludeConversationId: effectiveConversationId ?? undefined,
-              }),
-              ...baseClientTools,
-            ]
-          : baseClientTools;
+        // Build client tools: memory retrieval + memory vault + base tools
+        const builtInTools: any[] = [];
+
+        if (memoryEnabled) {
+          builtInTools.push(
+            createMemoryRetrievalTool({
+              limit: memoryLimit,
+              minSimilarity: memoryThreshold,
+              excludeConversationId: effectiveConversationId ?? undefined,
+            })
+          );
+        }
+
+        if (vaultEnabled) {
+          // Wrap onVaultSave to eagerly embed content at save time
+          const wrappedOnVaultSave = async (operation: VaultSaveOperation) => {
+            try {
+              await eagerEmbedContent(
+                operation.content,
+                { getToken, baseUrl: process.env.NEXT_PUBLIC_API_URL },
+                vaultEmbeddingCache
+              );
+            } catch {
+              // Non-critical: embedding will be generated on next search
+            }
+            return onVaultSave ? onVaultSave(operation) : true;
+          };
+
+          builtInTools.push(
+            createMemoryVaultTool({
+              onSave: wrappedOnVaultSave,
+            })
+          );
+          builtInTools.push(createMemoryVaultSearchTool({
+            limit: vaultSearchLimit,
+            minSimilarity: vaultSearchThreshold,
+          }));
+        }
+
+        const effectiveClientTools = [...builtInTools, ...baseClientTools];
         //#endregion memoryToolCreation
         const effectiveToolChoice = options?.toolChoice || toolChoice;
         const response = await baseSendMessage(text, {
@@ -254,6 +375,7 @@ export function useAppChat({
           }),
           ...(effectiveServerTools && { serverTools: effectiveServerTools }),
           ...(effectiveClientTools && { clientTools: effectiveClientTools }),
+          ...(clientToolsFilter && { clientToolsFilter }),
           ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
           ...(options?.apiType && { apiType: options.apiType }),
           // Always pass the effectiveConversationId (either from options, hook state, or newly created)
@@ -297,13 +419,21 @@ export function useAppChat({
       maxOutputTokens,
       handleThinkingData,
       createMemoryRetrievalTool,
+      createMemoryVaultTool,
+      createMemoryVaultSearchTool,
+      vaultEmbeddingCache,
       createConversation,
       memoryEnabled,
       memoryLimit,
       memoryThreshold,
+      vaultEnabled,
+      vaultSearchLimit,
+      vaultSearchThreshold,
+      onVaultSave,
       conversationId,
       serverTools,
       clientTools,
+      clientToolsFilter,
       toolChoice,
       checkForUpdates,
     ]
@@ -397,5 +527,11 @@ export function useAppChat({
     getMessages,
     getConversation,
     stop,
+
+    // Memory vault
+    getVaultMemories,
+    createVaultMemory,
+    updateVaultMemory,
+    deleteVaultMemory,
   };
 }
