@@ -7,11 +7,15 @@ const authFile = path.join(__dirname, "../playwright/.auth/user.json");
 const PRIVY_TEST_OTP = process.env.TEST_USER_OTP;
 const PRIVY_TEST_EMAIL = process.env.TEST_USER_EMAIL;
 
-if (!PRIVY_TEST_EMAIL || !PRIVY_TEST_OTP) {
-  throw new Error("TEST_USER_EMAIL and TEST_USER_OTP must be set");
-}
-
 setup("authenticate via Privy", async ({ page }) => {
+  setup.skip(
+    !PRIVY_TEST_EMAIL || !PRIVY_TEST_OTP,
+    "TEST_USER_EMAIL and TEST_USER_OTP must be set"
+  );
+
+  const email = PRIVY_TEST_EMAIL as string;
+  const otp = PRIVY_TEST_OTP as string;
+
   await page.goto("/login");
 
   // Wait for page to be ready
@@ -23,7 +27,7 @@ setup("authenticate via Privy", async ({ page }) => {
   // Wait for email input to appear in Privy modal
   const emailInput = page.getByPlaceholder(/email/i);
   await emailInput.waitFor({ timeout: 30000 });
-  await emailInput.fill(PRIVY_TEST_EMAIL);
+  await emailInput.fill(email);
 
   // Click submit button to continue with email
   await page.getByRole("button", { name: "Submit" }).click();
@@ -35,7 +39,7 @@ setup("authenticate via Privy", async ({ page }) => {
   await otpInputs.first().waitFor({ timeout: 30000 });
 
   const inputCount = await otpInputs.count();
-  const otpDigits = PRIVY_TEST_OTP.split("");
+  const otpDigits = otp.split("");
 
   if (inputCount >= 6) {
     // Individual digit inputs
@@ -44,7 +48,7 @@ setup("authenticate via Privy", async ({ page }) => {
     }
   } else if (inputCount === 1) {
     // Single input field for full OTP
-    await otpInputs.first().fill(PRIVY_TEST_OTP);
+    await otpInputs.first().fill(otp);
   }
 
   // Wait for authentication to complete and redirect to home page
