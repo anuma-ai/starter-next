@@ -13,7 +13,11 @@ import {
   clearDriveToken,
   getValidDriveToken,
   startDriveAuth,
+  hasNotionCredentials,
+  clearNotionToken,
+  startNotionAuth,
 } from "@reverbia/sdk/react";
+import { usePrivy } from "@privy-io/react-auth";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -28,9 +32,12 @@ type AppConnection = {
 
 export default function AppsPage() {
   const router = useRouter();
+  const { user } = usePrivy();
+  const walletAddress = user?.wallet?.address;
 
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [driveConnected, setDriveConnected] = useState(false);
+  const [notionConnected, setNotionConnected] = useState(false);
 
   // Check connection status on mount
   useEffect(() => {
@@ -39,7 +46,9 @@ export default function AppsPage() {
 
     const driveToken = getValidDriveToken();
     setDriveConnected(!!driveToken || hasDriveCredentials());
-  }, []);
+
+    setNotionConnected(hasNotionCredentials(walletAddress));
+  }, [walletAddress]);
 
   const handleConnectCalendar = () => {
     if (googleClientId) {
@@ -63,6 +72,15 @@ export default function AppsPage() {
     setDriveConnected(false);
   };
 
+  const handleConnectNotion = () => {
+    startNotionAuth("/auth/notion/callback", walletAddress);
+  };
+
+  const handleDisconnectNotion = () => {
+    clearNotionToken(walletAddress);
+    setNotionConnected(false);
+  };
+
   const apps: AppConnection[] = [
     {
       id: "google-calendar",
@@ -79,6 +97,14 @@ export default function AppsPage() {
       isConnected: driveConnected,
       onConnect: handleConnectDrive,
       onDisconnect: handleDisconnectDrive,
+    },
+    {
+      id: "notion",
+      name: "Notion",
+      description: "Search, create, and manage Notion pages and databases",
+      isConnected: notionConnected,
+      onConnect: handleConnectNotion,
+      onDisconnect: handleDisconnectNotion,
     },
   ];
 
