@@ -96,8 +96,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.7)(react@19.2.3)
       '@reverbia/sdk':
-        specifier: file:../ai-sdk
-        version: file:../ai-sdk(09ba3ed4e2a7b5182cef810fe5554721)
+        specifier: 1.0.0-next.20260223092655
+        version: 1.0.0-next.20260223092655(09ba3ed4e2a7b5182cef810fe5554721)
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.7)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -2100,8 +2100,8 @@ packages:
   '@reown/appkit@1.8.9':
     resolution: {integrity: sha512-e3N2DAzf3Xv3jnoD8IsUo0/Yfwuhk7npwJBe1+9rDJIRwgPsyYcCLD4gKPDFC5IUIfOLqK7YtGOh9oPEUnIWpw==}
 
-  '@reverbia/sdk@file:../ai-sdk':
-    resolution: {directory: ../ai-sdk, type: directory}
+  '@reverbia/sdk@1.0.0-next.20260223092655':
+    resolution: {integrity: sha512-/RBca9DKGtKsAU56eG9a5aQtqi95tcvWvWoNSDunCfGBYtq3wyWkqVJpVJ9f+gnAEz1I9QYmie3Q0/ytlQxaDg==}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -9978,7 +9978,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reverbia/sdk@file:../ai-sdk(09ba3ed4e2a7b5182cef810fe5554721)':
+  '@reverbia/sdk@1.0.0-next.20260223092655(09ba3ed4e2a7b5182cef810fe5554721)':
     dependencies:
       '@anuma/portal': 1.0.0-next.20260220225437
       ai: 5.0.93(zod@4.3.5)
