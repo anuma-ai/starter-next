@@ -144,5 +144,8 @@ vite.config.ts.timestamp-*
 /playwright/.auth/
 /test-results/
 
+# Large dataset files
+data/
+
 # macOS
 .DS_Store

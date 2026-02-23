@@ -24,6 +24,13 @@ const {
   deleteConversation,
   getAllFiles,
   createMemoryRetrievalTool,
+  createMemoryVaultTool,
+  createMemoryVaultSearchTool,
+  vaultEmbeddingCache,
+  getVaultMemories,
+  createVaultMemory,
+  updateVaultMemory,
+  deleteVaultMemory,
 } = useChatStorage({
   // WatermelonDB instance — set up once at app root with your schema
   database,
