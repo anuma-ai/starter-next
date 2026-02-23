@@ -6,6 +6,7 @@ import {
   useTools,
   eagerEmbedContent,
   type ServerToolsFilter,
+  type ClientToolsFilterFn,
   type VaultSaveOperation,
 } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
@@ -38,6 +39,8 @@ type UseAppChatProps = {
   serverTools?: ServerToolsFilter;
   // Client-side tools (with local executors)
   clientTools?: any[];
+  // Dynamic filter for client tools based on prompt embeddings
+  clientToolsFilter?: ClientToolsFilterFn;
   toolChoice?: string;
   // System prompt for the AI
   systemPrompt?: string;
@@ -73,6 +76,7 @@ export function useAppChat({
   encryptionReady,
   serverTools,
   clientTools,
+  clientToolsFilter,
   toolChoice,
   systemPrompt,
   onVaultSave,
@@ -371,6 +375,7 @@ export function useAppChat({
           }),
           ...(effectiveServerTools && { serverTools: effectiveServerTools }),
           ...(effectiveClientTools && { clientTools: effectiveClientTools }),
+          ...(clientToolsFilter && { clientToolsFilter }),
           ...(effectiveToolChoice && { toolChoice: effectiveToolChoice }),
           ...(options?.apiType && { apiType: options.apiType }),
           // Always pass the effectiveConversationId (either from options, hook state, or newly created)
@@ -428,6 +433,7 @@ export function useAppChat({
       conversationId,
       serverTools,
       clientTools,
+      clientToolsFilter,
       toolChoice,
       checkForUpdates,
     ]

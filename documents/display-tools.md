@@ -2,17 +2,17 @@
 
 Display tools let the AI render rich visual components inline in the chat.
 They run entirely on the client side — when the model calls a display tool, the
-SDK executes it in the browser, stores the result as a display interaction, and
-the model continues its response without blocking. This guide walks through
-building a weather card as an example.
+SDK executes it in the browser, stores the result as a tool execution message,
+and the model continues its response without blocking. This guide walks through
+building a weather card as an example and covers the built-in chart tool.
 
 ## Overview
 
 A display tool has four parts:
 
-1. A tool definition with an `execute` function that fetches data when the
-   model calls it
-2. A React component that renders the fetched data
+1. A tool definition with an `execute` function that fetches or validates data
+   when the model calls it
+2. A React component that renders the data
 3. `UIInteractionProvider` wrapping your app to manage the interaction lifecycle
 4. Rendering logic that places the card at the right position in the chat
 
@@ -40,7 +40,10 @@ export default function AppGroupLayout({
 }
 ```
 
-## Defining the Tool
+> **Note:** Inline code is used here because the typedoc `@includeCode` plugin
+> does not support `#region` tags in `.tsx` files.
+
+## Defining a Display Tool
 
 ### Result Types
 
@@ -58,10 +61,28 @@ to the right component, and an `execute` function.
 
 The `execute` function receives the model's parsed arguments, fetches data from
 an external API, and returns the result. The SDK stores the result as a
-resolved display interaction and returns it to the model so it can reference the
-data in its text response.
+`[Tool Execution Results]` message and returns it to the model so it can
+reference the data in its text response.
 
 {@includeCode ../lib/ui-interaction-tools.ts#displayToolDefinition}
+
+### Built-in Chart Tool
+
+The SDK provides a ready-made `createChartTool` that renders bar, line, area,
+and pie charts using recharts. It validates the model's arguments (chart type,
+data array, data keys) and returns them as-is for the `ChartCard` component to
+render. No external API call is needed — the model supplies the data directly.
+
+{@includeCode ../lib/ui-interaction-tools.ts#chartToolUsage}
+
+The chart tool accepts these parameters from the model:
+
+- `chartType` — `"bar"`, `"line"`, `"area"`, or `"pie"`
+- `title` — optional title displayed above the chart
+- `data` — array of data point objects with a label key and numeric value keys
+- `dataKeys` — which keys in each data object to chart as series/bars/slices
+- `xAxisKey` — which key to use for x-axis labels (or slice names for pie)
+- `colors` — optional map of data key to CSS color value
 
 ## Wiring into the Chat
 
@@ -84,48 +105,61 @@ function. This is a regular component with no special SDK dependencies.
 
 {@includeCode ../components/chat/weather-card.tsx}
 
-## Rendering Display Interactions
+For charts, import the `ChartCard` component directly from the SDK:
 
-### Collecting Interactions
+```ts
+import { ChartCard } from "@reverbia/sdk/react";
+```
 
-Inside your message list renderer, collect all resolved display interactions
-and track which ones have been rendered to avoid duplicates.
+## Rendering Display Results
+
+### How Results Are Stored
+
+When a display tool executes, the SDK stores its return value in a
+`[Tool Execution Results]` message. This message is persisted alongside the
+conversation, so display results survive page refreshes without additional
+localStorage handling.
+
+### Parsing Results
+
+Use `collectDisplayInteractions` to scan messages and extract display results
+with their anchor positions.
 
 {@includeCode ../lib/display-interaction.ts#collectDisplayInteractions}
 
 ### Inline Rendering
 
-For each message, check if any display interactions are anchored to it. Render
-them just before the message content so the card appears above the model's
-follow-up text. Dispatch to the right component based on `displayType`.
+For each message, use `getDisplaysForMessage` to find display interactions
+anchored to it. The helper marks returned interactions as rendered so they
+are not duplicated.
 
 {@includeCode ../lib/display-interaction.ts#getDisplaysForMessage}
 
-Use the helper in your message loop to render matching cards before each
-message:
+Dispatch to the right component based on `displayType`:
 
 ```tsx
-{displaysBeforeThisMsg.map(interaction =>
-  interaction.data.displayType === "weather" ? (
-    <WeatherCard key={interaction.id} data={interaction.result} />
+{displaysForMsg.map((d) =>
+  d.displayType === "weather" ? (
+    <WeatherCard key={d.id} data={d.result} />
+  ) : d.displayType === "chart" ? (
+    <ChartCard key={d.id} data={d.result} />
   ) : null
 )}
 ```
 
 ### Fallback
 
-When the anchor message isn't found (e.g. after a page refresh before messages
-finish loading), render unanchored display interactions at the bottom of the
-chat.
+When the anchor message isn't found (e.g. messages haven't finished loading),
+render unanchored display interactions at the bottom of the chat.
 
 {@includeCode ../lib/display-interaction.ts#getUnanchoredDisplays}
 
-## Persistence
+### Optional: Index-based Persistence
 
-Display interactions live in the `UIInteractionProvider`'s in-memory state and
-are lost on page refresh. To persist them, save to `localStorage` when new
-interactions appear and restore them when the conversation loads. Message IDs
-are ephemeral, so store the message index instead and re-map on restore.
+If you need to persist display interactions separately from message storage
+(for example, if your message store doesn't retain tool execution text), you
+can use a localStorage-based hook. Message IDs are ephemeral, so this stores
+the message index and re-maps on restore.
 
 {@includeCode ../lib/display-interaction.ts#useDisplayPersistence}
 
@@ -134,8 +168,9 @@ are ephemeral, so store the message index instead and re-map on restore.
 1. User sends a message ("What's the weather in London?")
 2. The model decides to call `display_weather` with `{ location: "London" }`
 3. The SDK auto-executes the tool's `execute` function (geocoding + weather API)
-4. The result is stored as a resolved display interaction via the provider
-5. The `WeatherCard` component renders at the anchored position
+4. The result is stored as a `[Tool Execution Results]` message in the
+   conversation
+5. The message list parses the result and renders the `WeatherCard` component
 6. The model receives the weather data and continues its text response
-7. On page refresh, `localStorage` restores the interaction so the card
-   reappears
+7. On page refresh, the conversation messages are loaded from the database and
+   the tool result message is re-parsed, so the card reappears automatically

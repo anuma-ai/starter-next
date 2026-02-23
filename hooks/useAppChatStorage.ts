@@ -7,6 +7,7 @@ import {
   getEncryptionKey,
   readEncryptedFile,
   type ServerToolsFilter,
+  type ClientToolsFilterFn,
 } from "@reverbia/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
@@ -88,6 +89,7 @@ type SendMessageOptions = {
   skipOptimisticUpdate?: boolean;
   serverTools?: ServerToolsFilter;
   clientTools?: any[];
+  clientToolsFilter?: ClientToolsFilterFn;
   toolChoice?: string;
   apiType?: "responses" | "completions";
   /** Explicitly specify the conversation ID to send this message to */
@@ -665,6 +667,7 @@ export function useAppChatStorage({
         skipOptimisticUpdate,
         serverTools,
         clientTools,
+        clientToolsFilter,
         toolChoice,
         apiType,
         conversationId: explicitConversationId,
@@ -786,6 +789,7 @@ export function useAppChatStorage({
         ...(sdkFiles && sdkFiles.length > 0 && { files: sdkFiles }),
         ...(serverTools && (typeof serverTools === "function" || serverTools.length > 0) && { serverTools }),
         ...(effectiveClientTools && effectiveClientTools.length > 0 && { clientTools: effectiveClientTools }),
+        ...(clientToolsFilter && { clientToolsFilter }),
         ...(store !== undefined && { store }),
         ...(thinking && { thinking }),
         ...(onThinking && { onThinking }),
@@ -824,7 +828,8 @@ export function useAppChatStorage({
       const MAX_RETRIES = 2;
       for (let retry = 0; retry < MAX_RETRIES; retry++) {
         if (stoppedRef.current) break;
-        const emptyResponse = !response?.error && !streamingTextRef.current.trim();
+        const hasAutoExecutedTools = (response as any)?.autoExecutedToolResults?.length > 0;
+        const emptyResponse = !response?.error && !hasAutoExecutedTools && !streamingTextRef.current.trim();
         const transientError = isTransientError(response);
         if (!emptyResponse && !transientError) break;
         console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
@@ -891,6 +896,7 @@ export function useAppChatStorage({
                 parameters: (t as any).function?.arguments || t.parameters,
               })),
               toolChoice: 'auto',
+              ...(clientToolsFilter && { clientToolsFilter }),
               ...(effectiveApiType && { apiType: effectiveApiType }),
               ...(explicitConversationId && { conversationId: explicitConversationId }),
               onData: (chunk: string) => {
@@ -906,6 +912,28 @@ export function useAppChatStorage({
         }
       }
       //#endregion toolCalling
+
+      // Persist auto-executed tool results (e.g. display_chart, display_weather)
+      // as [Tool Execution Results] messages so they survive page refresh.
+      const autoResults = (response as any)?.autoExecutedToolResults;
+      if (autoResults && autoResults.length > 0) {
+        const summary = autoResults
+          .map((r: any) => `Tool "${r.name}" returned: ${JSON.stringify(r.result)}`)
+          .join('\n\n');
+        const toolResultMessage = {
+          id: `tool-result-${Date.now()}`,
+          role: 'user' as const,
+          parts: [{ type: 'text' as const, text: `[Tool Execution Results]\n\n${summary}\n\nBased on these results, continue with the task.` }],
+          createdAt: new Date(),
+        };
+        setMessages((prev: any[]) => {
+          const assistantIdx = prev.findIndex((m: any) => m.id === assistantMessageId);
+          if (assistantIdx > 0) {
+            return [...prev.slice(0, assistantIdx), toolResultMessage, ...prev.slice(assistantIdx)];
+          }
+          return [...prev, toolResultMessage];
+        });
+      }
 
       //#region postStreamCleanup
       const finalText = streamingTextRef.current;

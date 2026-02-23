@@ -26,9 +26,16 @@ import { Switch } from "@/components/ui/switch";
 import {
   Message,
   MessageContent,
+  MessageInfoButton,
   MessageResponse,
   StreamingMessage,
 } from "@/components/chat/message";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   PromptInput,
   PromptInputAttachment,
@@ -46,16 +53,11 @@ import { useUIInteraction } from "@reverbia/sdk/react";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { FormInteraction } from "@/components/chat/form-interaction";
 import { WeatherCard } from "@/components/chat/weather-card";
-import { ChartCard } from "@/components/chat/chart-card";
+import { ChartCard } from "@reverbia/sdk/react";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
-import {
-  collectDisplayInteractions,
-  getDisplaysForMessage,
-  getUnanchoredDisplays,
-  useDisplayPersistence,
-} from "@/lib/display-interaction";
+import { parseDisplayResults } from "@/lib/display-interaction";
 
 function getErrorTitle(error: string): string {
   const e = error.toLowerCase();
@@ -351,7 +353,17 @@ const ChatBotDemo = () => {
     pauseVaultDismiss,
     resumeVaultDismiss,
     stop,
+    getMessages,
   } = chatState;
+
+  const [infoMessage, setInfoMessage] = useState<any>(null);
+
+  const handleShowInfo = useCallback(async (messageId: string) => {
+    if (!conversationId) return;
+    const stored = await getMessages(conversationId);
+    const msg = stored.find((m: any) => m.uniqueId === messageId);
+    if (msg) setInfoMessage(msg);
+  }, [conversationId, getMessages]);
 
   const inputRef = useRef(input);
   inputRef.current = input;
@@ -367,8 +379,6 @@ const ChatBotDemo = () => {
     }
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist display interactions to localStorage so they survive page refresh
-  useDisplayPersistence(uiInteraction, conversationId, messages);
 
   // Fetch conversation's projectId when conversationId changes
   useEffect(() => {
@@ -972,18 +982,28 @@ const ChatBotDemo = () => {
             let resolvedIdx = 0;
             const renderedInlineIds = new Set<string>();
 
-            // Display-only interactions (e.g. weather cards)
-            const displayInteractions = collectDisplayInteractions(uiInteraction.pendingInteractions);
-            const renderedDisplayIds = new Set<string>();
-
             return messages.map((message: any) => {
             // At tool result message positions, render custom components instead of raw text
             if (message.role === "user" && message.parts.length > 0 && message.parts[0].type === "text") {
               const text = message.parts[0].text || "";
 
-              // Display tool results are rendered via the interaction system
-              // (persisted in localStorage), not from [Tool Execution Results] messages
+              // Display tool results: parse data from the message and render the component
               if (text.includes("[Tool Execution Results]") && (text.includes("display_weather") || text.includes("display_chart"))) {
+                const parsed = parseDisplayResults(text);
+                if (parsed.length > 0) {
+                  return (
+                    <div key={message.id} className="group">
+                      {parsed.map((p, idx) =>
+                        p.displayType === "weather" ? (
+                          <WeatherCard key={idx} data={p.result} />
+                        ) : p.displayType === "chart" ? (
+                          <ChartCard key={idx} data={p.result} />
+                        ) : null
+                      )}
+                      <MessageInfoButton onClick={() => handleShowInfo(message.id)} />
+                    </div>
+                  );
+                }
                 return null;
               }
 
@@ -994,7 +1014,7 @@ const ChatBotDemo = () => {
                   renderedInlineIds.add(interaction.id);
                   if (interaction.type === "form") {
                     return (
-                      <div key={message.id}>
+                      <div key={message.id} className="group">
                         <FormInteraction
                           id={interaction.id}
                           title={interaction.data.title}
@@ -1003,11 +1023,12 @@ const ChatBotDemo = () => {
                           resolved={true}
                           result={interaction.result}
                         />
+                        <MessageInfoButton onClick={() => handleShowInfo(message.id)} />
                       </div>
                     );
                   }
                   return (
-                    <div key={message.id}>
+                    <div key={message.id} className="group">
                       <ChoiceInteraction
                         id={interaction.id}
                         title={interaction.data.title}
@@ -1017,6 +1038,7 @@ const ChatBotDemo = () => {
                         resolved={true}
                         result={interaction.result}
                       />
+                      <MessageInfoButton onClick={() => handleShowInfo(message.id)} />
                     </div>
                   );
                 }
@@ -1028,7 +1050,7 @@ const ChatBotDemo = () => {
                     const parsed = JSON.parse(choiceMatch[1]);
                     const meta = parsed._meta || {};
                     return (
-                      <div key={message.id}>
+                      <div key={message.id} className="group">
                         <ChoiceInteraction
                           id={message.id}
                           title={meta.title || ""}
@@ -1038,6 +1060,7 @@ const ChatBotDemo = () => {
                           resolved={true}
                           result={parsed}
                         />
+                        <MessageInfoButton onClick={() => handleShowInfo(message.id)} />
                       </div>
                     );
                   }
@@ -1046,7 +1069,7 @@ const ChatBotDemo = () => {
                     const parsed = JSON.parse(formMatch[1]);
                     const meta = parsed._meta || {};
                     return (
-                      <div key={message.id}>
+                      <div key={message.id} className="group">
                         <FormInteraction
                           id={message.id}
                           title={meta.title || ""}
@@ -1055,6 +1078,7 @@ const ChatBotDemo = () => {
                           resolved={true}
                           result={parsed}
                         />
+                        <MessageInfoButton onClick={() => handleShowInfo(message.id)} />
                       </div>
                     );
                   }
@@ -1120,6 +1144,9 @@ const ChatBotDemo = () => {
                               {part.text}
                             </MessageResponse>
                           </MessageContent>
+                          <div className="flex justify-end">
+                            <MessageInfoButton onClick={() => handleShowInfo(message.id)} />
+                          </div>
                         </Message>
                       );
                     }
@@ -1172,6 +1199,7 @@ const ChatBotDemo = () => {
                                 </MessageResponse>
                               )}
                             </MessageContent>
+                            <MessageInfoButton onClick={() => handleShowInfo(message.id)} />
                           </Message>
                         )}
                       </div>
@@ -1302,10 +1330,7 @@ const ChatBotDemo = () => {
               i => !renderedInlineIds.has(i.id) && i.data.afterMessageId === message.id
             );
 
-            // Display interactions anchored to this message (e.g. weather cards)
-            const displaysBeforeThisMsg = getDisplaysForMessage(message.id, displayInteractions, renderedDisplayIds);
-
-            const hasInjections = interactionsBeforeThisMsg.length > 0 || displaysBeforeThisMsg.length > 0;
+            const hasInjections = interactionsBeforeThisMsg.length > 0;
 
             if (hasInjections) {
               interactionsBeforeThisMsg.forEach(i => renderedInlineIds.add(i.id));
@@ -1334,13 +1359,6 @@ const ChatBotDemo = () => {
                         result={interaction.result}
                       />
                     )
-                  )}
-                  {displaysBeforeThisMsg.map(interaction =>
-                    interaction.data.displayType === "weather" ? (
-                      <WeatherCard key={interaction.id} data={interaction.result} />
-                    ) : interaction.data.displayType === "chart" ? (
-                      <ChartCard key={interaction.id} data={interaction.result} />
-                    ) : null
                   )}
                   <div>{messageContent}</div>
                 </Fragment>
@@ -1426,14 +1444,6 @@ const ChatBotDemo = () => {
               )
             )}
           {/* Render display interactions at bottom when anchor message not found */}
-          {getUnanchoredDisplays(uiInteraction.pendingInteractions, messages)
-            .map((interaction) =>
-              interaction.data.displayType === "weather" ? (
-                <WeatherCard key={interaction.id} data={interaction.result} />
-              ) : interaction.data.displayType === "chart" ? (
-                <ChartCard key={interaction.id} data={interaction.result} />
-              ) : null
-            )}
         </div>
       </div>
 
@@ -1616,6 +1626,101 @@ const ChatBotDemo = () => {
           </PromptInput>
         </div>
       </div>
+
+      <Dialog open={!!infoMessage} onOpenChange={(open) => !open && setInfoMessage(null)}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Message info</DialogTitle>
+          </DialogHeader>
+          {infoMessage && (
+            <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+              <span className="text-muted-foreground">Role</span>
+              <span>{infoMessage.role}</span>
+
+              <span className="text-muted-foreground">ID</span>
+              <span className="break-all font-mono text-xs">{infoMessage.uniqueId}</span>
+
+              {infoMessage.model && (
+                <>
+                  <span className="text-muted-foreground">Model</span>
+                  <span className="break-all">{infoMessage.model}</span>
+                </>
+              )}
+
+              {infoMessage.createdAt && (
+                <>
+                  <span className="text-muted-foreground">Created</span>
+                  <span>{new Date(infoMessage.createdAt).toLocaleString()}</span>
+                </>
+              )}
+
+              {infoMessage.responseDuration != null && (
+                <>
+                  <span className="text-muted-foreground">Duration</span>
+                  <span>{(infoMessage.responseDuration / 1000).toFixed(1)}s</span>
+                </>
+              )}
+
+              {infoMessage.usage && (
+                <>
+                  <span className="text-muted-foreground">Tokens</span>
+                  <span>
+                    {infoMessage.usage.promptTokens != null && `${infoMessage.usage.promptTokens} prompt`}
+                    {infoMessage.usage.completionTokens != null && ` / ${infoMessage.usage.completionTokens} completion`}
+                    {infoMessage.usage.totalTokens != null && ` / ${infoMessage.usage.totalTokens} total`}
+                  </span>
+                </>
+              )}
+
+              {infoMessage.usage?.creditsUsed != null && (
+                <>
+                  <span className="text-muted-foreground">Credits</span>
+                  <span>{infoMessage.usage.creditsUsed}</span>
+                </>
+              )}
+
+              {infoMessage.feedback && (
+                <>
+                  <span className="text-muted-foreground">Feedback</span>
+                  <span>{infoMessage.feedback}</span>
+                </>
+              )}
+
+              {infoMessage.wasStopped && (
+                <>
+                  <span className="text-muted-foreground">Stopped</span>
+                  <span>Yes</span>
+                </>
+              )}
+
+              {infoMessage.error && (
+                <>
+                  <span className="text-muted-foreground">Error</span>
+                  <span className="text-destructive">{infoMessage.error}</span>
+                </>
+              )}
+
+              {infoMessage.sources && infoMessage.sources.length > 0 && (
+                <>
+                  <span className="text-muted-foreground">Sources</span>
+                  <div className="flex flex-col gap-1">
+                    {infoMessage.sources.map((s: any, idx: number) => (
+                      <a key={idx} href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                        {s.title || s.url}
+                      </a>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <span className="text-muted-foreground">Content</span>
+              <pre className="whitespace-pre-wrap break-all text-xs bg-muted p-2 rounded max-h-40 overflow-y-auto">
+                {infoMessage.content}
+              </pre>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
