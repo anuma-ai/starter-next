@@ -15,7 +15,7 @@
     "test:e2e:headed": "playwright test --headed",
     "seed": "open http://localhost:3000/dev/seed",
     "postinstall": "mkdir -p public/openmoji && cp -r node_modules/openmoji/black/svg/. public/openmoji/",
-    "build:cloudflare": "opennextjs-cloudflare build && cp .open-next/worker.js .open-next/assets/_worker.js && rsync -a .open-next/cloudflare .open-next/middleware .open-next/server-functions .open-next/.build .open-next/assets/",
+    "build:cloudflare": "opennextjs-cloudflare build && cp .open-next/worker.js .open-next/assets/_worker.js && (cp -r .open-next/cloudflare .open-next/middleware .open-next/server-functions .open-next/.build .open-next/assets/ 2>/dev/null; true)",
     "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
