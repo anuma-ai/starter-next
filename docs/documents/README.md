@@ -8,7 +8,7 @@ organization, file handling, and memory-augmented responses.
 - [Next.js 16](https://nextjs.org/docs) - React framework with App Router
 - [React 19](https://react.dev/) - UI library
 - [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
-- [Reverbia SDK](https://github.com/zeta-chain/ai-sdk) - Unified AI SDK for chat,
+- [Anuma SDK](https://github.com/zeta-chain/ai-sdk) - Unified AI SDK for chat,
   storage, and memory
 - [shadcn/ui](https://ui.shadcn.com/) - Component library built on Radix UI
 - [Tailwind CSS 4](https://tailwindcss.com/) - Utility-first CSS framework

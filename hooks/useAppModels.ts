@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useModels } from "@reverbia/sdk/react";
+import { useModels } from "@anuma/sdk/react";
 
 /**
  * useModels Hook Example

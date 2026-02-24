@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
-import { useSubscription, useCredits } from "@reverbia/sdk/react";
+import { useSubscription, useCredits } from "@anuma/sdk/react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import { useDatabase } from "@/app/providers";
 

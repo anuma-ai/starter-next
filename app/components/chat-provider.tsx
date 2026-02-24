@@ -37,7 +37,7 @@ import {
   // Semantic tool matching
   findMatchingTools,
   generateEmbeddings,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 import { useAppProjects } from "@/hooks/useAppProjects";
 import { getEnabledTools, getDisabledTools, getSemanticSearchEnabled } from "@/hooks/useAppTools";
 import type {
@@ -45,9 +45,9 @@ import type {
   StoredConversation,
   CreateProjectOptions,
   ServerTool,
-} from "@reverbia/sdk/react";
-import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
-import { useUIInteraction } from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
+import { createChatTools, createDriveTools } from "@anuma/sdk/tools";
+import { useUIInteraction } from "@anuma/sdk/react";
 import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
 import { useNotionTools } from "@/hooks/useNotionTools";
 
@@ -134,7 +134,7 @@ export function useChatContext() {
 export {
   clearCalendarToken as clearGoogleCalendarToken,
   storeCalendarToken as storeGoogleCalendarToken,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();

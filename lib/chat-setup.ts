@@ -13,7 +13,7 @@ import {
   getIdentityToken as fetchIdentityToken,
 } from "@privy-io/react-auth";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { useDatabaseManager } from "@reverbia/sdk/react";
+import { useDatabaseManager } from "@anuma/sdk/react";
 import { dbManager } from "@/lib/database";
 
 // #region database

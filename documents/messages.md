@@ -1,6 +1,6 @@
 # Sending messages
 
-The `useChatStorage` hook from `@reverbia/sdk/react` provides persistent chat
+The `useChatStorage` hook from `@anuma/sdk/react` provides persistent chat
 storage with WatermelonDB. It manages conversations, message history, and
 streams responses from the API.
 

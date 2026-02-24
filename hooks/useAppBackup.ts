@@ -11,7 +11,7 @@ import {
   requestEncryptionKey,
   hasEncryptionKey,
   type StoredMessage,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 import { useDatabase } from "@/app/providers";
 
 type ConversationExport = {

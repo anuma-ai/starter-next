@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useOCR } from "@reverbia/sdk/react";
+import { useOCR } from "@anuma/sdk/react";
 
 /**
  * useOCR Hook Example

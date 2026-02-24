@@ -9,9 +9,9 @@ import {
 } from "react";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import type { Database } from "@nozbe/watermelondb";
-import { useDatabaseManager } from "@reverbia/sdk/react";
+import { useDatabaseManager } from "@anuma/sdk/react";
 import { dbManager } from "@/lib/database";
-import { BackupAuthProvider as SDKBackupAuthProvider } from "@reverbia/sdk/react";
+import { BackupAuthProvider as SDKBackupAuthProvider } from "@anuma/sdk/react";
 
 type Props = {
   children: ReactNode;

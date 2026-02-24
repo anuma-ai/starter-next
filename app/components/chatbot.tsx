@@ -11,7 +11,7 @@ import { usePrivy } from "@privy-io/react-auth";
 
 import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
 import { MODELS, getModelConfig } from "@/lib/models";
-import { useFiles, useVoice } from "@reverbia/sdk/react";
+import { useFiles, useVoice } from "@anuma/sdk/react";
 import { useDatabase } from "@/app/providers";
 import {
   DropdownMenu,
@@ -49,11 +49,11 @@ import {
 import { Reasoning } from "@/components/chat/reasoning";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
-import { useUIInteraction } from "@reverbia/sdk/react";
+import { useUIInteraction } from "@anuma/sdk/react";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { FormInteraction } from "@/components/chat/form-interaction";
 import { WeatherCard } from "@/components/chat/weather-card";
-import { ChartCard } from "@reverbia/sdk/react";
+import { ChartCard } from "@anuma/sdk/react";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";

@@ -16,7 +16,7 @@ import {
   hasNotionCredentials,
   clearNotionToken,
   startNotionAuth,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 import { usePrivy } from "@privy-io/react-auth";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";

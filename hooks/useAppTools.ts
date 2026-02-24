@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import { useTools } from "@reverbia/sdk/react";
+import { useTools } from "@anuma/sdk/react";
 
 /**
  * Parameter property definition from the API

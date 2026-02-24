@@ -9,7 +9,7 @@ import {
   handleDriveCallback,
   isDriveCallback,
   getAndClearDriveReturnUrl,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
