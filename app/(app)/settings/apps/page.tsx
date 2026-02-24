@@ -41,11 +41,15 @@ export default function AppsPage() {
 
   // Check connection status on mount
   useEffect(() => {
-    const calendarToken = getValidCalendarToken();
-    setCalendarConnected(!!calendarToken || hasCalendarCredentials());
-
-    const driveToken = getValidDriveToken();
-    setDriveConnected(!!driveToken || hasDriveCredentials());
+    Promise.all([
+      getValidCalendarToken(),
+      hasCalendarCredentials(),
+      getValidDriveToken(),
+      hasDriveCredentials(),
+    ]).then(([calendarToken, calendarCreds, driveToken, driveCreds]) => {
+      setCalendarConnected(!!calendarToken || calendarCreds);
+      setDriveConnected(!!driveToken || driveCreds);
+    });
 
     setNotionConnected(hasNotionCredentials(walletAddress));
   }, [walletAddress]);
