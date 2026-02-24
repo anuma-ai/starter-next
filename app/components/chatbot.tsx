@@ -361,9 +361,18 @@ const ChatBotDemo = () => {
   const handleShowInfo = useCallback(async (messageId: string) => {
     if (!conversationId) return;
     const stored = await getMessages(conversationId);
-    const msg = stored.find((m: any) => m.uniqueId === messageId);
+    // First try matching by uniqueId (works after reload when IDs are synced)
+    let msg = stored.find((m: any) => m.uniqueId === messageId);
+    // Fall back to index-based lookup for optimistic messages whose temp IDs
+    // don't match the server-assigned uniqueId yet
+    if (!msg) {
+      const idx = messages.findIndex((m) => m.id === messageId);
+      if (idx !== -1 && idx < stored.length) {
+        msg = stored[idx];
+      }
+    }
     if (msg) setInfoMessage(msg);
-  }, [conversationId, getMessages]);
+  }, [conversationId, getMessages, messages]);
 
   const inputRef = useRef(input);
   inputRef.current = input;
