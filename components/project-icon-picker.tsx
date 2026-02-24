@@ -43,7 +43,7 @@ async function fetchSvgContent(hexcode: string): Promise<string | null> {
   }
 
   try {
-    const response = await fetch(`/api/openmoji/${hexcode}`);
+    const response = await fetch(`/openmoji/${hexcode}.svg`);
     if (!response.ok) return null;
     const content = await response.text();
     svgContentCache.set(hexcode, content);

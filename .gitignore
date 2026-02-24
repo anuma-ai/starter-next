@@ -79,6 +79,13 @@ web_modules/
 out
 next-env.d.ts
 
+# OpenNext / Cloudflare
+.open-next
+.wrangler
+
+# Openmoji SVGs copied from node_modules during postinstall
+public/openmoji
+
 # Nuxt.js build / generate output
 .nuxt
 dist
