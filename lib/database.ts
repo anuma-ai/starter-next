@@ -2,7 +2,7 @@ import LokiJSAdapter from "@nozbe/watermelondb/adapters/lokijs";
 import {
   DatabaseManager,
   webPlatformStorage,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 
 /**
  * Database Setup
@@ -12,7 +12,7 @@ import {
  * singleton caching, automatic switching, and destructive schema migrations.
  */
 export const dbManager = new DatabaseManager({
-  dbNamePrefix: "reverbia-ai-examples",
+  dbNamePrefix: "anuma-ai-examples",
   createAdapter: (dbName, schema, migrations) =>
     new LokiJSAdapter({
       schema,

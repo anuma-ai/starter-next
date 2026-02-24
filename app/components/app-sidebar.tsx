@@ -36,7 +36,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import type { StoredProject, StoredConversation, CreateProjectOptions, StoredMessage } from "@reverbia/sdk/react";
+import type { StoredProject, StoredConversation, CreateProjectOptions, StoredMessage } from "@anuma/sdk/react";
 import type { StoredApp, CreateAppOptions } from "@/types/app";
 import { ThemedProjectIcon } from "@/components/project-icon-picker";
 import { getStoredConversationTitle } from "@/hooks/useAppChatStorage";

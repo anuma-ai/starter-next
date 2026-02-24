@@ -6,7 +6,7 @@ import {
   type StoredConversation,
   type CreateProjectOptions,
   type UpdateProjectOptions,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 import { useDatabase } from "@/app/providers";
 
 /**

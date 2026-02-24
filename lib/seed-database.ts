@@ -13,7 +13,7 @@ import {
 import {
   chunkAndEmbedAllMessages,
   type StorageOperationsContext,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 
 export type SeedResult = {
   success: boolean;

@@ -10,11 +10,11 @@ import {
   createInteractiveTool,
   createDisplayTool,
   createChartTool,
-} from "@reverbia/sdk/tools";
-import type { CreateUIToolsOptions } from "@reverbia/sdk/tools";
+} from "@anuma/sdk/tools";
+import type { CreateUIToolsOptions } from "@anuma/sdk/tools";
 
 export type { CreateUIToolsOptions };
-export type { ChartDataPoint, DisplayChartResult } from "@reverbia/sdk/tools";
+export type { ChartDataPoint, DisplayChartResult } from "@anuma/sdk/tools";
 
 // #region displayToolTypes
 // Result types returned by the weather display tool's execute function.

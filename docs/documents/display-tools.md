@@ -23,7 +23,7 @@ lifecycle of all UI interactions — both display tools and interactive tools
 (forms, choice menus). Place it above your chat provider.
 
 ```tsx
-import { UIInteractionProvider } from "@reverbia/sdk/react";
+import { UIInteractionProvider } from "@anuma/sdk/react";
 
 export default function AppGroupLayout({
   children,
@@ -79,7 +79,7 @@ export type DisplayWeatherResult = {
 
 ### createDisplayTool
 
-Use `createDisplayTool` from `@reverbia/sdk/tools` to define the tool. It
+Use `createDisplayTool` from `@anuma/sdk/tools` to define the tool. It
 takes a name (how the model calls it), a description (tells the model when to
 use it), a JSON Schema for parameters, a `displayType` string for dispatching
 to the right component, and an `execute` function.
@@ -296,7 +296,7 @@ export function WeatherCard({ data }: WeatherCardProps) {
 For charts, import the `ChartCard` component directly from the SDK:
 
 ```ts
-import { ChartCard } from "@reverbia/sdk/react";
+import { ChartCard } from "@anuma/sdk/react";
 ```
 
 ## Rendering Display Results

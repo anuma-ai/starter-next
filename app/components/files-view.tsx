@@ -25,7 +25,7 @@ import {
 import {
   useFiles,
   type StoredMedia,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 import { useDatabase } from "@/app/providers";
 import { useChatContext } from "@/app/components/chat-provider";
 

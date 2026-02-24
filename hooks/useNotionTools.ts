@@ -4,8 +4,8 @@ import {
   hasNotionCredentials,
   migrateNotionClientRegistration,
   migrateNotionToken,
-} from "@reverbia/sdk/react";
-import { createNotionTools } from "@reverbia/sdk/tools";
+} from "@anuma/sdk/react";
+import { createNotionTools } from "@anuma/sdk/tools";
 
 export function useNotionTools({
   walletAddress,

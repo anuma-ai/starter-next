@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@anuma/sdk':
+        specifier: 1.0.0-next.20260224164627
+        version: 1.0.0-next.20260224164627(09ba3ed4e2a7b5182cef810fe5554721)
       '@codesandbox/sandpack-react':
         specifier: ^2.20.0
         version: 2.20.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -92,9 +95,6 @@ importers:
       '@radix-ui/react-use-controllable-state':
         specifier: ^1.2.2
         version: 1.2.2(@types/react@19.2.7)(react@19.2.3)
-      '@reverbia/sdk':
-        specifier: 1.0.0-next.20260223092655
-        version: 1.0.0-next.20260223092655(09ba3ed4e2a7b5182cef810fe5554721)
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.7)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -259,6 +259,30 @@ packages:
 
   '@anuma/portal@1.0.0-next.20260220225437':
     resolution: {integrity: sha512-QcpjSU6taSJF3otPvQZ67O4scyFWo1cmVcMi1kdX+hTVVdiEFlDpEbVv6POMY8RmuVx3DZliMUPq2BeE57Ru1g==}
+
+  '@anuma/sdk@1.0.0-next.20260224164627':
+    resolution: {integrity: sha512-yFnFTZK3WHehsKYMcjjUmIAv7XyQ9rjs6nXDPjRBjgcVUWjZ3BS1zWtOTuRV5cycZVfVXtcjZCHDtFdxgzaPBg==}
+    peerDependencies:
+      '@huggingface/transformers': ^3.0.0
+      '@nozbe/watermelondb': ^0.28.0
+      '@privy-io/react-auth': ^3.7.0
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+      react-native: '>=0.70.0'
+      recharts: ^2.0.0
+    peerDependenciesMeta:
+      '@huggingface/transformers':
+        optional: true
+      '@nozbe/watermelondb':
+        optional: true
+      '@privy-io/react-auth':
+        optional: true
+      react-dom:
+        optional: true
+      react-native:
+        optional: true
+      recharts:
+        optional: true
 
   '@babel/code-frame@7.27.1':
     resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
@@ -2096,30 +2120,6 @@ packages:
 
   '@reown/appkit@1.8.9':
     resolution: {integrity: sha512-e3N2DAzf3Xv3jnoD8IsUo0/Yfwuhk7npwJBe1+9rDJIRwgPsyYcCLD4gKPDFC5IUIfOLqK7YtGOh9oPEUnIWpw==}
-
-  '@reverbia/sdk@1.0.0-next.20260223092655':
-    resolution: {integrity: sha512-/RBca9DKGtKsAU56eG9a5aQtqi95tcvWvWoNSDunCfGBYtq3wyWkqVJpVJ9f+gnAEz1I9QYmie3Q0/ytlQxaDg==}
-    peerDependencies:
-      '@huggingface/transformers': ^3.0.0
-      '@nozbe/watermelondb': ^0.28.0
-      '@privy-io/react-auth': ^3.7.0
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
-      react-native: '>=0.70.0'
-      recharts: ^2.0.0
-    peerDependenciesMeta:
-      '@huggingface/transformers':
-        optional: true
-      '@nozbe/watermelondb':
-        optional: true
-      '@privy-io/react-auth':
-        optional: true
-      react-dom:
-        optional: true
-      react-native:
-        optional: true
-      recharts:
-        optional: true
 
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
@@ -7325,6 +7325,27 @@ snapshots:
 
   '@anuma/portal@1.0.0-next.20260220225437': {}
 
+  '@anuma/sdk@1.0.0-next.20260224164627(09ba3ed4e2a7b5182cef810fe5554721)':
+    dependencies:
+      '@anuma/portal': 1.0.0-next.20260220225437
+      ai: 5.0.93(zod@4.3.5)
+      jszip: 3.10.1
+      mammoth: 1.11.0
+      pdfjs-dist: 4.10.38
+      react: 19.2.3
+      tesseract.js: 6.0.1
+      uuid: 13.0.0
+      xlsx: 0.18.5
+    optionalDependencies:
+      '@huggingface/transformers': 3.8.1
+      '@nozbe/watermelondb': 0.28.0
+      '@privy-io/react-auth': 3.10.1(@solana-program/system@0.8.1(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana-program/token@0.9.0(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)))(@solana/sysvars@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.16)(@tanstack/react-query@5.90.16(react@19.2.3))(@types/react@19.2.7)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(utf-8-validate@5.0.10)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.3.5)
+      react-dom: 19.2.3(react@19.2.3)
+      recharts: 2.15.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+    transitivePeerDependencies:
+      - encoding
+      - zod
+
   '@babel/code-frame@7.27.1':
     dependencies:
       '@babel/helper-validator-identifier': 7.28.5
@@ -9973,27 +9994,6 @@ snapshots:
       - typescript
       - uploadthing
       - utf-8-validate
-      - zod
-
-  '@reverbia/sdk@1.0.0-next.20260223092655(09ba3ed4e2a7b5182cef810fe5554721)':
-    dependencies:
-      '@anuma/portal': 1.0.0-next.20260220225437
-      ai: 5.0.93(zod@4.3.5)
-      jszip: 3.10.1
-      mammoth: 1.11.0
-      pdfjs-dist: 4.10.38
-      react: 19.2.3
-      tesseract.js: 6.0.1
-      uuid: 13.0.0
-      xlsx: 0.18.5
-    optionalDependencies:
-      '@huggingface/transformers': 3.8.1
-      '@nozbe/watermelondb': 0.28.0
-      '@privy-io/react-auth': 3.10.1(@solana-program/system@0.8.1(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana-program/token@0.9.0(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))))(@solana/kit@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)))(@solana/sysvars@5.1.0(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3))(@tanstack/query-core@5.90.16)(@tanstack/react-query@5.90.16(react@19.2.3))(@types/react@19.2.7)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(utf-8-validate@5.0.10)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.3.5)
-      react-dom: 19.2.3(react@19.2.3)
-      recharts: 2.15.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-    transitivePeerDependencies:
-      - encoding
       - zod
 
   '@rtsao/scc@1.1.0': {}

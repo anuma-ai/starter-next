@@ -33,7 +33,7 @@ import {
 } from "@/components/chat/prompt-input";
 import { CHAT_INPUT_PLACEHOLDER_UNAUTHENTICATED } from "@/lib/constants";
 import { useChatContext } from "./chat-provider";
-import type { StoredConversation, StoredMessage } from "@reverbia/sdk/react";
+import type { StoredConversation, StoredMessage } from "@anuma/sdk/react";
 import { ICON_THEMES, type IconThemeId, useChatPatternWithProject } from "@/lib/chat-pattern";
 import { THEME_PRESETS } from "@/lib/theme-colors";
 import { useProjectTheme } from "@/hooks/useProjectTheme";

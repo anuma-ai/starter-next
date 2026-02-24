@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { format } from "date-fns";
-import { useUIInteraction } from "@reverbia/sdk/react";
+import { useUIInteraction } from "@anuma/sdk/react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {

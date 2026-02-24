@@ -4,7 +4,7 @@ import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
-import { useModels } from "@reverbia/sdk/react";
+import { useModels } from "@anuma/sdk/react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 
 export default function ModelsPage() {

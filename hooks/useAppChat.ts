@@ -8,7 +8,7 @@ import {
   type ServerToolsFilter,
   type ClientToolsFilterFn,
   type VaultSaveOperation,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 import type { Database } from "@nozbe/watermelondb";
 import type { FileUIPart } from "@/types/chat";
 

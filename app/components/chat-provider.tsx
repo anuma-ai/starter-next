@@ -37,7 +37,7 @@ import {
   // Semantic tool matching
   findMatchingTools,
   generateEmbeddings,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 import { useAppProjects } from "@/hooks/useAppProjects";
 import { getEnabledTools, getDisabledTools, getSemanticSearchEnabled } from "@/hooks/useAppTools";
 import type {
@@ -45,9 +45,9 @@ import type {
   StoredConversation,
   CreateProjectOptions,
   ServerTool,
-} from "@reverbia/sdk/react";
-import { createChatTools, createDriveTools } from "@reverbia/sdk/tools";
-import { useUIInteraction } from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
+import { createChatTools, createDriveTools } from "@anuma/sdk/tools";
+import { useUIInteraction } from "@anuma/sdk/react";
 import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
 import { useNotionTools } from "@/hooks/useNotionTools";
 
@@ -134,7 +134,7 @@ export function useChatContext() {
 export {
   clearCalendarToken as clearGoogleCalendarToken,
   storeCalendarToken as storeGoogleCalendarToken,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { identityToken } = useIdentityToken();
@@ -365,45 +365,47 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Calendar token state (triggers re-render when updated)
-  const [calendarToken, setCalendarToken] = useState<string | null>(() =>
-    getValidCalendarToken()
-  );
+  const [calendarToken, setCalendarToken] = useState<string | null>(null);
+  const [hasCalendarCreds, setHasCalendarCreds] = useState(false);
 
   // Drive token state (triggers re-render when updated)
-  const [driveToken, setDriveToken] = useState<string | null>(() =>
-    getValidDriveToken()
-  );
+  const [driveToken, setDriveToken] = useState<string | null>(null);
+  const [hasDriveCreds, setHasDriveCreds] = useState(false);
 
   // Track current message being sent (for OAuth redirect retry)
   const currentMessageRef = useRef<string | null>(null);
 
   // Check for Calendar token on mount and after OAuth callback
   useEffect(() => {
-    const token = getValidCalendarToken();
-    if (token && token !== calendarToken) {
-      setCalendarToken(token);
-    }
+    getValidCalendarToken().then((token) => {
+      if (token && token !== calendarToken) {
+        setCalendarToken(token);
+      }
+    });
+    hasCalendarCredentials().then(setHasCalendarCreds);
   }, [calendarToken]);
 
   // Check for Drive token on mount and after OAuth callback
   useEffect(() => {
-    const token = getValidDriveToken();
-    if (token && token !== driveToken) {
-      setDriveToken(token);
-    }
+    getValidDriveToken().then((token) => {
+      if (token && token !== driveToken) {
+        setDriveToken(token);
+      }
+    });
+    hasDriveCredentials().then(setHasDriveCreds);
   }, [driveToken]);
 
   // Request calendar access - tries to get token or starts OAuth flow
   const requestCalendarAccess = useCallback(async (): Promise<string> => {
     // First, check if we have a valid token
-    const validToken = getValidCalendarToken();
+    const validToken = await getValidCalendarToken();
     if (validToken) {
       setCalendarToken(validToken);
       return validToken;
     }
 
     // Try to get token with refresh if needed
-    if (hasCalendarCredentials()) {
+    if (await hasCalendarCredentials()) {
       const refreshedToken = await getCalendarAccessToken();
       if (refreshedToken) {
         setCalendarToken(refreshedToken);
@@ -434,14 +436,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Request Drive access - tries to get token or starts OAuth flow
   const requestDriveAccess = useCallback(async (): Promise<string> => {
     // First, check if we have a valid token
-    const validToken = getValidDriveToken();
+    const validToken = await getValidDriveToken();
     if (validToken) {
       setDriveToken(validToken);
       return validToken;
     }
 
     // Try to get token with refresh if needed
-    if (hasDriveCredentials()) {
+    if (await hasDriveCredentials()) {
       const refreshedToken = await getDriveAccessToken();
       if (refreshedToken) {
         setDriveToken(refreshedToken);
@@ -482,7 +484,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const allTools: any[] = [];
 
     // Google Calendar tools — only when connected
-    if (calendarToken || hasCalendarCredentials()) {
+    if (calendarToken || hasCalendarCreds) {
       allTools.push(...createChatTools(
         () => calendarToken,
         requestCalendarAccess
@@ -490,7 +492,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Google Drive tools — only when connected
-    if (driveToken || hasDriveCredentials()) {
+    if (driveToken || hasDriveCreds) {
       allTools.push(...createDriveTools(
         () => driveToken,
         requestDriveAccess
@@ -509,7 +511,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }));
 
     return allTools;
-  }, [calendarToken, driveToken, requestCalendarAccess, requestDriveAccess, notionTools, uiInteraction]);
+  }, [calendarToken, driveToken, hasCalendarCreds, hasDriveCreds, requestCalendarAccess, requestDriveAccess, notionTools, uiInteraction]);
 
   // Pre-compute embeddings for client tool descriptions (for semantic filtering)
   const clientToolEmbeddingsRef = useRef<Map<string, number[]> | null>(null);

@@ -147,5 +147,8 @@ vite.config.ts.timestamp-*
 # Large dataset files
 data/
 
+# Claude Code
+.claude/
+
 # macOS
 .DS_Store

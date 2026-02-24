@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useVoice } from "@reverbia/sdk/react";
+import { useVoice } from "@anuma/sdk/react";
 
 export default function VoicePage() {
   const router = useRouter();

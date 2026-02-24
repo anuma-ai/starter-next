@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { ChatProvider } from "../components/chat-provider";
-import { UIInteractionProvider } from "@reverbia/sdk/react";
+import { UIInteractionProvider } from "@anuma/sdk/react";
 
 const AppLayout = dynamic(
   () =>

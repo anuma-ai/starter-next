@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useUIInteraction } from "@reverbia/sdk/react";
+import { useUIInteraction } from "@anuma/sdk/react";
 import { Button } from "@/components/ui/button";
 import { Check, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";

@@ -7,7 +7,7 @@ import {
   handleNotionCallback,
   isNotionCallback,
   getAndClearNotionReturnUrl,
-} from "@reverbia/sdk/react";
+} from "@anuma/sdk/react";
 
 export default function NotionCallbackPage() {
   const router = useRouter();
