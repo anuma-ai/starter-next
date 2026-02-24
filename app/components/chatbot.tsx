@@ -369,9 +369,9 @@ const ChatBotDemo = () => {
       const uiMsg = messages.find((m) => m.id === messageId);
       if (uiMsg) {
         const uiText = uiMsg.parts
-          ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
-          .map((p) => p.text)
-          .join("") ?? "";
+          .filter((p: any) => p.type === "text")
+          .map((p: any) => p.text)
+          .join("");
         msg = stored.find((m: any) => m.role === uiMsg.role && m.content === uiText);
       }
     }
