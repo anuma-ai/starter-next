@@ -2,7 +2,7 @@
 
 > **useAppProjects**(): `object`
 
-Defined in: [hooks/useAppProjects.ts:21](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppProjects.ts#L21)
+Defined in: [hooks/useAppProjects.ts:21](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppProjects.ts#L21)
 
 useAppProjects Hook
 

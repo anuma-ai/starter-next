@@ -2,7 +2,7 @@
 
 > **useAppChatStorage**(`__namedParameters`): `object`
 
-Defined in: [hooks/useAppChatStorage.ts:265](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppChatStorage.ts#L265)
+Defined in: [hooks/useAppChatStorage.ts:265](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L265)
 
 useAppChatStorage Hook Example
 

@@ -2,7 +2,7 @@
 
 > **useAppChat**(`__namedParameters`): `object`
 
-Defined in: [hooks/useAppChat.ts:67](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppChat.ts#L67)
+Defined in: [hooks/useAppChat.ts:67](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L67)
 
 ## Parameters
 

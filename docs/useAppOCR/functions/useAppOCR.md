@@ -2,7 +2,7 @@
 
 > **useAppOCR**(): `object`
 
-Defined in: [hooks/useAppOCR.ts:26](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppOCR.ts#L26)
+Defined in: [hooks/useAppOCR.ts:26](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppOCR.ts#L26)
 
 ## Returns
 

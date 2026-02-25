@@ -2,7 +2,7 @@
 
 > **useApps**(`createConversation`, `deleteConversation?`): `object`
 
-Defined in: [hooks/useApps.ts:42](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useApps.ts#L42)
+Defined in: [hooks/useApps.ts:42](https://github.com/anuma-ai/starter-next/blob/main/hooks/useApps.ts#L42)
 
 React hook for managing apps with localStorage persistence.
 Apps are "vibe coding" projects where users build apps via AI prompts.

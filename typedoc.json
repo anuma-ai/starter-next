@@ -15,5 +15,6 @@
   "projectDocuments": [
     "documents/*.md"
   ],
-  "hideBreadcrumbs": true
+  "hideBreadcrumbs": true,
+  "gitRevision": "main"
 }

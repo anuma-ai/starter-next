@@ -2,7 +2,7 @@
 
 > **useProjectTheme**(`projectId`): `object`
 
-Defined in: [hooks/useProjectTheme.ts:18](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useProjectTheme.ts#L18)
+Defined in: [hooks/useProjectTheme.ts:18](https://github.com/anuma-ai/starter-next/blob/main/hooks/useProjectTheme.ts#L18)
 
 React hook for managing project-level theme settings
 Uses synchronous reads during render to prevent flash of wrong theme

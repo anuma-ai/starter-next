@@ -2,7 +2,7 @@
 
 > **ToolParameter** = `object`
 
-Defined in: [hooks/useAppTools.ts:9](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L9)
+Defined in: [hooks/useAppTools.ts:9](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L9)
 
 Parameter property definition from the API
 
@@ -12,7 +12,7 @@ Parameter property definition from the API
 
 > `optional` **anyOf**: `object`[]
 
-Defined in: [hooks/useAppTools.ts:14](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L14)
+Defined in: [hooks/useAppTools.ts:14](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L14)
 
 #### type
 
@@ -24,7 +24,7 @@ Defined in: [hooks/useAppTools.ts:14](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **default**: `unknown`
 
-Defined in: [hooks/useAppTools.ts:13](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L13)
+Defined in: [hooks/useAppTools.ts:13](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L13)
 
 ***
 
@@ -32,7 +32,7 @@ Defined in: [hooks/useAppTools.ts:13](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **description**: `string`
 
-Defined in: [hooks/useAppTools.ts:11](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L11)
+Defined in: [hooks/useAppTools.ts:11](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L11)
 
 ***
 
@@ -40,7 +40,7 @@ Defined in: [hooks/useAppTools.ts:11](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **enum**: `string`[]
 
-Defined in: [hooks/useAppTools.ts:12](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L12)
+Defined in: [hooks/useAppTools.ts:12](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L12)
 
 ***
 
@@ -48,7 +48,7 @@ Defined in: [hooks/useAppTools.ts:12](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **format**: `string`
 
-Defined in: [hooks/useAppTools.ts:20](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L20)
+Defined in: [hooks/useAppTools.ts:20](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L20)
 
 ***
 
@@ -56,7 +56,7 @@ Defined in: [hooks/useAppTools.ts:20](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **items**: `object`
 
-Defined in: [hooks/useAppTools.ts:15](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L15)
+Defined in: [hooks/useAppTools.ts:15](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L15)
 
 #### properties?
 
@@ -72,7 +72,7 @@ Defined in: [hooks/useAppTools.ts:15](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **maximum**: `number`
 
-Defined in: [hooks/useAppTools.ts:17](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L17)
+Defined in: [hooks/useAppTools.ts:17](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L17)
 
 ***
 
@@ -80,7 +80,7 @@ Defined in: [hooks/useAppTools.ts:17](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **maxLength**: `number`
 
-Defined in: [hooks/useAppTools.ts:19](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L19)
+Defined in: [hooks/useAppTools.ts:19](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L19)
 
 ***
 
@@ -88,7 +88,7 @@ Defined in: [hooks/useAppTools.ts:19](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **minimum**: `number`
 
-Defined in: [hooks/useAppTools.ts:16](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L16)
+Defined in: [hooks/useAppTools.ts:16](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L16)
 
 ***
 
@@ -96,7 +96,7 @@ Defined in: [hooks/useAppTools.ts:16](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **minLength**: `number`
 
-Defined in: [hooks/useAppTools.ts:18](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L18)
+Defined in: [hooks/useAppTools.ts:18](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L18)
 
 ***
 
@@ -104,4 +104,4 @@ Defined in: [hooks/useAppTools.ts:18](https://github.com/anuma-ai/starter-next/b
 
 > `optional` **type**: `string`
 
-Defined in: [hooks/useAppTools.ts:10](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppTools.ts#L10)
+Defined in: [hooks/useAppTools.ts:10](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L10)

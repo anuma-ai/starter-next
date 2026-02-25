@@ -2,7 +2,7 @@
 
 > **useAppModels**(`__namedParameters`): `object`
 
-Defined in: [hooks/useAppModels.ts:18](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppModels.ts#L18)
+Defined in: [hooks/useAppModels.ts:18](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppModels.ts#L18)
 
 ## Parameters
 

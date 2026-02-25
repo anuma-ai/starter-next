@@ -2,7 +2,7 @@
 
 > **useAppFiles**(`appId`): `object`
 
-Defined in: [hooks/useAppFiles.ts:95](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppFiles.ts#L95)
+Defined in: [hooks/useAppFiles.ts:95](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppFiles.ts#L95)
 
 React hook for managing files within an app.
 

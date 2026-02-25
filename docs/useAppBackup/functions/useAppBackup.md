@@ -2,7 +2,7 @@
 
 > **useAppBackup**(): `object`
 
-Defined in: [hooks/useAppBackup.ts:43](https://github.com/anuma-ai/starter-next/blob/dc20dc027963731350a4524090e9b5e065a28364/hooks/useAppBackup.ts#L43)
+Defined in: [hooks/useAppBackup.ts:43](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppBackup.ts#L43)
 
 Hook that provides backup functionality with export/import capabilities.
 Uses the SDK's useBackup hook with custom export/import implementations.
