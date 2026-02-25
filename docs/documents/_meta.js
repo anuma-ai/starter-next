@@ -1,11 +1,15 @@
 export default {
   README: "Getting Started",
   setup: "Setup",
+  chat: "Chat Orchestration",
   messages: "Sending Messages",
   conversations: "Conversation Management",
-  memory: "Memory Retrieval",
-  tools: "Managing Tools",
-  "display-tools": "Display Tools",
+  streaming: "Streaming Subscriptions",
+  thinking: "Thinking Mode",
+  memory: "Memory",
+  tools: "Tools",
+  projects: "Projects",
+  backup: "Cloud Backup",
   models: "Fetching Models",
   ocr: "Extracting Text from Images",
 };

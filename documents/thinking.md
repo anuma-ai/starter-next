@@ -1,0 +1,43 @@
+# Thinking Mode
+
+Thinking mode enables extended reasoning, where the model "thinks" before
+responding. The thinking tokens stream separately from the response text,
+allowing you to display a reasoning panel or indicator while the model works
+through complex problems.
+
+## Two Reasoning Formats
+
+The `sendMessage` function supports two reasoning parameter formats depending
+on the model provider — `reasoning` for OpenAI-compatible models and `thinking`
+for Anthropic models:
+
+{@includeCode ../hooks/useAppChat.ts#reasoningOptions}
+
+Pass one or the other in the options object. Both are forwarded to the SDK and
+included in the API request; only the parameter matching the model provider has
+any effect.
+
+## Streaming Thinking Tokens
+
+Thinking tokens stream through a separate callback. The `useAppChat` hook
+accumulates them and notifies subscribers via a pub/sub pattern that bypasses
+React's batching for low-latency DOM updates:
+
+{@includeCode ../hooks/useAppChat.ts#streamingSubscriptions}
+
+Subscribe from your component to receive the accumulated thinking text as it
+streams:
+
+```ts
+useEffect(() => {
+  const unsubscribe = subscribeToThinking((thinkingText) => {
+    // Update a ref or DOM element directly for smooth rendering
+    thinkingRef.current = thinkingText;
+  });
+  return unsubscribe;
+}, [subscribeToThinking]);
+```
+
+The same pattern applies to `subscribeToStreaming` for the main response text.
+Both bypass React state updates to avoid re-render overhead during rapid
+streaming.

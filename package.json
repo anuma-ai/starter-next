@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "generate": "rimraf docs && typedoc && mkdir -p docs/documents && cp README.md documents/_meta.js docs/documents/",
+    "generate": "node scripts/generate-docs.mjs",
     "test:e2e": "playwright test",
     "test:e2e:light": "playwright test --grep @light",
     "test:e2e:full": "playwright test --grep @full",

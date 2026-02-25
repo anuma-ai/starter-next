@@ -1,8 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": [
-    "./hooks/*.ts"
-  ],
+  "entryPoints": [],
   "out": "./docs",
   "plugin": [
     "typedoc-plugin-markdown"
@@ -12,9 +10,7 @@
   "readme": "none",
   "skipErrorChecking": true,
   "hidePageHeader": true,
-  "projectDocuments": [
-    "documents/*.md"
-  ],
+  "projectDocuments": [],
   "hideBreadcrumbs": true,
   "gitRevision": "main"
 }

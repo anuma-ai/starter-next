@@ -71,6 +71,7 @@ function calculateLineDiff(oldContent: string, newContent: string): { added: num
   return { added, removed };
 }
 
+//#region hookInit
 export function useAppGit(appId: string): UseAppGitReturn {
   const [isReady, setIsReady] = useState(false);
   const [status, setStatus] = useState<GitStatus>({ files: [], hasChanges: false });
@@ -133,7 +134,9 @@ export function useAppGit(appId: string): UseAppGitReturn {
 
     init();
   }, [appId]);
+  //#endregion hookInit
 
+  //#region syncFiles
   // Sync files from localStorage to git filesystem
   const syncFiles = useCallback(async (files: StoredAppFile[]) => {
     if (!fsRef.current || !git) return;
@@ -235,7 +238,9 @@ export function useAppGit(appId: string): UseAppGitReturn {
       console.error("[useAppGit] Sync error:", error);
     }
   }, []);
+  //#endregion syncFiles
 
+  //#region commit
   // Get git status
   const refreshStatus = useCallback(async () => {
     if (!fsRef.current || !git || !isReady) return;
@@ -368,6 +373,7 @@ export function useAppGit(appId: string): UseAppGitReturn {
       return null;
     }
   }, [isReady, refreshStatus]);
+  //#endregion commit
 
   // Get commit log
   const getLog = useCallback(async () => {

@@ -40,6 +40,7 @@ type ConversationExport = {
  * Hook that provides backup functionality with export/import capabilities.
  * Uses the SDK's useBackup hook with custom export/import implementations.
  */
+//#region hookInit
 export function useAppBackup() {
   const database = useDatabase();
   const { user, signMessage: privySignMessage } = usePrivy();
@@ -67,6 +68,7 @@ export function useAppBackup() {
     getToken: async () => null,
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
+//#endregion hookInit
 
   // Sign message helper
   const signMessage = useCallback(
@@ -113,6 +115,7 @@ export function useAppBackup() {
     [embeddedWallet, signMessage]
   );
 
+  //#region exportConversation
   // Export a conversation to an encrypted blob
   const exportConversation = useCallback(
     async (
@@ -162,7 +165,9 @@ export function useAppBackup() {
     },
     [getConversation, getMessages]
   );
+  //#endregion exportConversation
 
+  //#region importConversation
   // Import a conversation from an encrypted blob
   const importConversation = useCallback(
     async (
@@ -252,7 +257,9 @@ export function useAppBackup() {
     },
     [database, createConversation]
   );
+  //#endregion importConversation
 
+  //#region backupHook
   // Use the SDK's useBackup hook with our implementations
   const backup = useBackup({
     database,
@@ -262,6 +269,9 @@ export function useAppBackup() {
     importConversation,
   });
 
+  //#endregion backupHook
+
+  //#region returnValue
   return {
     ...backup,
     walletAddress,
@@ -270,4 +280,5 @@ export function useAppBackup() {
     isInitializingEncryption,
     initializeEncryption,
   };
+  //#endregion returnValue
 }
