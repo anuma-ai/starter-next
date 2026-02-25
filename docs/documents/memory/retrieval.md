@@ -188,7 +188,6 @@ if (memoryEnabled) {
   );
 }
 
-//#region vaultToolCreation
 if (vaultEnabled) {
   // Wrap onVaultSave to eagerly embed content at save time
   const wrappedOnVaultSave = async (operation: VaultSaveOperation) => {
@@ -214,7 +213,6 @@ if (vaultEnabled) {
     minSimilarity: vaultSearchThreshold,
   }));
 }
-//#endregion vaultToolCreation
 
 const effectiveClientTools = [...builtInTools, ...baseClientTools];
 ```

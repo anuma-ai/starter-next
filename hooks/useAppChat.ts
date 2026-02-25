@@ -20,6 +20,7 @@ import type { FileUIPart } from "@/types/chat";
  * responses. Memories are fetched on-demand when sendMessage is called.
  */
 
+//#region chatProps
 type UseAppChatProps = {
   database: Database;
   getToken: () => Promise<string | null>;
@@ -47,6 +48,7 @@ type UseAppChatProps = {
   // Callback when the vault tool wants to save a memory (for confirmation UI)
   onVaultSave?: (operation: VaultSaveOperation) => Promise<boolean>;
 };
+//#endregion chatProps
 
 // Default system prompt (general instructions, without vault-specific rules)
 const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.`;
@@ -512,6 +514,7 @@ export function useAppChat({
   const status = isLoading ? "streaming" : undefined;
 
   //#region returnValue
+  //#region chatReturnValue
   return {
     // Chat state
     messages,
@@ -547,5 +550,6 @@ export function useAppChat({
     deleteVaultMemory,
     //#endregion vaultReturn
   };
+  //#endregion chatReturnValue
   //#endregion returnValue
 }

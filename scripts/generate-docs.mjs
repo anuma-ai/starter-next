@@ -39,6 +39,39 @@ try {
   if (existsSync(TMP_CONFIG)) unlinkSync(TMP_CONFIG);
 }
 
+// Strip nested #region / #endregion comment lines from generated code blocks.
+// TypeDoc strips markers for the extracted region but leaves nested ones intact.
+function collectMdFiles(dir) {
+  const files = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...collectMdFiles(full));
+    else if (entry.name.endsWith(".md")) files.push(full);
+  }
+  return files;
+}
+
+const regionLine = /^\s*\/\/\s*#(?:region|endregion)\b.*$/;
+
+for (const file of collectMdFiles("docs")) {
+  const src = readFileSync(file, "utf8");
+  let out = "";
+  let inCode = false;
+  let changed = false;
+  for (const line of src.split("\n")) {
+    if (line.startsWith("```")) inCode = !inCode;
+    if (inCode && regionLine.test(line)) {
+      changed = true;
+      continue;
+    }
+    out += line + "\n";
+  }
+  if (changed) {
+    // Remove trailing extra newline added by split/join
+    writeFileSync(file, out.replace(/\n$/, ""));
+  }
+}
+
 // Remove the auto-generated README (we copy our own).
 const generatedReadme = join("docs", "README.md");
 if (existsSync(generatedReadme)) unlinkSync(generatedReadme);
