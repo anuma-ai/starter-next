@@ -89,77 +89,77 @@ an external API, and returns the result. The SDK stores the result as a
 reference the data in its text response.
 
 ```ts
-const weatherToolBase = createDisplayTool(options, {
-  name: "display_weather",
-  description:
-    "Fetches and displays current weather as a visual card in the chat. ALWAYS call this tool when the user asks about weather, even if you already have weather data from another tool. The card displays temperature, conditions, and a 7-day forecast visually — do NOT repeat this data in your text response. Just add a brief conversational comment if appropriate.",
-  parameters: {
-    type: "object",
-    properties: {
-      location: {
-        type: "string",
-        description:
-          "City name or place to get weather for (e.g., 'London', 'New York', 'Tokyo')",
+  const weatherToolBase = createDisplayTool(options, {
+    name: "display_weather",
+    description:
+      "Fetches and displays current weather as a visual card in the chat. ALWAYS call this tool when the user asks about weather, even if you already have weather data from another tool. The card displays temperature, conditions, and a 7-day forecast visually — do NOT repeat this data in your text response. Just add a brief conversational comment if appropriate.",
+    parameters: {
+      type: "object",
+      properties: {
+        location: {
+          type: "string",
+          description:
+            "City name or place to get weather for (e.g., 'London', 'New York', 'Tokyo')",
+        },
       },
+      required: ["location"],
     },
-    required: ["location"],
-  },
-  displayType: "weather",
-  execute: async (args: Record<string, unknown>): Promise<DisplayWeatherResult> => {
-    const location = args.location as string;
-    if (!location || typeof location !== "string") {
-      return { error: "No location provided", _meta: { location: "" } };
-    }
+    displayType: "weather",
+    execute: async (args: Record<string, unknown>): Promise<DisplayWeatherResult> => {
+      const location = args.location as string;
+      if (!location || typeof location !== "string") {
+        return { error: "No location provided", _meta: { location: "" } };
+      }
 
-    try {
-      const geoRes = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`
-      );
-      const geoData = await geoRes.json();
+      try {
+        const geoRes = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`
+        );
+        const geoData = await geoRes.json();
 
-      if (!geoData.results || geoData.results.length === 0) {
+        if (!geoData.results || geoData.results.length === 0) {
+          return {
+            error: `Location not found: ${location}`,
+            _meta: { location },
+          };
+        }
+
+        const { latitude, longitude, name, country } = geoData.results[0];
+
+        const weatherRes = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto`
+        );
+        const weatherData = await weatherRes.json();
+        const current = weatherData.current;
+        const daily = weatherData.daily;
+
+        const forecast: ForecastDay[] = daily?.time?.map((date: string, i: number) => ({
+          date,
+          weatherCode: daily.weather_code[i],
+          temperatureMax: daily.temperature_2m_max[i],
+          temperatureMin: daily.temperature_2m_min[i],
+        })) || [];
+
         return {
-          error: `Location not found: ${location}`,
+          location: name,
+          country,
+          temperature: current.temperature_2m,
+          apparentTemperature: current.apparent_temperature,
+          humidity: current.relative_humidity_2m,
+          windSpeed: current.wind_speed_10m,
+          weatherCode: current.weather_code,
+          isDay: current.is_day === 1,
+          forecast,
+          _meta: { location },
+        };
+      } catch {
+        return {
+          error: "Failed to fetch weather data",
           _meta: { location },
         };
       }
-
-      const { latitude, longitude, name, country } = geoData.results[0];
-
-      const weatherRes = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto`
-      );
-      const weatherData = await weatherRes.json();
-      const current = weatherData.current;
-      const daily = weatherData.daily;
-
-      const forecast: ForecastDay[] = daily?.time?.map((date: string, i: number) => ({
-        date,
-        weatherCode: daily.weather_code[i],
-        temperatureMax: daily.temperature_2m_max[i],
-        temperatureMin: daily.temperature_2m_min[i],
-      })) || [];
-
-      return {
-        location: name,
-        country,
-        temperature: current.temperature_2m,
-        apparentTemperature: current.apparent_temperature,
-        humidity: current.relative_humidity_2m,
-        windSpeed: current.wind_speed_10m,
-        weatherCode: current.weather_code,
-        isDay: current.is_day === 1,
-        forecast,
-        _meta: { location },
-      };
-    } catch {
-      return {
-        error: "Failed to fetch weather data",
-        _meta: { location },
-      };
-    }
-  },
-});
+    },
+  });
 ```
 
 [lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts#L218-L288)
@@ -172,7 +172,7 @@ data array, data keys) and returns them as-is for the `ChartCard` component to
 render. No external API call is needed — the model supplies the data directly.
 
 ```ts
-const chartTool = createChartTool(options);
+  const chartTool = createChartTool(options);
 ```
 
 [lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts#L292-L292)
@@ -294,6 +294,7 @@ export function WeatherCard({ data }: WeatherCardProps) {
     </div>
   );
 }
+
 ```
 
 [components/chat/weather-card.tsx](https://github.com/anuma-ai/starter-next/blob/main/components/chat/weather-card.tsx)

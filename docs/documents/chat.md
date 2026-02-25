@@ -54,39 +54,39 @@ argument. See [Sending Messages](messages) for the full implementation.
 The hook returns chat state, streaming subscriptions, and vault operations.
 
 ```ts
-return {
-  // Chat state
-  messages,
-  setMessages,
-  conversations,
-  conversationId,
-  isLoading,
-  error,
-  input,
-  setInput,
-  status,
+  return {
+    // Chat state
+    messages,
+    setMessages,
+    conversations,
+    conversationId,
+    isLoading,
+    error,
+    input,
+    setInput,
+    status,
 
-  // Chat actions
-  sendMessage,
-  handleSubmit,
-  addMessageOptimistically,
-  createConversation,
-  switchConversation,
-  setConversationId,
-  deleteConversation,
-  refreshConversations,
-  subscribeToStreaming,
-  subscribeToThinking,
-  getMessages,
-  getConversation,
-  stop,
+    // Chat actions
+    sendMessage,
+    handleSubmit,
+    addMessageOptimistically,
+    createConversation,
+    switchConversation,
+    setConversationId,
+    deleteConversation,
+    refreshConversations,
+    subscribeToStreaming,
+    subscribeToThinking,
+    getMessages,
+    getConversation,
+    stop,
 
-  // Memory vault
-  getVaultMemories,
-  createVaultMemory,
-  updateVaultMemory,
-  deleteVaultMemory,
-};
+    // Memory vault
+    getVaultMemories,
+    createVaultMemory,
+    updateVaultMemory,
+    deleteVaultMemory,
+  };
 ```
 
 [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L518-L552)
@@ -101,4 +101,4 @@ Each feature the hook composes has its own page with implementation details:
   for real-time DOM updates
 - [Memory Retrieval](memory/retrieval) and [Vault](memory/vault) — how
   long-term memory and encrypted storage are injected as client tools
-- [Tools](../documents/tools) — server tools, client tools, and how tool sets are managed
+- [Tools](tools) — server tools, client tools, and how tool sets are managed

@@ -48,6 +48,7 @@ export function useNotionTools({
       }
     );
   }, [accessToken, walletAddress]);
+
 ```
 
 [hooks/useNotionTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useNotionTools.ts#L11-L43)
@@ -80,11 +81,11 @@ const clientTools = useMemo(() => {
 ## Return Value
 
 ```ts
-return {
-  tools,
-  isConnected: hasNotionCredentials(walletAddress),
-  accessToken,
-};
+  return {
+    tools,
+    isConnected: hasNotionCredentials(walletAddress),
+    accessToken,
+  };
 ```
 
 [hooks/useNotionTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useNotionTools.ts#L47-L51)

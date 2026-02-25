@@ -33,11 +33,11 @@ Three settings control vault behavior, persisted in `localStorage` alongside
 the memory settings:
 
 ```ts
-const [vaultEnabled, setVaultEnabled] = useState(true);
-const [vaultSearchLimit, setVaultSearchLimit] = useState(5);
-const [vaultSearchThreshold, setVaultSearchThreshold] = useState(0.1);
-const [customSystemPrompt, setCustomSystemPrompt] = useState<string | null>(null);
-const [customVaultPrompt, setCustomVaultPrompt] = useState<string | null>(null);
+  const [vaultEnabled, setVaultEnabled] = useState(true);
+  const [vaultSearchLimit, setVaultSearchLimit] = useState(5);
+  const [vaultSearchThreshold, setVaultSearchThreshold] = useState(0.1);
+  const [customSystemPrompt, setCustomSystemPrompt] = useState<string | null>(null);
+  const [customVaultPrompt, setCustomVaultPrompt] = useState<string | null>(null);
 ```
 
 [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L96-L100)
@@ -82,31 +82,31 @@ The save tool wraps the caller's `onVaultSave` callback with eager embedding
 background processing.
 
 ```ts
-if (vaultEnabled) {
-  // Wrap onVaultSave to eagerly embed content at save time
-  const wrappedOnVaultSave = async (operation: VaultSaveOperation) => {
-    try {
-      await eagerEmbedContent(
-        operation.content,
-        { getToken, baseUrl: process.env.NEXT_PUBLIC_API_URL },
-        vaultEmbeddingCache
-      );
-    } catch {
-      // Non-critical: embedding will be generated on next search
-    }
-    return onVaultSave ? onVaultSave(operation) : true;
-  };
+        if (vaultEnabled) {
+          // Wrap onVaultSave to eagerly embed content at save time
+          const wrappedOnVaultSave = async (operation: VaultSaveOperation) => {
+            try {
+              await eagerEmbedContent(
+                operation.content,
+                { getToken, baseUrl: process.env.NEXT_PUBLIC_API_URL },
+                vaultEmbeddingCache
+              );
+            } catch {
+              // Non-critical: embedding will be generated on next search
+            }
+            return onVaultSave ? onVaultSave(operation) : true;
+          };
 
-  builtInTools.push(
-    createMemoryVaultTool({
-      onSave: wrappedOnVaultSave,
-    })
-  );
-  builtInTools.push(createMemoryVaultSearchTool({
-    limit: vaultSearchLimit,
-    minSimilarity: vaultSearchThreshold,
-  }));
-}
+          builtInTools.push(
+            createMemoryVaultTool({
+              onSave: wrappedOnVaultSave,
+            })
+          );
+          builtInTools.push(createMemoryVaultSearchTool({
+            limit: vaultSearchLimit,
+            minSimilarity: vaultSearchThreshold,
+          }));
+        }
 ```
 
 [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L345-L369)
@@ -117,11 +117,11 @@ The hook exposes methods for direct vault management, typically wired to a
 settings page where users can view, edit, and delete their stored memories:
 
 ```ts
-// Memory vault
-getVaultMemories,
-createVaultMemory,
-updateVaultMemory,
-deleteVaultMemory,
+    // Memory vault
+    getVaultMemories,
+    createVaultMemory,
+    updateVaultMemory,
+    deleteVaultMemory,
 ```
 
 [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L546-L550)
