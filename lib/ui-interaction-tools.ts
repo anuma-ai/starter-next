@@ -48,6 +48,7 @@ export type DisplayWeatherResult = {
  * These are client-side tools that execute locally and render UI inline.
  */
 export function createUIInteractionTools(options: CreateUIToolsOptions) {
+  // #region choiceToolDefinition
   const choiceTool = createInteractiveTool(options, {
     name: "prompt_user_choice",
     description:
@@ -112,7 +113,9 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
       },
     }),
   });
+  // #endregion choiceToolDefinition
 
+  // #region formToolDefinition
   const formTool = createInteractiveTool(options, {
     name: "prompt_user_form",
     description:
@@ -209,6 +212,7 @@ export function createUIInteractionTools(options: CreateUIToolsOptions) {
       },
     }),
   });
+  // #endregion formToolDefinition
 
   // #region displayToolDefinition
   const weatherToolBase = createDisplayTool(options, {

@@ -92,6 +92,7 @@ export function buildFileTree(files: StoredAppFile[]): FileTreeNode[] {
  * @param appId - The app ID to manage files for (null if no app selected)
  * @returns Files state and CRUD functions
  */
+//#region hookInit
 export function useAppFiles(appId: string | null) {
   const [files, setFiles] = useState<StoredAppFile[]>([]);
   const [isReady, setIsReady] = useState(false);
@@ -128,6 +129,7 @@ export function useAppFiles(appId: string | null) {
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
   }, [appId]);
+  //#endregion hookInit
 
   /**
    * Ensure parent directories exist for a given path

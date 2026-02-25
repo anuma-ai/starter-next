@@ -51,6 +51,7 @@ type UseAppChatProps = {
 // Default system prompt (general instructions, without vault-specific rules)
 const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.`;
 
+//#region vaultPrompt
 // Default vault instructions appended when the vault is enabled
 const DEFAULT_VAULT_PROMPT = `You also have access to a memory vault for storing important facts and preferences the user shares. The vault has two tools:
 - memory_vault_search: Search existing vault memories by semantic similarity. Returns matching entries with their IDs.
@@ -62,6 +63,7 @@ IMPORTANT — vault workflow:
 - Only omit the "id" parameter when memory_vault_search confirms no existing entry is related.
 - The vault should stay compact: one entry per topic, updated over time.
 - When answering questions that might involve stored preferences or facts, call memory_vault_search to check.`;
+//#endregion vaultPrompt
 
 //#region hookInit
 export function useAppChat({
@@ -87,12 +89,14 @@ export function useAppChat({
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [memoryLimit, setMemoryLimit] = useState(5);
   const [memoryThreshold, setMemoryThreshold] = useState(0.2);
+  //#endregion memorySettings
+  //#region vaultSettings
   const [vaultEnabled, setVaultEnabled] = useState(true);
   const [vaultSearchLimit, setVaultSearchLimit] = useState(5);
   const [vaultSearchThreshold, setVaultSearchThreshold] = useState(0.1);
   const [customSystemPrompt, setCustomSystemPrompt] = useState<string | null>(null);
   const [customVaultPrompt, setCustomVaultPrompt] = useState<string | null>(null);
-  //#endregion memorySettings
+  //#endregion vaultSettings
   const streamingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingCallbacksRef = useRef<Set<(text: string) => void>>(new Set());
   const thinkingTextRef = useRef<string>("");
@@ -268,8 +272,10 @@ export function useAppChat({
         model?: string;
         temperature?: number;
         maxOutputTokens?: number;
+        // #region reasoningOptions
         reasoning?: { effort?: string; summary?: string };
         thinking?: { type?: string; budget_tokens?: number };
+        // #endregion reasoningOptions
         onThinking?: (chunk: string) => void;
         files?: FileUIPart[];
         displayText?: string;
@@ -333,6 +339,7 @@ export function useAppChat({
           );
         }
 
+        //#region vaultToolCreation
         if (vaultEnabled) {
           // Wrap onVaultSave to eagerly embed content at save time
           const wrappedOnVaultSave = async (operation: VaultSaveOperation) => {
@@ -358,6 +365,7 @@ export function useAppChat({
             minSimilarity: vaultSearchThreshold,
           }));
         }
+        //#endregion vaultToolCreation
 
         const effectiveClientTools = [...builtInTools, ...baseClientTools];
         //#endregion memoryToolCreation
@@ -478,6 +486,7 @@ export function useAppChat({
     [sendMessage, setInput]
   );
 
+  //#region streamingSubscriptions
   const subscribeToStreaming = useCallback(
     (callback: (text: string) => void) => {
       streamingCallbacksRef.current.add(callback);
@@ -497,10 +506,12 @@ export function useAppChat({
     },
     []
   );
+  //#endregion streamingSubscriptions
   //#endregion sendMessage
 
   const status = isLoading ? "streaming" : undefined;
 
+  //#region returnValue
   return {
     // Chat state
     messages,
@@ -528,10 +539,13 @@ export function useAppChat({
     getConversation,
     stop,
 
+    //#region vaultReturn
     // Memory vault
     getVaultMemories,
     createVaultMemory,
     updateVaultMemory,
     deleteVaultMemory,
+    //#endregion vaultReturn
   };
+  //#endregion returnValue
 }

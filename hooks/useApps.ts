@@ -39,6 +39,7 @@ function setStoredApps(apps: StoredApp[]): void {
  * @param deleteConversation - Function to delete a conversation (from SDK)
  * @returns Apps state and CRUD functions
  */
+//#region hookInit
 export function useApps(
   createConversation: (opts?: { createImmediately?: boolean }) => Promise<{ conversationId: string } | null>,
   deleteConversation?: (conversationId: string) => Promise<void>
@@ -103,7 +104,9 @@ export function useApps(
     window.addEventListener("conversation-title-updated", handleTitleUpdate);
     return () => window.removeEventListener("conversation-title-updated", handleTitleUpdate);
   }, []);
+  //#endregion hookInit
 
+  //#region createApp
   /**
    * Create a new app with an associated conversation
    */
@@ -136,6 +139,7 @@ export function useApps(
     },
     [apps, createConversation]
   );
+  //#endregion createApp
 
   /**
    * Update an existing app

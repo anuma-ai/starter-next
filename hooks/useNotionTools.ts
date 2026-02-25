@@ -7,6 +7,7 @@ import {
 } from "@anuma/sdk/react";
 import { createNotionTools } from "@anuma/sdk/tools";
 
+//#region hookInit
 export function useNotionTools({
   walletAddress,
 }: {
@@ -40,9 +41,13 @@ export function useNotionTools({
     );
   }, [accessToken, walletAddress]);
 
+//#endregion hookInit
+
+  //#region returnValue
   return {
     tools,
     isConnected: hasNotionCredentials(walletAddress),
     accessToken,
   };
+  //#endregion returnValue
 }

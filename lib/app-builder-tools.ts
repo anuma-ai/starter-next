@@ -22,6 +22,7 @@ type FileOperations = {
  * @param fileOps - File operation callbacks from useAppFiles hook
  * @returns Array of client tools for AI
  */
+//#region createAppBuilderTools
 export function createAppBuilderTools(
   appId: string | null,
   fileOps: FileOperations | null
@@ -192,6 +193,7 @@ export function createAppBuilderTools(
     },
   ];
 }
+//#endregion createAppBuilderTools
 
 /**
  * System prompt addition for app builder context.

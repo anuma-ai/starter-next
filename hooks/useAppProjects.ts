@@ -18,6 +18,7 @@ import { useDatabase } from "@/app/providers";
  * Projects allow users to organize their conversations by topic,
  * purpose, or any other criteria.
  */
+//#region hookInit
 export function useAppProjects() {
   const database = useDatabase();
 
@@ -40,7 +41,9 @@ export function useAppProjects() {
     refreshProjects,
     inboxProjectId,
   } = useProjects({ database });
+//#endregion hookInit
 
+  //#region returnValue
   return {
     // State
     projects,
@@ -67,6 +70,7 @@ export function useAppProjects() {
     // Utilities
     refreshProjects,
   };
+  //#endregion returnValue
 }
 
 // Re-export types for convenience

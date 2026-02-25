@@ -41,11 +41,6 @@ effect immediately without a reload.
 const [memoryEnabled, setMemoryEnabled] = useState(true);
 const [memoryLimit, setMemoryLimit] = useState(5);
 const [memoryThreshold, setMemoryThreshold] = useState(0.2);
-const [vaultEnabled, setVaultEnabled] = useState(true);
-const [vaultSearchLimit, setVaultSearchLimit] = useState(5);
-const [vaultSearchThreshold, setVaultSearchThreshold] = useState(0.1);
-const [customSystemPrompt, setCustomSystemPrompt] = useState<string | null>(null);
-const [customVaultPrompt, setCustomVaultPrompt] = useState<string | null>(null);
 ```
 
 - `memoryEnabled` — toggle memory on or off. Default: `true`.
@@ -193,6 +188,7 @@ if (memoryEnabled) {
   );
 }
 
+//#region vaultToolCreation
 if (vaultEnabled) {
   // Wrap onVaultSave to eagerly embed content at save time
   const wrappedOnVaultSave = async (operation: VaultSaveOperation) => {
@@ -218,6 +214,7 @@ if (vaultEnabled) {
     minSimilarity: vaultSearchThreshold,
   }));
 }
+//#endregion vaultToolCreation
 
 const effectiveClientTools = [...builtInTools, ...baseClientTools];
 ```
