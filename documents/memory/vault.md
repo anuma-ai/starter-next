@@ -32,7 +32,7 @@ merge new information into existing entries to keep the vault compact.
 Three settings control vault behavior, persisted in `localStorage` alongside
 the memory settings:
 
-{@includeCode ../hooks/useAppChat.ts#vaultSettings}
+{@includeCode ../../hooks/useAppChat.ts#vaultSettings}
 
 Default values and ranges are visible in the code above. `vaultSearchThreshold`
 is lower than memory retrieval's threshold because vault entries are typically
@@ -43,7 +43,7 @@ short and precise.
 When the vault is enabled, additional instructions are appended to the system
 prompt telling the AI how to use the vault tools:
 
-{@includeCode ../hooks/useAppChat.ts#vaultPrompt}
+{@includeCode ../../hooks/useAppChat.ts#vaultPrompt}
 
 This prompt can be overridden by setting `customVaultPrompt` in
 `localStorage`.
@@ -59,11 +59,11 @@ The save tool wraps the caller's `onVaultSave` callback with eager embedding
 `eagerEmbedContent` so subsequent searches can find it without waiting for
 background processing.
 
-{@includeCode ../hooks/useAppChat.ts#vaultToolCreation}
+{@includeCode ../../hooks/useAppChat.ts#vaultToolCreation}
 
 ## CRUD Operations
 
 The hook exposes methods for direct vault management, typically wired to a
 settings page where users can view, edit, and delete their stored memories:
 
-{@includeCode ../hooks/useAppChat.ts#vaultReturn}
+{@includeCode ../../hooks/useAppChat.ts#vaultReturn}

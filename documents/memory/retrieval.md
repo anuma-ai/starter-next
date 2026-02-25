@@ -37,7 +37,7 @@ Three settings control memory behavior. They're persisted in `localStorage` and
 synced across tabs via `StorageEvent`, so changes from the settings page take
 effect immediately without a reload.
 
-{@includeCode ../hooks/useAppChat.ts#memorySettings}
+{@includeCode ../../hooks/useAppChat.ts#memorySettings}
 
 - `memoryEnabled` — toggle memory on or off. Default: `true`.
 - `memoryLimit` — max chunks returned per search (1–20). Default: `5`. Higher
@@ -48,7 +48,7 @@ effect immediately without a reload.
 Settings are loaded from `localStorage` on mount and updated in real time when
 changed from another tab or the settings page:
 
-{@includeCode ../hooks/useAppChat.ts#memorySettingsLoader}
+{@includeCode ../../hooks/useAppChat.ts#memorySettingsLoader}
 
 ## Creating the Memory Tool
 
@@ -61,7 +61,7 @@ exclusion works correctly.
 
 When memory is disabled, the tool is simply omitted.
 
-{@includeCode ../hooks/useAppChat.ts#memoryToolCreation}
+{@includeCode ../../hooks/useAppChat.ts#memoryToolCreation}
 
 ## System Prompt
 

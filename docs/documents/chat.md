@@ -472,7 +472,7 @@ const subscribeToThinking = useCallback(
 
 Memory retrieval and the vault are injected as client tools on each
 `sendMessage` call. When disabled, the respective tools are simply omitted.
-See [Memory Retrieval](memory) and [Memory Vault](vault) for details.
+See [Memory Retrieval](memory/retrieval) and [Memory Vault](memory/vault) for details.
 
 ## Streaming
 
