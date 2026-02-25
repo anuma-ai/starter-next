@@ -10,11 +10,7 @@
   "readme": "none",
   "skipErrorChecking": true,
   "hidePageHeader": true,
-  "projectDocuments": [
-    "documents/*.md",
-    "documents/memory/*.md",
-    "documents/tools/*.md"
-  ],
+  "projectDocuments": [],
   "hideBreadcrumbs": true,
   "gitRevision": "main"
 }
