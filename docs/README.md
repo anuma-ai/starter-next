@@ -10,3 +10,20 @@
 - [ocr](documents/ocr.md)
 - [setup](documents/setup.md)
 - [tools](documents/tools.md)
+
+## Modules
+
+- [useAppBackup](useAppBackup/README.md)
+- [useAppChat](useAppChat/README.md)
+- [useAppChatStorage](useAppChatStorage/README.md)
+- [useAppFiles](useAppFiles/README.md)
+- [useAppGit](useAppGit/README.md)
+- [useAppModels](useAppModels/README.md)
+- [useAppOCR](useAppOCR/README.md)
+- [useAppProjects](useAppProjects/README.md)
+- [useApps](useApps/README.md)
+- [useAppTools](useAppTools/README.md)
+- [useMobile](useMobile/README.md)
+- [useNotionTools](useNotionTools/README.md)
+- [useProjectTheme](useProjectTheme/README.md)
+- [useTheme](useTheme/README.md)
