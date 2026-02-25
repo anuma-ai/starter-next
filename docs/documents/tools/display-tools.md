@@ -40,9 +40,6 @@ export default function AppGroupLayout({
 }
 ```
 
-> **Note:** Inline code is used here because the typedoc `@includeCode` plugin
-> does not support `#region` tags in `.tsx` files.
-
 ## Defining a Display Tool
 
 ### Result Types

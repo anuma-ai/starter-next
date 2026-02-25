@@ -47,7 +47,7 @@ export default function AppGroupLayout({
 Define the shape of data your `execute` function returns. The rendering
 component receives this type.
 
-{@includeCode ../lib/ui-interaction-tools.ts#displayToolTypes}
+{@includeCode ../../lib/ui-interaction-tools.ts#displayToolTypes}
 
 ### createDisplayTool
 
@@ -61,7 +61,7 @@ an external API, and returns the result. The SDK stores the result as a
 `[Tool Execution Results]` message and returns it to the model so it can
 reference the data in its text response.
 
-{@includeCode ../lib/ui-interaction-tools.ts#displayToolDefinition}
+{@includeCode ../../lib/ui-interaction-tools.ts#displayToolDefinition}
 
 ### Built-in Chart Tool
 
@@ -70,7 +70,7 @@ and pie charts using recharts. It validates the model's arguments (chart type,
 data array, data keys) and returns them as-is for the `ChartCard` component to
 render. No external API call is needed — the model supplies the data directly.
 
-{@includeCode ../lib/ui-interaction-tools.ts#chartToolUsage}
+{@includeCode ../../lib/ui-interaction-tools.ts#chartToolUsage}
 
 The chart tool accepts these parameters from the model:
 
@@ -100,7 +100,7 @@ const uiInteractionTools = createUIInteractionTools({
 Create a React component that accepts the data returned by your `execute`
 function. This is a regular component with no special SDK dependencies.
 
-{@includeCode ../components/chat/weather-card.tsx}
+{@includeCode ../../components/chat/weather-card.tsx}
 
 For charts, import the `ChartCard` component directly from the SDK:
 
@@ -122,7 +122,7 @@ localStorage handling.
 Use `collectDisplayInteractions` to scan messages and extract display results
 with their anchor positions.
 
-{@includeCode ../lib/display-interaction.ts#collectDisplayInteractions}
+{@includeCode ../../lib/display-interaction.ts#collectDisplayInteractions}
 
 ### Inline Rendering
 
@@ -130,7 +130,7 @@ For each message, use `getDisplaysForMessage` to find display interactions
 anchored to it. The helper marks returned interactions as rendered so they
 are not duplicated.
 
-{@includeCode ../lib/display-interaction.ts#getDisplaysForMessage}
+{@includeCode ../../lib/display-interaction.ts#getDisplaysForMessage}
 
 Dispatch to the right component based on `displayType`:
 
@@ -149,7 +149,7 @@ Dispatch to the right component based on `displayType`:
 When the anchor message isn't found (e.g. messages haven't finished loading),
 render unanchored display interactions at the bottom of the chat.
 
-{@includeCode ../lib/display-interaction.ts#getUnanchoredDisplays}
+{@includeCode ../../lib/display-interaction.ts#getUnanchoredDisplays}
 
 ### Optional: Index-based Persistence
 
@@ -158,7 +158,7 @@ If you need to persist display interactions separately from message storage
 can use a localStorage-based hook. Message IDs are ephemeral, so this stores
 the message index and re-maps on restore.
 
-{@includeCode ../lib/display-interaction.ts#useDisplayPersistence}
+{@includeCode ../../lib/display-interaction.ts#useDisplayPersistence}
 
 ## How It Works End-to-End
 

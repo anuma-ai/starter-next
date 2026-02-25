@@ -15,7 +15,7 @@ The hook loads the Notion access token on mount, running any necessary
 migrations for older token formats. It then creates the tools using
 `createNotionTools` from the SDK:
 
-{@includeCode ../hooks/useNotionTools.ts#hookInit}
+{@includeCode ../../hooks/useNotionTools.ts#hookInit}
 
 The `createNotionTools` function takes two arguments: a synchronous getter for
 the current token and an async refresh function that fetches a fresh token
@@ -44,4 +44,4 @@ const clientTools = useMemo(() => {
 
 ## Return Value
 
-{@includeCode ../hooks/useNotionTools.ts#returnValue}
+{@includeCode ../../hooks/useNotionTools.ts#returnValue}

@@ -11,7 +11,7 @@
   "skipErrorChecking": true,
   "hidePageHeader": true,
   "projectDocuments": [
-    "documents/*.md"
+    "documents/**/*.md"
   ],
   "hideBreadcrumbs": true,
   "gitRevision": "main"

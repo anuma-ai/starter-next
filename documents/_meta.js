@@ -8,12 +8,9 @@ export default {
   thinking: "Thinking Mode",
   memory: "Memory Retrieval",
   vault: "Memory Vault",
-  tools: "Managing Tools",
-  "display-tools": "Display Tools",
-  "interactive-tools": "Interactive Tools",
+  tools: "Tools",
   projects: "Projects",
   backup: "Cloud Backup",
   models: "Fetching Models",
   ocr: "Extracting Text from Images",
-  notion: "Notion Integration",
 };

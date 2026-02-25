@@ -23,26 +23,8 @@ An interactive tool has four parts:
 
 ## Provider Setup
 
-Interactive tools share the same `UIInteractionProvider` as display tools.
-Wrap your app with it above the chat provider:
-
-```tsx
-import { UIInteractionProvider } from "@anuma/sdk/react";
-
-export default function AppGroupLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <UIInteractionProvider>
-      <ChatProvider>
-        <AppLayout>{children}</AppLayout>
-      </ChatProvider>
-    </UIInteractionProvider>
-  );
-}
-```
+Interactive tools share the same `UIInteractionProvider` as display tools —
+see [Display Tools](display-tools) for the provider setup.
 
 ## Choice Tool
 
@@ -232,15 +214,8 @@ returned to the model.
 ## Wiring into the Chat
 
 Interactive tools are created alongside display tools using the same
-`createUIInteractionTools` factory. Pass the result to the chat hook's
-`clientTools` array:
-
-```ts
-const uiInteractionTools = createUIInteractionTools({
-  getContext: () => uiInteraction,
-  getLastMessageId: () => messagesRef.current.at(-1)?.id,
-});
-```
+`createUIInteractionTools` factory — see
+[Display Tools — Wiring into the Chat](display-tools) for the setup.
 
 ## Rendering Interactive Results
 

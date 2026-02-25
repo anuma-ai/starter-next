@@ -12,7 +12,7 @@ based on the user's message.
 
 ## Hook Initialization
 
-{@includeCode ../hooks/useAppTools.ts#hookInit}
+{@includeCode ../../hooks/useAppTools.ts#hookInit}
 
 ## Tool Modes
 
@@ -24,7 +24,7 @@ Every tool has a mode that controls whether it gets included in API requests:
 
 Modes are persisted in `localStorage` and default to `auto` when unset.
 
-{@includeCode ../hooks/useAppTools.ts#toolModes}
+{@includeCode ../../hooks/useAppTools.ts#toolModes}
 
 ## Semantic Search
 
@@ -32,7 +32,7 @@ When enabled, semantic search analyzes the user's message and automatically
 selects which tools in `auto` mode are relevant. This reduces token usage by
 only sending tools that match the conversation context.
 
-{@includeCode ../hooks/useAppTools.ts#semanticSearch}
+{@includeCode ../../hooks/useAppTools.ts#semanticSearch}
 
 ## Checksum-Based Refresh
 
