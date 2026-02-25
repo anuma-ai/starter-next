@@ -67,17 +67,7 @@ no React render cycle between the token arriving and the DOM updating.
 ## Thinking Subscriptions
 
 The same pattern applies to thinking/reasoning tokens via
-`subscribeToThinking`. The thinking text accumulates separately and is useful
-for rendering a live reasoning panel while the model works through a problem.
-
-```tsx
-useEffect(() => {
-  const unsubscribe = subscribeToThinking((thinkingText) => {
-    // Render thinking content to a panel
-  });
-  return unsubscribe;
-}, [subscribeToThinking]);
-```
+`subscribeToThinking`. See [Thinking Mode](thinking) for details.
 
 ## When to Use React State Instead
 
