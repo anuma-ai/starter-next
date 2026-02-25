@@ -101,4 +101,4 @@ Each feature the hook composes has its own page with implementation details:
   for real-time DOM updates
 - [Memory Retrieval](memory/retrieval) and [Vault](memory/vault) — how
   long-term memory and encrypted storage are injected as client tools
-- [Tools](../_media/tools) — server tools, client tools, and how tool sets are managed
+- [Tools](../documents/tools) — server tools, client tools, and how tool sets are managed

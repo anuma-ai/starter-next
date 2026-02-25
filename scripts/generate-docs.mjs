@@ -4,6 +4,7 @@ import {
   existsSync,
   readFileSync,
   readdirSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -54,6 +55,10 @@ function collectMdFiles(dir) {
 }
 
 const regionLine = /^\s*\/\/\s*#(?:region|endregion)\b.*$/;
+// TypeDoc rewrites relative links (e.g. [Tools](tools)) to point at a _media
+// directory (e.g. [Tools](../_media/tools)). Rewrite them back by replacing
+// "_media" with "documents" so the paths resolve correctly within docs/.
+const mediaLinkRe = /(\[[^\]]*\]\([^)]*?)_media([^)]*\))/g;
 
 for (const file of collectMdFiles("docs")) {
   const src = readFileSync(file, "utf8");
@@ -68,11 +73,18 @@ for (const file of collectMdFiles("docs")) {
     }
     out += line + "\n";
   }
+  // Rewrite _media links outside of code blocks (applied to the full text).
+  const rewritten = out.replace(mediaLinkRe, "$1documents$2");
+  if (rewritten !== out) changed = true;
+  out = rewritten;
   if (changed) {
-    // Remove trailing extra newline added by split/join
     writeFileSync(file, out.replace(/\n$/, ""));
   }
 }
+
+// Remove the _media directory TypeDoc creates for relative links it can't resolve.
+const mediaDir = join("docs", "_media");
+if (existsSync(mediaDir)) rmSync(mediaDir, { recursive: true });
 
 // Remove the auto-generated README (we copy our own).
 const generatedReadme = join("docs", "README.md");
@@ -100,6 +112,12 @@ const includeCodeLine = /^\{@includeCode\s+(\S+?)(?:#(\S+))?\s*\}$/;
 
 // Find the line range of a #region in a source file. Returns "#L<start>-L<end>"
 // or "" if the region isn't found or the directive includes the whole file.
+let warnings = 0;
+function warn(msg) {
+  console.warn(`  warn: ${msg}`);
+  warnings++;
+}
+
 const regionCache = new Map();
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -112,7 +130,7 @@ function findRegionLines(filePath, region) {
 
   let result = "";
   if (!existsSync(filePath)) {
-    console.warn(`  warn: source file not found: ${filePath}`);
+    warn(`source file not found: ${filePath}`);
   } else {
     const escaped = escapeRegExp(region);
     const lines = readFileSync(filePath, "utf8").split("\n");
@@ -127,7 +145,7 @@ function findRegionLines(filePath, region) {
       }
     }
     if (!result) {
-      console.warn(`  warn: region "${region}" not found in ${filePath}`);
+      warn(`region "${region}" not found in ${filePath}`);
     }
   }
   regionCache.set(key, result);
@@ -186,5 +204,16 @@ for (const outFile of collectMdFiles(DOCS_OUT)) {
     }
   }
 
+  if (blockIdx !== blocks.length) {
+    warn(
+      `code block count mismatch in ${outFile}: expected ${blocks.length}, found ${blockIdx}`
+    );
+  }
+
   writeFileSync(outFile, result.join("\n"));
+}
+
+if (warnings > 0) {
+  console.warn(`\n${warnings} warning(s) during source link injection`);
+  process.exitCode = 1;
 }
