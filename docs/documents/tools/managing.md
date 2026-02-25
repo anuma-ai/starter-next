@@ -1,5 +1,7 @@
 # Managing Tools
 
+Source: [hooks/useAppTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts)
+
 The `useAppTools` hook wraps the SDK's `useTools` hook to fetch server-side
 tools from the API and manage per-tool modes locally. Each tool can be set to
 one of three modes, and semantic search can automatically select relevant tools

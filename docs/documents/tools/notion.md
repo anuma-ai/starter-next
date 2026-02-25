@@ -1,5 +1,7 @@
 # Notion Integration
 
+Source: [hooks/useNotionTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useNotionTools.ts)
+
 The `useNotionTools` hook connects to Notion via OAuth and provides Notion
 tools that the AI can call to search, read, and create content in the user's
 Notion workspace.

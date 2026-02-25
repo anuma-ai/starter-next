@@ -7,9 +7,11 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 
 const DOCS_SRC = "documents";
+const GITHUB_BASE =
+  "https://github.com/anuma-ai/starter-next/blob/main/";
 const DOCS_OUT = join("docs", DOCS_SRC);
 const TMP_CONFIG = ".typedoc.generate.json";
 
@@ -85,5 +87,37 @@ for (const dir of dirs) {
   const dest = join("docs", dir, "_meta.js");
   if (existsSync(src)) {
     copyFileSync(src, dest);
+  }
+}
+
+// Inject "Source:" links into generated docs by reading {@includeCode} directives
+// from the source markdown and inserting a link line after the H1 heading.
+const includeCodeRe = /\{@includeCode\s+(\S+?)(?:#\S+)?\s*\}/g;
+
+for (const outFile of collectMdFiles(DOCS_OUT)) {
+  // Map generated file back to its source (e.g. docs/documents/chat.md → documents/chat.md)
+  const srcFile = outFile.replace(/^docs\//, "");
+  if (!existsSync(srcFile)) continue;
+
+  const srcContent = readFileSync(srcFile, "utf8");
+  const paths = [];
+  for (const match of srcContent.matchAll(includeCodeRe)) {
+    const abs = resolve(dirname(srcFile), match[1]);
+    const raw = relative(".", abs);
+    if (!paths.includes(raw)) paths.push(raw);
+  }
+  if (paths.length === 0) continue;
+
+  const links = paths
+    .map((p) => `[${p}](${GITHUB_BASE}${p})`)
+    .join(" · ");
+
+  const content = readFileSync(outFile, "utf8");
+  const updated = content.replace(
+    /^(# .+\n)/m,
+    `$1\nSource: ${links}\n`
+  );
+  if (updated !== content) {
+    writeFileSync(outFile, updated);
   }
 }

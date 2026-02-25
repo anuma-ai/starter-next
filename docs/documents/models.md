@@ -1,5 +1,7 @@
 # Fetching Models
 
+Source: [hooks/useAppModels.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppModels.ts)
+
 The `useModels` hook from `@anuma/sdk/react` fetches and manages the list of
 available LLM models from the API. It provides model metadata and supports
 refreshing the list.

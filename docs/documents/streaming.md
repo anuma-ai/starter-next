@@ -1,5 +1,7 @@
 # Streaming Subscriptions
 
+Source: [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts)
+
 The `useAppChat` hook provides a pub/sub system for streaming text updates
 that bypasses React's state batching. This is important for chat UIs where
 you want to render tokens as they arrive without waiting for React to batch

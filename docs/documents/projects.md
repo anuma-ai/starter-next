@@ -1,5 +1,7 @@
 # Projects
 
+Source: [hooks/useAppProjects.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppProjects.ts)
+
 Projects let users organize conversations by topic, purpose, or any other
 criteria. Each project has a name, an optional description, and can contain
 multiple conversations. An "inbox" project is automatically created to hold

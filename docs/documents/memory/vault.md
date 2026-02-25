@@ -1,5 +1,7 @@
 # Memory Vault
 
+Source: [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts)
+
 The memory vault is a persistent knowledge store that complements the
 conversation-based memory retrieval system. While memory retrieval searches
 across past conversation chunks, the vault stores curated facts and

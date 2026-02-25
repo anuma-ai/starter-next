@@ -1,5 +1,7 @@
 # Display Tools
 
+Source: [lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts) · [components/chat/weather-card.tsx](https://github.com/anuma-ai/starter-next/blob/main/components/chat/weather-card.tsx) · [lib/display-interaction.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/display-interaction.ts)
+
 Display tools let the AI render rich visual components inline in the chat.
 They run entirely on the client side — when the model calls a display tool, the
 SDK executes it in the browser, stores the result as a tool execution message,

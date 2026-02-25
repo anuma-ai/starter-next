@@ -1,5 +1,7 @@
 # Setup
 
+Source: [lib/chat-setup.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/chat-setup.ts)
+
 Most hooks require a WatermelonDB database, an auth token, and optionally
 wallet credentials for encrypted file storage. This page shows how to obtain
 each value.

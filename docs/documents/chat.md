@@ -1,5 +1,7 @@
 # Chat
 
+Source: [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts)
+
 `useAppChat` is the main hook for adding chat to your app. It wraps the SDK's
 storage layer and wires in memory, vault, streaming, and tools so you get a
 single hook that handles the full lifecycle of a conversation.

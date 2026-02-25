@@ -1,5 +1,7 @@
 # Thinking Mode
 
+Source: [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts)
+
 Thinking mode enables extended reasoning, where the model "thinks" before
 responding. The thinking tokens stream separately from the response text,
 allowing you to display a reasoning panel or indicator while the model works

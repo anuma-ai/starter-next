@@ -1,5 +1,7 @@
 # Sending messages
 
+Source: [hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts)
+
 The `useChatStorage` hook from `@anuma/sdk/react` provides persistent chat
 storage with WatermelonDB. It manages conversations, message history, and
 streams responses from the API.

@@ -1,5 +1,7 @@
 # Memory Retrieval
 
+Source: [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts)
+
 The `useAppChat` hook adds memory-augmented responses on top of
 `useAppChatStorage`. Memory lets the AI recall information from past
 conversations — things like the user's name, preferences, or previously

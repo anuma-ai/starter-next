@@ -1,5 +1,7 @@
 # Extracting Text from Images
 
+Source: [hooks/useAppOCR.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppOCR.ts)
+
 The `useOCR` hook from `@anuma/sdk/react` provides Optical Character
 Recognition (OCR) capabilities. It extracts text from images and scanned
 documents, and can serve as a fallback when PDF text extraction is insufficient.

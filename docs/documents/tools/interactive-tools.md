@@ -1,5 +1,7 @@
 # Interactive Tools
 
+Source: [lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts)
+
 Interactive tools let the AI present UI elements that collect input from the
 user mid-conversation. Unlike display tools (which render read-only cards),
 interactive tools pause the model's response, wait for the user to interact,
