@@ -101,23 +101,33 @@ const includeCodeLine = /^\{@includeCode\s+(\S+?)(?:#(\S+))?\s*\}$/;
 // Find the line range of a #region in a source file. Returns "#L<start>-L<end>"
 // or "" if the region isn't found or the directive includes the whole file.
 const regionCache = new Map();
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function findRegionLines(filePath, region) {
   if (!region) return "";
   const key = `${filePath}#${region}`;
   if (regionCache.has(key)) return regionCache.get(key);
 
   let result = "";
-  if (existsSync(filePath)) {
+  if (!existsSync(filePath)) {
+    console.warn(`  warn: source file not found: ${filePath}`);
+  } else {
+    const escaped = escapeRegExp(region);
     const lines = readFileSync(filePath, "utf8").split("\n");
     let start = -1;
     for (let i = 0; i < lines.length; i++) {
       const trimmed = lines[i].trim();
-      if (start === -1 && trimmed.match(new RegExp(`^//\\s*#region\\s+${region}$`))) {
+      if (start === -1 && trimmed.match(new RegExp(`^//\\s*#region\\s+${escaped}$`))) {
         start = i + 2; // line after the marker (1-indexed)
-      } else if (start !== -1 && trimmed.match(new RegExp(`^//\\s*#endregion\\s+${region}$`))) {
+      } else if (start !== -1 && trimmed.match(new RegExp(`^//\\s*#endregion\\s+${escaped}$`))) {
         result = `#L${start}-L${i}`;
         break;
       }
+    }
+    if (!result) {
+      console.warn(`  warn: region "${region}" not found in ${filePath}`);
     }
   }
   regionCache.set(key, result);
