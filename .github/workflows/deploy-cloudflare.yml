@@ -39,7 +39,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-preview:
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
