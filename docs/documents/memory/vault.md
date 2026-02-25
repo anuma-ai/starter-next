@@ -1,7 +1,5 @@
 # Memory Vault
 
-Source: [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts)
-
 The memory vault is a persistent knowledge store that complements the
 conversation-based memory retrieval system. While memory retrieval searches
 across past conversation chunks, the vault stores curated facts and
@@ -42,6 +40,8 @@ const [customSystemPrompt, setCustomSystemPrompt] = useState<string | null>(null
 const [customVaultPrompt, setCustomVaultPrompt] = useState<string | null>(null);
 ```
 
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L96-L100)
+
 Default values and ranges are visible in the code above. `vaultSearchThreshold`
 is lower than memory retrieval's threshold because vault entries are typically
 short and precise.
@@ -64,6 +64,8 @@ IMPORTANT — vault workflow:
 - The vault should stay compact: one entry per topic, updated over time.
 - When answering questions that might involve stored preferences or facts, call memory_vault_search to check.`;
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L57-L67)
 
 This prompt can be overridden by setting `customVaultPrompt` in
 `localStorage`.
@@ -107,6 +109,8 @@ if (vaultEnabled) {
 }
 ```
 
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L345-L369)
+
 ## CRUD Operations
 
 The hook exposes methods for direct vault management, typically wired to a
@@ -119,3 +123,5 @@ createVaultMemory,
 updateVaultMemory,
 deleteVaultMemory,
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L546-L550)

@@ -1,7 +1,5 @@
 # Memory Retrieval
 
-Source: [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts)
-
 The `useAppChat` hook adds memory-augmented responses on top of
 `useAppChatStorage`. Memory lets the AI recall information from past
 conversations — things like the user's name, preferences, or previously
@@ -44,6 +42,8 @@ const [memoryEnabled, setMemoryEnabled] = useState(true);
 const [memoryLimit, setMemoryLimit] = useState(5);
 const [memoryThreshold, setMemoryThreshold] = useState(0.2);
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L91-L93)
 
 - `memoryEnabled` — toggle memory on or off. Default: `true`.
 - `memoryLimit` — max chunks returned per search (1–20). Default: `5`. Higher
@@ -153,6 +153,8 @@ useEffect(() => {
 }, []);
 ```
 
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L107-L202)
+
 ## Creating the Memory Tool
 
 On each `sendMessage` call, a memory retrieval tool is created with the current
@@ -218,6 +220,8 @@ if (vaultEnabled) {
 
 const effectiveClientTools = [...builtInTools, ...baseClientTools];
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L319-L372)
 
 ## System Prompt
 

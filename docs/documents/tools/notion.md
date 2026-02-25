@@ -1,7 +1,5 @@
 # Notion Integration
 
-Source: [hooks/useNotionTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useNotionTools.ts)
-
 The `useNotionTools` hook connects to Notion via OAuth and provides Notion
 tools that the AI can call to search, read, and create content in the user's
 Notion workspace.
@@ -52,6 +50,8 @@ export function useNotionTools({
   }, [accessToken, walletAddress]);
 ```
 
+[hooks/useNotionTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useNotionTools.ts#L11-L43)
+
 The `createNotionTools` function takes two arguments: a synchronous getter for
 the current token and an async refresh function that fetches a fresh token
 when the current one expires.
@@ -86,3 +86,5 @@ return {
   accessToken,
 };
 ```
+
+[hooks/useNotionTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useNotionTools.ts#L47-L51)

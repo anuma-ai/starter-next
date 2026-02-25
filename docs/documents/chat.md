@@ -1,7 +1,5 @@
 # Chat
 
-Source: [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts)
-
 `useAppChat` is the main hook for adding chat to your app. It wraps the SDK's
 storage layer and wires in memory, vault, streaming, and tools so you get a
 single hook that handles the full lifecycle of a conversation.
@@ -40,6 +38,8 @@ type UseAppChatProps = {
   onVaultSave?: (operation: VaultSaveOperation) => Promise<boolean>;
 };
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L24-L50)
 
 ## Sending a Message
 
@@ -88,6 +88,8 @@ return {
   deleteVaultMemory,
 };
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L518-L552)
 
 ## What's Next
 

@@ -1,7 +1,5 @@
 # Display Tools
 
-Source: [lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts) · [components/chat/weather-card.tsx](https://github.com/anuma-ai/starter-next/blob/main/components/chat/weather-card.tsx) · [lib/display-interaction.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/display-interaction.ts)
-
 Display tools let the AI render rich visual components inline in the chat.
 They run entirely on the client side — when the model calls a display tool, the
 SDK executes it in the browser, stores the result as a tool execution message,
@@ -75,6 +73,8 @@ export type DisplayWeatherResult = {
   _meta?: { location: string };
 };
 ```
+
+[lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts#L20-L43)
 
 ### createDisplayTool
 
@@ -162,6 +162,8 @@ const weatherToolBase = createDisplayTool(options, {
 });
 ```
 
+[lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts#L218-L288)
+
 ### Built-in Chart Tool
 
 The SDK provides a ready-made `createChartTool` that renders bar, line, area,
@@ -172,6 +174,8 @@ render. No external API call is needed — the model supplies the data directly.
 ```ts
 const chartTool = createChartTool(options);
 ```
+
+[lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts#L292-L292)
 
 The chart tool accepts these parameters from the model:
 
@@ -292,6 +296,8 @@ export function WeatherCard({ data }: WeatherCardProps) {
 }
 ```
 
+[components/chat/weather-card.tsx](https://github.com/anuma-ai/starter-next/blob/main/components/chat/weather-card.tsx)
+
 For charts, import the `ChartCard` component directly from the SDK:
 
 ```ts
@@ -343,6 +349,8 @@ export function collectDisplayInteractions(
 }
 ```
 
+[lib/display-interaction.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/display-interaction.ts#L53-L80)
+
 ### Inline Rendering
 
 For each message, use `getDisplaysForMessage` to find display interactions
@@ -368,6 +376,8 @@ export function getDisplaysForMessage(
   return matching;
 }
 ```
+
+[lib/display-interaction.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/display-interaction.ts#L84-L100)
 
 Dispatch to the right component based on `displayType`:
 
@@ -404,6 +414,8 @@ export function getUnanchoredDisplays(
   });
 }
 ```
+
+[lib/display-interaction.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/display-interaction.ts#L104-L119)
 
 ### Optional: Index-based Persistence
 
@@ -481,6 +493,8 @@ export function useDisplayPersistence(
   }, [conversationId, messages]);
 }
 ```
+
+[lib/display-interaction.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/display-interaction.ts#L123-L189)
 
 ## How It Works End-to-End
 

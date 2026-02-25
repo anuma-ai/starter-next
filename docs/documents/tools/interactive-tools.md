@@ -1,7 +1,5 @@
 # Interactive Tools
 
-Source: [lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts)
-
 Interactive tools let the AI present UI elements that collect input from the
 user mid-conversation. Unlike display tools (which render read-only cards),
 interactive tools pause the model's response, wait for the user to interact,
@@ -100,6 +98,8 @@ const choiceTool = createInteractiveTool(options, {
   }),
 });
 ```
+
+[lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts#L52-L115)
 
 When the user confirms, `resolveInteraction` is called with the selected
 value(s). The model receives the result and can tailor its response
@@ -209,6 +209,8 @@ const formTool = createInteractiveTool(options, {
   }),
 });
 ```
+
+[lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts#L119-L214)
 
 When the user submits, all field values are collected into a single object and
 returned to the model.

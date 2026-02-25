@@ -1,7 +1,5 @@
 # Managing Tools
 
-Source: [hooks/useAppTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts)
-
 The `useAppTools` hook wraps the SDK's `useTools` hook to fetch server-side
 tools from the API and manage per-tool modes locally. Each tool can be set to
 one of three modes, and semantic search can automatically select relevant tools
@@ -46,6 +44,8 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
   }));
 ```
 
+[hooks/useAppTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L173-L201)
+
 ## Tool Modes
 
 Every tool has a mode that controls whether it gets included in API requests:
@@ -84,6 +84,8 @@ const enabledTools = Object.entries(toolModes)
   .map(([name]) => name);
 ```
 
+[hooks/useAppTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L205-L229)
+
 ## Semantic Search
 
 When enabled, semantic search analyzes the user's message and automatically
@@ -97,6 +99,8 @@ const toggleSemanticSearch = useCallback((enabled: boolean) => {
   setSemanticSearchEnabled(enabled);
 }, []);
 ```
+
+[hooks/useAppTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L233-L237)
 
 ## Checksum-Based Refresh
 

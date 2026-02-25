@@ -1,7 +1,5 @@
 # Conversation management
 
-Source: [hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts)
-
 The `useChatStorage` hook exposes methods for creating, switching between, and
 deleting conversations. These are typically wired up to a sidebar or
 conversation list component.
@@ -37,6 +35,8 @@ const handleNewConversation = useCallback(async (opts?: { projectId?: string; cr
   return null;
 }, [createConversation, setConversationId]);
 ```
+
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L1023-L1045)
 
 ## Switching Conversations
 
@@ -124,6 +124,8 @@ const handleSwitchConversation = useCallback(
 );
 ```
 
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L1049-L1124)
+
 ## Deleting a Conversation
 
 ```ts
@@ -137,3 +139,5 @@ const handleDeleteConversation = useCallback(
   [deleteConversation, conversationId]
 );
 ```
+
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L1128-L1136)

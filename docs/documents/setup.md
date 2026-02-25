@@ -1,7 +1,5 @@
 # Setup
 
-Source: [lib/chat-setup.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/chat-setup.ts)
-
 Most hooks require a WatermelonDB database, an auth token, and optionally
 wallet credentials for encrypted file storage. This page shows how to obtain
 each value.
@@ -22,6 +20,8 @@ export function setupDatabase() {
   return database;
 }
 ```
+
+[lib/chat-setup.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/chat-setup.ts#L20-L26)
 
 ## Authentication
 
@@ -82,6 +82,8 @@ export function setupGetToken() {
 }
 ```
 
+[lib/chat-setup.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/chat-setup.ts#L30-L79)
+
 ## Wallet and Signing
 
 `walletAddress` and the signing functions come from Privy's auth hooks.
@@ -125,3 +127,5 @@ export function setupWallet() {
   return { walletAddress, signMessage, embeddedWalletSigner };
 }
 ```
+
+[lib/chat-setup.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/chat-setup.ts#L83-L116)

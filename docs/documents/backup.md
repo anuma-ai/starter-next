@@ -1,7 +1,5 @@
 # Cloud Backup
 
-Source: [hooks/useAppBackup.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppBackup.ts)
-
 The `useAppBackup` hook provides encrypted backup and restore of conversations
 to cloud storage providers (Google Drive, Dropbox). Conversations are exported
 as encrypted JSON blobs, uploaded via the SDK's `useBackup` hook, and can be
@@ -46,6 +44,8 @@ export function useAppBackup() {
     baseUrl: process.env.NEXT_PUBLIC_API_URL,
   });
 ```
+
+[hooks/useAppBackup.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppBackup.ts#L44-L70)
 
 ## Exporting Conversations
 
@@ -104,6 +104,8 @@ const exportConversation = useCallback(
   [getConversation, getMessages]
 );
 ```
+
+[hooks/useAppBackup.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppBackup.ts#L119-L167)
 
 The encryption uses `encryptData` from the SDK, which derives a symmetric key
 from the user's wallet address.
@@ -207,6 +209,8 @@ const importConversation = useCallback(
 );
 ```
 
+[hooks/useAppBackup.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppBackup.ts#L171-L259)
+
 ## Connecting to Cloud Providers
 
 The SDK's `useBackup` hook handles the actual cloud provider integration. Pass
@@ -223,6 +227,8 @@ const backup = useBackup({
   importConversation,
 });
 ```
+
+[hooks/useAppBackup.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppBackup.ts#L263-L271)
 
 The returned `backup` object from the SDK exposes methods for connecting to
 Google Drive or Dropbox, listing remote backups, uploading, and downloading.
@@ -242,6 +248,8 @@ return {
   initializeEncryption,
 };
 ```
+
+[hooks/useAppBackup.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppBackup.ts#L275-L282)
 
 Call `initializeEncryption()` before connecting to a backup provider — it
 derives the encryption key from the user's wallet, which may prompt a

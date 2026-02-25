@@ -1,7 +1,5 @@
 # Thinking Mode
 
-Source: [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts)
-
 Thinking mode enables extended reasoning, where the model "thinks" before
 responding. The thinking tokens stream separately from the response text,
 allowing you to display a reasoning panel or indicator while the model works
@@ -17,6 +15,8 @@ for Anthropic models:
 reasoning?: { effort?: string; summary?: string };
 thinking?: { type?: string; budget_tokens?: number };
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L278-L279)
 
 Pass one or the other in the options object. Both are forwarded to the SDK and
 included in the API request; only the parameter matching the model provider has
@@ -49,6 +49,8 @@ const subscribeToThinking = useCallback(
   []
 );
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L492-L510)
 
 Subscribe from your component to receive the accumulated thinking text as it
 streams:

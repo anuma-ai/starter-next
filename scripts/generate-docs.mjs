@@ -90,34 +90,91 @@ for (const dir of dirs) {
   }
 }
 
-// Inject "Source:" links into generated docs by reading {@includeCode} directives
-// from the source markdown and inserting a link line after the H1 heading.
-const includeCodeRe = /\{@includeCode\s+(\S+?)(?:#\S+)?\s*\}/g;
+// Inject source links into generated docs.
+// Each {@includeCode} in the source becomes a code block in the output.
+// We parse the source to build an ordered list telling us which code blocks
+// came from {@includeCode} (with their resolved file path and region) vs
+// hand-written inline blocks (null). Then we walk the generated output and
+// append a source link (with line numbers) after each {@includeCode} block.
+const includeCodeLine = /^\{@includeCode\s+(\S+?)(?:#(\S+))?\s*\}$/;
+
+// Find the line range of a #region in a source file. Returns "#L<start>-L<end>"
+// or "" if the region isn't found or the directive includes the whole file.
+const regionCache = new Map();
+function findRegionLines(filePath, region) {
+  if (!region) return "";
+  const key = `${filePath}#${region}`;
+  if (regionCache.has(key)) return regionCache.get(key);
+
+  let result = "";
+  if (existsSync(filePath)) {
+    const lines = readFileSync(filePath, "utf8").split("\n");
+    let start = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (start === -1 && trimmed.match(new RegExp(`^//\\s*#region\\s+${region}$`))) {
+        start = i + 2; // line after the marker (1-indexed)
+      } else if (start !== -1 && trimmed.match(new RegExp(`^//\\s*#endregion\\s+${region}$`))) {
+        result = `#L${start}-L${i}`;
+        break;
+      }
+    }
+  }
+  regionCache.set(key, result);
+  return result;
+}
 
 for (const outFile of collectMdFiles(DOCS_OUT)) {
-  // Map generated file back to its source (e.g. docs/documents/chat.md → documents/chat.md)
   const srcFile = outFile.replace(/^docs\//, "");
   if (!existsSync(srcFile)) continue;
 
+  // Build ordered map: one entry per code block, { path, region } or null.
   const srcContent = readFileSync(srcFile, "utf8");
-  const paths = [];
-  for (const match of srcContent.matchAll(includeCodeRe)) {
-    const abs = resolve(dirname(srcFile), match[1]);
-    const raw = relative(".", abs);
-    if (!paths.includes(raw)) paths.push(raw);
+  const blocks = [];
+  let inSrcCode = false;
+  for (const line of srcContent.split("\n")) {
+    if (line.startsWith("```")) {
+      if (!inSrcCode) {
+        inSrcCode = true;
+        blocks.push(null);
+      } else {
+        inSrcCode = false;
+      }
+      continue;
+    }
+    const m = line.match(includeCodeLine);
+    if (m) {
+      const abs = resolve(dirname(srcFile), m[1]);
+      blocks.push({ path: relative(".", abs), region: m[2] || null });
+    }
   }
-  if (paths.length === 0) continue;
 
-  const links = paths
-    .map((p) => `[${p}](${GITHUB_BASE}${p})`)
-    .join(" · ");
+  if (blocks.every((b) => b === null)) continue;
 
-  const content = readFileSync(outFile, "utf8");
-  const updated = content.replace(
-    /^(# .+\n)/m,
-    `$1\nSource: ${links}\n`
-  );
-  if (updated !== content) {
-    writeFileSync(outFile, updated);
+  // Walk generated output, inserting links after matching code blocks.
+  const lines = readFileSync(outFile, "utf8").split("\n");
+  const result = [];
+  let inCode = false;
+  let blockIdx = 0;
+
+  for (const line of lines) {
+    result.push(line);
+    if (line.startsWith("```")) {
+      if (!inCode) {
+        inCode = true;
+      } else {
+        inCode = false;
+        const block = blocks[blockIdx];
+        if (block) {
+          const fragment = findRegionLines(block.path, block.region);
+          result.push(
+            `\n[${block.path}](${GITHUB_BASE}${block.path}${fragment})`
+          );
+        }
+        blockIdx++;
+      }
+    }
   }
+
+  writeFileSync(outFile, result.join("\n"));
 }

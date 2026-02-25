@@ -1,7 +1,5 @@
 # Sending messages
 
-Source: [hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts)
-
 The `useChatStorage` hook from `@anuma/sdk/react` provides persistent chat
 storage with WatermelonDB. It manages conversations, message history, and
 streams responses from the API.
@@ -50,6 +48,8 @@ const {
 });
 ```
 
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L293-L327)
+
 ## Optimistic UI Updates
 
 Add messages to the UI immediately before the API responds. This creates a
@@ -92,6 +92,8 @@ const addMessageOptimistically = useCallback(
   []
 );
 ```
+
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L615-L648)
 
 ## Building Content Parts
 
@@ -144,6 +146,8 @@ const sdkFiles = enrichedFiles
     url: file.url,
   }));
 ```
+
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L719-L755)
 
 ## Calling sendMessage
 
@@ -232,6 +236,8 @@ for (let retry = 0; retry < MAX_RETRIES; retry++) {
 }
 ```
 
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L763-L838)
+
 ## Stopping a Response
 
 The SDK's `useChatStorage` returns a `stop` function that aborts the active
@@ -257,6 +263,8 @@ const handleStop = useCallback(() => {
   isSendingMessageRef.current = false;
 }, [stop]);
 ```
+
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L602-L611)
 
 ## Tool Calling
 
@@ -342,6 +350,8 @@ if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClient
 }
 ```
 
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L842-L913)
+
 ## Title Generation
 
 After the first message, an LLM-generated title is created asynchronously
@@ -389,6 +399,8 @@ if (isFirstMessage && messageConversationId) {
 }
 ```
 
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L959-L994)
+
 ## Post-Stream Cleanup
 
 After streaming completes, the final accumulated text is synced to React state.
@@ -415,3 +427,5 @@ if (messageConversationId && viewingConversationId && messageConversationId !== 
   );
 }
 ```
+
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L939-L955)
