@@ -51,7 +51,7 @@ export default function AppsPage() {
       setDriveConnected(!!driveToken || driveCreds);
     });
 
-    setNotionConnected(hasNotionCredentials(walletAddress));
+    hasNotionCredentials(walletAddress).then(setNotionConnected);
   }, [walletAddress]);
 
   const handleConnectCalendar = () => {
