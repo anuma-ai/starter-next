@@ -1,4 +1,4 @@
-# Memory Retrieval
+# Memory Engine
 
 The `useAppChat` hook adds memory-augmented responses on top of
 `useAppChatStorage`. Memory lets the AI recall information from past
@@ -15,7 +15,7 @@ messages are split into chunks, and each chunk gets a vector embedding (a
 numerical representation of its meaning). These vectors live in WatermelonDB
 alongside the message content.
 
-**Retrieval.** When a new message is sent, a memory retrieval tool is injected
+**Retrieval.** When a new message is sent, a memory engine tool is injected
 as a client tool. The AI reads the system prompt, which tells it about the tool,
 and decides whether the user's question might benefit from past context. If so,
 it calls the tool. The tool converts the query into a vector, runs a similarity
@@ -52,7 +52,7 @@ changed from another tab or the settings page:
 
 ## Creating the Memory Tool
 
-On each `sendMessage` call, a memory retrieval tool is created with the current
+On each `sendMessage` call, a memory engine tool is created with the current
 settings and added to the client tools array. The current conversation is
 excluded so the AI only recalls information from other conversations.
 
@@ -68,10 +68,10 @@ When memory is disabled, the tool is simply omitted.
 The default system prompt tells the AI when to use the memory tool:
 
 ```
-You have access to a memory retrieval tool that can recall information from
+You have access to a memory engine tool that can recall information from
 previous conversations with this user. When the user asks questions that might
 relate to past conversations (like their name, preferences, personal
-information, or previously discussed topics), use the memory retrieval tool to
+information, or previously discussed topics), use the memory engine tool to
 recall relevant context before responding.
 ```
 
