@@ -33,71 +33,73 @@ multi-select modes, includes an "other" free-text option, and validates that
 at least two options are provided.
 
 ```ts
-const choiceTool = createInteractiveTool(options, {
-  name: "prompt_user_choice",
-  description:
-    "Renders an interactive inline menu the user can click to pick from choices. Use when the user's request naturally involves selecting between specific, concrete options — for example picking a restaurant, choosing a travel destination, or selecting a category. Call this tool FIRST before generating any response text. After the user selects, you receive their choice and can respond based on it.",
-  parameters: {
-    type: "object",
-    properties: {
-      title: {
-        type: "string",
-        description: "Question or prompt to show the user",
-      },
-      description: {
-        type: "string",
-        description: "Optional additional context or explanation",
-      },
-      options: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            value: {
-              type: "string",
-              description: "Unique identifier for this option",
-            },
-            label: {
-              type: "string",
-              description: "Display text for this option",
-            },
-            description: {
-              type: "string",
-              description: "Optional description or additional info",
-            },
-          },
-          required: ["value", "label"],
+  const choiceTool = createInteractiveTool(options, {
+    name: "prompt_user_choice",
+    description:
+      "Renders an interactive inline menu the user can click to pick from choices. Use when the user's request naturally involves selecting between specific, concrete options — for example picking a restaurant, choosing a travel destination, or selecting a category. Call this tool FIRST before generating any response text. After the user selects, you receive their choice and can respond based on it.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Question or prompt to show the user",
         },
-        description:
-          "Array of options to present (minimum 2, maximum 10 recommended)",
+        description: {
+          type: "string",
+          description: "Optional additional context or explanation",
+        },
+        options: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              value: {
+                type: "string",
+                description: "Unique identifier for this option",
+              },
+              label: {
+                type: "string",
+                description: "Display text for this option",
+              },
+              description: {
+                type: "string",
+                description: "Optional description or additional info",
+              },
+            },
+            required: ["value", "label"],
+          },
+          description:
+            "Array of options to present (minimum 2, maximum 10 recommended)",
+        },
+        allowMultiple: {
+          type: "boolean",
+          description:
+            "Allow user to select multiple options (default: false)",
+          default: false,
+        },
       },
-      allowMultiple: {
-        type: "boolean",
-        description:
-          "Allow user to select multiple options (default: false)",
-        default: false,
+      required: ["title", "options"],
+    },
+    interactionType: "choice",
+    validate: (args: any) =>
+      args.title &&
+      typeof args.title === "string" &&
+      Array.isArray(args.options) &&
+      args.options.length >= 2 &&
+      args.options.every((o: any) => o.value && o.label),
+    mapResult: (result: any, args: any) => ({
+      ...result,
+      _meta: {
+        title: args.title,
+        description: args.description,
+        options: args.options,
+        allowMultiple: args.allowMultiple,
       },
-    },
-    required: ["title", "options"],
-  },
-  interactionType: "choice",
-  validate: (args: any) =>
-    args.title &&
-    typeof args.title === "string" &&
-    Array.isArray(args.options) &&
-    args.options.length >= 2 &&
-    args.options.every((o: any) => o.value && o.label),
-  mapResult: (result: any, args: any) => ({
-    ...result,
-    _meta: {
-      title: args.title,
-      description: args.description,
-      options: args.options,
-      allowMultiple: args.allowMultiple,
-    },
-  }),
-});
+    }),
+  });
 ```
+
+[lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts#L52-L115)
 
 When the user confirms, `resolveInteraction` is called with the selected
 value(s). The model receives the result and can tailor its response
@@ -110,103 +112,105 @@ The form tool renders a multi-field form with support for six field types:
 have a default value, placeholder, and description.
 
 ```ts
-const formTool = createInteractiveTool(options, {
-  name: "prompt_user_form",
-  description:
-    "Renders an interactive inline form the user can fill out and submit. Use when you need to collect 2 or more specific pieces of structured information from the user — for example trip planning details (destination, dates, budget), booking info, or configuration settings. Supports text inputs, textareas, dropdowns (select), toggles, date pickers, and sliders. Call this tool FIRST before generating any response text. After the user submits, you receive all their answers at once.",
-  parameters: {
-    type: "object",
-    properties: {
-      title: {
-        type: "string",
-        description: "Title or heading for the form",
-      },
-      description: {
-        type: "string",
-        description: "Optional instructions or context shown below the title",
-      },
-      fields: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            name: {
-              type: "string",
-              description: "Unique field identifier (used as key in result)",
-            },
-            label: {
-              type: "string",
-              description: "Display label for the field",
-            },
-            type: {
-              type: "string",
-              enum: ["text", "textarea", "select", "toggle", "date", "slider"],
-              description: "Field type: text (single line), textarea (multi-line), select (dropdown), toggle (on/off), date (calendar picker), slider (numeric range)",
-            },
-            description: {
-              type: "string",
-              description: "Optional help text shown below the label",
-            },
-            placeholder: {
-              type: "string",
-              description: "Placeholder text for text/textarea/select fields",
-            },
-            options: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  value: { type: "string" },
-                  label: { type: "string" },
-                },
-                required: ["value", "label"],
-              },
-              description: "Options for select fields",
-            },
-            defaultValue: {
-              description: "Default value for the field (string for text/textarea/select, boolean for toggle, number for slider)",
-            },
-            min: {
-              type: "number",
-              description: "Minimum value for slider fields (default: 0)",
-            },
-            max: {
-              type: "number",
-              description: "Maximum value for slider fields (default: 100)",
-            },
-            step: {
-              type: "number",
-              description: "Step increment for slider fields (default: 1)",
-            },
-          },
-          required: ["name", "label", "type"],
+  const formTool = createInteractiveTool(options, {
+    name: "prompt_user_form",
+    description:
+      "Renders an interactive inline form the user can fill out and submit. Use when you need to collect 2 or more specific pieces of structured information from the user — for example trip planning details (destination, dates, budget), booking info, or configuration settings. Supports text inputs, textareas, dropdowns (select), toggles, date pickers, and sliders. Call this tool FIRST before generating any response text. After the user submits, you receive all their answers at once.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "Title or heading for the form",
         },
-        description: "Array of form fields to display",
+        description: {
+          type: "string",
+          description: "Optional instructions or context shown below the title",
+        },
+        fields: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description: "Unique field identifier (used as key in result)",
+              },
+              label: {
+                type: "string",
+                description: "Display label for the field",
+              },
+              type: {
+                type: "string",
+                enum: ["text", "textarea", "select", "toggle", "date", "slider"],
+                description: "Field type: text (single line), textarea (multi-line), select (dropdown), toggle (on/off), date (calendar picker), slider (numeric range)",
+              },
+              description: {
+                type: "string",
+                description: "Optional help text shown below the label",
+              },
+              placeholder: {
+                type: "string",
+                description: "Placeholder text for text/textarea/select fields",
+              },
+              options: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    value: { type: "string" },
+                    label: { type: "string" },
+                  },
+                  required: ["value", "label"],
+                },
+                description: "Options for select fields",
+              },
+              defaultValue: {
+                description: "Default value for the field (string for text/textarea/select, boolean for toggle, number for slider)",
+              },
+              min: {
+                type: "number",
+                description: "Minimum value for slider fields (default: 0)",
+              },
+              max: {
+                type: "number",
+                description: "Maximum value for slider fields (default: 100)",
+              },
+              step: {
+                type: "number",
+                description: "Step increment for slider fields (default: 1)",
+              },
+            },
+            required: ["name", "label", "type"],
+          },
+          description: "Array of form fields to display",
+        },
       },
+      required: ["title", "fields"],
     },
-    required: ["title", "fields"],
-  },
-  interactionType: "form",
-  validate: (args: any) => {
-    if (!args.title || typeof args.title !== "string") return false;
-    if (!Array.isArray(args.fields) || args.fields.length === 0) return false;
-    for (const field of args.fields) {
-      if (!field.name || !field.label || !field.type) return false;
-      if (!["text", "textarea", "select", "toggle", "date", "slider"].includes(field.type)) return false;
-      if (field.type === "select" && (!Array.isArray(field.options) || field.options.length === 0)) return false;
-    }
-    return true;
-  },
-  mapResult: (result: any, args: any) => ({
-    ...result,
-    _meta: {
-      title: args.title,
-      description: args.description,
-      fields: args.fields,
+    interactionType: "form",
+    validate: (args: any) => {
+      if (!args.title || typeof args.title !== "string") return false;
+      if (!Array.isArray(args.fields) || args.fields.length === 0) return false;
+      for (const field of args.fields) {
+        if (!field.name || !field.label || !field.type) return false;
+        if (!["text", "textarea", "select", "toggle", "date", "slider"].includes(field.type)) return false;
+        if (field.type === "select" && (!Array.isArray(field.options) || field.options.length === 0)) return false;
+      }
+      return true;
     },
-  }),
-});
+    mapResult: (result: any, args: any) => ({
+      ...result,
+      _meta: {
+        title: args.title,
+        description: args.description,
+        fields: args.fields,
+      },
+    }),
+  });
 ```
+
+[lib/ui-interaction-tools.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/ui-interaction-tools.ts#L119-L214)
 
 When the user submits, all field values are collected into a single object and
 returned to the model.

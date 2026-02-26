@@ -21,6 +21,8 @@ export function setupDatabase() {
 }
 ```
 
+[lib/chat-setup.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/chat-setup.ts#L20-L26)
+
 ## Authentication
 
 `getToken` returns a Privy identity token. It caches the token from
@@ -80,6 +82,8 @@ export function setupGetToken() {
 }
 ```
 
+[lib/chat-setup.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/chat-setup.ts#L30-L79)
+
 ## Wallet and Signing
 
 `walletAddress` and the signing functions come from Privy's auth hooks.
@@ -123,3 +127,5 @@ export function setupWallet() {
   return { walletAddress, signMessage, embeddedWalletSigner };
 }
 ```
+
+[lib/chat-setup.ts](https://github.com/anuma-ai/starter-next/blob/main/lib/chat-setup.ts#L83-L116)

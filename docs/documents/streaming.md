@@ -20,26 +20,28 @@ subscriber can update the DOM directly (e.g. setting `textContent` on a ref)
 without going through React's reconciliation:
 
 ```ts
-const subscribeToStreaming = useCallback(
-  (callback: (text: string) => void) => {
-    streamingCallbacksRef.current.add(callback);
-    return () => {
-      streamingCallbacksRef.current.delete(callback);
-    };
-  },
-  []
-);
+  const subscribeToStreaming = useCallback(
+    (callback: (text: string) => void) => {
+      streamingCallbacksRef.current.add(callback);
+      return () => {
+        streamingCallbacksRef.current.delete(callback);
+      };
+    },
+    []
+  );
 
-const subscribeToThinking = useCallback(
-  (callback: (text: string) => void) => {
-    thinkingCallbacksRef.current.add(callback);
-    return () => {
-      thinkingCallbacksRef.current.delete(callback);
-    };
-  },
-  []
-);
+  const subscribeToThinking = useCallback(
+    (callback: (text: string) => void) => {
+      thinkingCallbacksRef.current.add(callback);
+      return () => {
+        thinkingCallbacksRef.current.delete(callback);
+      };
+    },
+    []
+  );
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L492-L510)
 
 ## Usage
 

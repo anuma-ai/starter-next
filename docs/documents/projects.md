@@ -39,39 +39,43 @@ export function useAppProjects() {
   } = useProjects({ database });
 ```
 
+[hooks/useAppProjects.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppProjects.ts#L22-L43)
+
 ## Return Value
 
 The return value is organized into state, project CRUD, conversation
 management, and utilities:
 
 ```ts
-return {
-  // State
-  projects,
-  currentProjectId,
-  setCurrentProjectId,
-  isLoading,
-  isReady,
-  inboxProjectId,
+  return {
+    // State
+    projects,
+    currentProjectId,
+    setCurrentProjectId,
+    isLoading,
+    isReady,
+    inboxProjectId,
 
-  // Project CRUD
-  createProject,
-  getProject,
-  getProjects,
-  updateProjectName,
-  updateProject,
-  deleteProject,
+    // Project CRUD
+    createProject,
+    getProject,
+    getProjects,
+    updateProjectName,
+    updateProject,
+    deleteProject,
 
-  // Conversation management
-  getProjectConversations,
-  getProjectConversationCount,
-  updateConversationProject,
-  getConversationsByProject,
+    // Conversation management
+    getProjectConversations,
+    getProjectConversationCount,
+    updateConversationProject,
+    getConversationsByProject,
 
-  // Utilities
-  refreshProjects,
-};
+    // Utilities
+    refreshProjects,
+  };
 ```
+
+[hooks/useAppProjects.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppProjects.ts#L47-L72)
 
 ## Inbox
 

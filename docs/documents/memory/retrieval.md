@@ -38,10 +38,12 @@ synced across tabs via `StorageEvent`, so changes from the settings page take
 effect immediately without a reload.
 
 ```ts
-const [memoryEnabled, setMemoryEnabled] = useState(true);
-const [memoryLimit, setMemoryLimit] = useState(5);
-const [memoryThreshold, setMemoryThreshold] = useState(0.2);
+  const [memoryEnabled, setMemoryEnabled] = useState(true);
+  const [memoryLimit, setMemoryLimit] = useState(5);
+  const [memoryThreshold, setMemoryThreshold] = useState(0.2);
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L91-L93)
 
 - `memoryEnabled` — toggle memory on or off. Default: `true`.
 - `memoryLimit` — max chunks returned per search (1–20). Default: `5`. Higher
@@ -53,103 +55,105 @@ Settings are loaded from `localStorage` on mount and updated in real time when
 changed from another tab or the settings page:
 
 ```ts
-// Load memory settings from localStorage
-useEffect(() => {
-  const savedEnabled = localStorage.getItem("chat_memoryEnabled");
-  if (savedEnabled !== null) {
-    setMemoryEnabled(savedEnabled === "true");
-  }
-
-  const savedLimit = localStorage.getItem("chat_memoryLimit");
-  if (savedLimit) {
-    const limit = parseInt(savedLimit, 10);
-    if (!isNaN(limit) && limit > 0) {
-      setMemoryLimit(limit);
+  // Load memory settings from localStorage
+  useEffect(() => {
+    const savedEnabled = localStorage.getItem("chat_memoryEnabled");
+    if (savedEnabled !== null) {
+      setMemoryEnabled(savedEnabled === "true");
     }
-  }
 
-  const savedThreshold = localStorage.getItem("chat_memoryThreshold");
-  if (savedThreshold) {
-    const threshold = parseFloat(savedThreshold);
-    if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
-      setMemoryThreshold(threshold);
-    }
-  }
-
-  const savedVaultEnabled = localStorage.getItem("chat_vaultEnabled");
-  if (savedVaultEnabled !== null) {
-    setVaultEnabled(savedVaultEnabled === "true");
-  }
-
-  const savedVaultSearchLimit = localStorage.getItem("chat_vaultSearchLimit");
-  if (savedVaultSearchLimit) {
-    const limit = parseInt(savedVaultSearchLimit, 10);
-    if (!isNaN(limit) && limit > 0) {
-      setVaultSearchLimit(limit);
-    }
-  }
-
-  const savedVaultSearchThreshold = localStorage.getItem("chat_vaultSearchThreshold");
-  if (savedVaultSearchThreshold) {
-    const threshold = parseFloat(savedVaultSearchThreshold);
-    if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
-      setVaultSearchThreshold(threshold);
-    }
-  }
-
-  const savedSystemPrompt = localStorage.getItem("chat_systemPrompt");
-  if (savedSystemPrompt !== null) {
-    setCustomSystemPrompt(savedSystemPrompt);
-  }
-
-  const savedVaultPrompt = localStorage.getItem("chat_vaultPrompt");
-  if (savedVaultPrompt !== null) {
-    setCustomVaultPrompt(savedVaultPrompt);
-  }
-
-  // Listen for changes from settings page
-  const handleStorageChange = (e: StorageEvent) => {
-    if (e.key === "chat_memoryEnabled" && e.newValue !== null) {
-      setMemoryEnabled(e.newValue === "true");
-    }
-    if (e.key === "chat_memoryLimit" && e.newValue) {
-      const limit = parseInt(e.newValue, 10);
+    const savedLimit = localStorage.getItem("chat_memoryLimit");
+    if (savedLimit) {
+      const limit = parseInt(savedLimit, 10);
       if (!isNaN(limit) && limit > 0) {
         setMemoryLimit(limit);
       }
     }
-    if (e.key === "chat_memoryThreshold" && e.newValue) {
-      const threshold = parseFloat(e.newValue);
+
+    const savedThreshold = localStorage.getItem("chat_memoryThreshold");
+    if (savedThreshold) {
+      const threshold = parseFloat(savedThreshold);
       if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
         setMemoryThreshold(threshold);
       }
     }
-    if (e.key === "chat_vaultEnabled" && e.newValue !== null) {
-      setVaultEnabled(e.newValue === "true");
+
+    const savedVaultEnabled = localStorage.getItem("chat_vaultEnabled");
+    if (savedVaultEnabled !== null) {
+      setVaultEnabled(savedVaultEnabled === "true");
     }
-    if (e.key === "chat_vaultSearchLimit" && e.newValue) {
-      const limit = parseInt(e.newValue, 10);
+
+    const savedVaultSearchLimit = localStorage.getItem("chat_vaultSearchLimit");
+    if (savedVaultSearchLimit) {
+      const limit = parseInt(savedVaultSearchLimit, 10);
       if (!isNaN(limit) && limit > 0) {
         setVaultSearchLimit(limit);
       }
     }
-    if (e.key === "chat_vaultSearchThreshold" && e.newValue) {
-      const threshold = parseFloat(e.newValue);
+
+    const savedVaultSearchThreshold = localStorage.getItem("chat_vaultSearchThreshold");
+    if (savedVaultSearchThreshold) {
+      const threshold = parseFloat(savedVaultSearchThreshold);
       if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
         setVaultSearchThreshold(threshold);
       }
     }
-    if (e.key === "chat_systemPrompt") {
-      setCustomSystemPrompt(e.newValue);
+
+    const savedSystemPrompt = localStorage.getItem("chat_systemPrompt");
+    if (savedSystemPrompt !== null) {
+      setCustomSystemPrompt(savedSystemPrompt);
     }
-    if (e.key === "chat_vaultPrompt") {
-      setCustomVaultPrompt(e.newValue);
+
+    const savedVaultPrompt = localStorage.getItem("chat_vaultPrompt");
+    if (savedVaultPrompt !== null) {
+      setCustomVaultPrompt(savedVaultPrompt);
     }
-  };
-  window.addEventListener("storage", handleStorageChange);
-  return () => window.removeEventListener("storage", handleStorageChange);
-}, []);
+
+    // Listen for changes from settings page
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "chat_memoryEnabled" && e.newValue !== null) {
+        setMemoryEnabled(e.newValue === "true");
+      }
+      if (e.key === "chat_memoryLimit" && e.newValue) {
+        const limit = parseInt(e.newValue, 10);
+        if (!isNaN(limit) && limit > 0) {
+          setMemoryLimit(limit);
+        }
+      }
+      if (e.key === "chat_memoryThreshold" && e.newValue) {
+        const threshold = parseFloat(e.newValue);
+        if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
+          setMemoryThreshold(threshold);
+        }
+      }
+      if (e.key === "chat_vaultEnabled" && e.newValue !== null) {
+        setVaultEnabled(e.newValue === "true");
+      }
+      if (e.key === "chat_vaultSearchLimit" && e.newValue) {
+        const limit = parseInt(e.newValue, 10);
+        if (!isNaN(limit) && limit > 0) {
+          setVaultSearchLimit(limit);
+        }
+      }
+      if (e.key === "chat_vaultSearchThreshold" && e.newValue) {
+        const threshold = parseFloat(e.newValue);
+        if (!isNaN(threshold) && threshold >= 0 && threshold <= 1) {
+          setVaultSearchThreshold(threshold);
+        }
+      }
+      if (e.key === "chat_systemPrompt") {
+        setCustomSystemPrompt(e.newValue);
+      }
+      if (e.key === "chat_vaultPrompt") {
+        setCustomVaultPrompt(e.newValue);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L107-L202)
 
 ## Creating the Memory Tool
 
@@ -163,61 +167,61 @@ exclusion works correctly.
 When memory is disabled, the tool is simply omitted.
 
 ```ts
-// Ensure we have a conversation ID BEFORE creating the memory tool
-// This is critical for excludeConversationId to work on new conversations
-let effectiveConversationId = options?.conversationId || conversationId;
-if (!effectiveConversationId) {
-  // Create a new conversation first so we have an ID to exclude
-  // Pass createImmediately to actually create the conversation now (not on first message)
-  const newConv = await createConversation({ createImmediately: true });
-  if (newConv) {
-    effectiveConversationId = newConv.conversationId;
-  }
-}
+        // Ensure we have a conversation ID BEFORE creating the memory tool
+        // This is critical for excludeConversationId to work on new conversations
+        let effectiveConversationId = options?.conversationId || conversationId;
+        if (!effectiveConversationId) {
+          // Create a new conversation first so we have an ID to exclude
+          // Pass createImmediately to actually create the conversation now (not on first message)
+          const newConv = await createConversation({ createImmediately: true });
+          if (newConv) {
+            effectiveConversationId = newConv.conversationId;
+          }
+        }
 
-// Build client tools: memory retrieval + memory vault + base tools
-const builtInTools: any[] = [];
+        // Build client tools: memory retrieval + memory vault + base tools
+        const builtInTools: any[] = [];
 
-if (memoryEnabled) {
-  builtInTools.push(
-    createMemoryRetrievalTool({
-      limit: memoryLimit,
-      minSimilarity: memoryThreshold,
-      excludeConversationId: effectiveConversationId ?? undefined,
-    })
-  );
-}
+        if (memoryEnabled) {
+          builtInTools.push(
+            createMemoryRetrievalTool({
+              limit: memoryLimit,
+              minSimilarity: memoryThreshold,
+              excludeConversationId: effectiveConversationId ?? undefined,
+            })
+          );
+        }
 
-//#region vaultToolCreation
-if (vaultEnabled) {
-  // Wrap onVaultSave to eagerly embed content at save time
-  const wrappedOnVaultSave = async (operation: VaultSaveOperation) => {
-    try {
-      await eagerEmbedContent(
-        operation.content,
-        { getToken, baseUrl: process.env.NEXT_PUBLIC_API_URL },
-        vaultEmbeddingCache
-      );
-    } catch {
-      // Non-critical: embedding will be generated on next search
-    }
-    return onVaultSave ? onVaultSave(operation) : true;
-  };
+        if (vaultEnabled) {
+          // Wrap onVaultSave to eagerly embed content at save time
+          const wrappedOnVaultSave = async (operation: VaultSaveOperation) => {
+            try {
+              await eagerEmbedContent(
+                operation.content,
+                { getToken, baseUrl: process.env.NEXT_PUBLIC_API_URL },
+                vaultEmbeddingCache
+              );
+            } catch {
+              // Non-critical: embedding will be generated on next search
+            }
+            return onVaultSave ? onVaultSave(operation) : true;
+          };
 
-  builtInTools.push(
-    createMemoryVaultTool({
-      onSave: wrappedOnVaultSave,
-    })
-  );
-  builtInTools.push(createMemoryVaultSearchTool({
-    limit: vaultSearchLimit,
-    minSimilarity: vaultSearchThreshold,
-  }));
-}
-//#endregion vaultToolCreation
+          builtInTools.push(
+            createMemoryVaultTool({
+              onSave: wrappedOnVaultSave,
+            })
+          );
+          builtInTools.push(createMemoryVaultSearchTool({
+            limit: vaultSearchLimit,
+            minSimilarity: vaultSearchThreshold,
+          }));
+        }
 
-const effectiveClientTools = [...builtInTools, ...baseClientTools];
+        const effectiveClientTools = [...builtInTools, ...baseClientTools];
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L319-L372)
 
 ## System Prompt
 

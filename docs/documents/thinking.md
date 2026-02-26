@@ -12,9 +12,11 @@ on the model provider — `reasoning` for OpenAI-compatible models and `thinking
 for Anthropic models:
 
 ```ts
-reasoning?: { effort?: string; summary?: string };
-thinking?: { type?: string; budget_tokens?: number };
+        reasoning?: { effort?: string; summary?: string };
+        thinking?: { type?: string; budget_tokens?: number };
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L278-L279)
 
 Pass one or the other in the options object. Both are forwarded to the SDK and
 included in the API request; only the parameter matching the model provider has
@@ -27,26 +29,28 @@ accumulates them and notifies subscribers via a pub/sub pattern that bypasses
 React's batching for low-latency DOM updates:
 
 ```ts
-const subscribeToStreaming = useCallback(
-  (callback: (text: string) => void) => {
-    streamingCallbacksRef.current.add(callback);
-    return () => {
-      streamingCallbacksRef.current.delete(callback);
-    };
-  },
-  []
-);
+  const subscribeToStreaming = useCallback(
+    (callback: (text: string) => void) => {
+      streamingCallbacksRef.current.add(callback);
+      return () => {
+        streamingCallbacksRef.current.delete(callback);
+      };
+    },
+    []
+  );
 
-const subscribeToThinking = useCallback(
-  (callback: (text: string) => void) => {
-    thinkingCallbacksRef.current.add(callback);
-    return () => {
-      thinkingCallbacksRef.current.delete(callback);
-    };
-  },
-  []
-);
+  const subscribeToThinking = useCallback(
+    (callback: (text: string) => void) => {
+      thinkingCallbacksRef.current.add(callback);
+      return () => {
+        thinkingCallbacksRef.current.delete(callback);
+      };
+    },
+    []
+  );
 ```
+
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L492-L510)
 
 Subscribe from your component to receive the accumulated thinking text as it
 streams:

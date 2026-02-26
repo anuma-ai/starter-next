@@ -12,8 +12,10 @@ refreshing the list.
 ## Hook Initialization
 
 ```ts
-const { models, refetch, isLoading, error } = useModels({
-  getToken,
-  baseUrl: baseUrl || process.env.NEXT_PUBLIC_API_URL,
-});
+  const { models, refetch, isLoading, error } = useModels({
+    getToken,
+    baseUrl: baseUrl || process.env.NEXT_PUBLIC_API_URL,
+  });
 ```
+
+[hooks/useAppModels.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppModels.ts#L20-L23)

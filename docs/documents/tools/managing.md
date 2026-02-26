@@ -44,6 +44,8 @@ export function useAppTools({ getToken, baseUrl }: UseToolsProps) {
   }));
 ```
 
+[hooks/useAppTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L173-L201)
+
 ## Tool Modes
 
 Every tool has a mode that controls whether it gets included in API requests:
@@ -55,32 +57,34 @@ Every tool has a mode that controls whether it gets included in API requests:
 Modes are persisted in `localStorage` and default to `auto` when unset.
 
 ```ts
-// Set mode for a specific tool
-const setToolMode = useCallback((toolName: string, mode: ToolMode) => {
-  setToolModesState((prev) => {
-    const newModes = { ...prev };
-    if (mode === 'auto') {
-      // Remove from storage when set to auto (default)
-      delete newModes[toolName];
-    } else {
-      newModes[toolName] = mode;
-    }
-    setToolModes(newModes);
-    return newModes;
-  });
-}, []);
+  // Set mode for a specific tool
+  const setToolMode = useCallback((toolName: string, mode: ToolMode) => {
+    setToolModesState((prev) => {
+      const newModes = { ...prev };
+      if (mode === 'auto') {
+        // Remove from storage when set to auto (default)
+        delete newModes[toolName];
+      } else {
+        newModes[toolName] = mode;
+      }
+      setToolModes(newModes);
+      return newModes;
+    });
+  }, []);
 
-// Get mode for a specific tool
-const getMode = useCallback(
-  (toolName: string): ToolMode => toolModes[toolName] || 'auto',
-  [toolModes]
-);
+  // Get mode for a specific tool
+  const getMode = useCallback(
+    (toolName: string): ToolMode => toolModes[toolName] || 'auto',
+    [toolModes]
+  );
 
-// Legacy: get enabled tools (for backwards compatibility)
-const enabledTools = Object.entries(toolModes)
-  .filter(([_, mode]) => mode === 'enable')
-  .map(([name]) => name);
+  // Legacy: get enabled tools (for backwards compatibility)
+  const enabledTools = Object.entries(toolModes)
+    .filter(([_, mode]) => mode === 'enable')
+    .map(([name]) => name);
 ```
+
+[hooks/useAppTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L205-L229)
 
 ## Semantic Search
 
@@ -89,12 +93,14 @@ selects which tools in `auto` mode are relevant. This reduces token usage by
 only sending tools that match the conversation context.
 
 ```ts
-// Toggle semantic search
-const toggleSemanticSearch = useCallback((enabled: boolean) => {
-  setSemanticSearchEnabledState(enabled);
-  setSemanticSearchEnabled(enabled);
-}, []);
+  // Toggle semantic search
+  const toggleSemanticSearch = useCallback((enabled: boolean) => {
+    setSemanticSearchEnabledState(enabled);
+    setSemanticSearchEnabled(enabled);
+  }, []);
 ```
+
+[hooks/useAppTools.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppTools.ts#L233-L237)
 
 ## Checksum-Based Refresh
 
