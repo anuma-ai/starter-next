@@ -206,7 +206,7 @@ const HtmlWithImageActions = ({ html }: { html: string }) => {
       if (img.parentElement?.hasAttribute("data-image-actions")) return;
 
       const wrapper = document.createElement("div");
-      wrapper.className = "group/image relative inline-block";
+      wrapper.className = "group/image relative w-fit";
       wrapper.setAttribute("data-image-actions", "true");
       img.parentElement?.insertBefore(wrapper, img);
       wrapper.appendChild(img);
