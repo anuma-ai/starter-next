@@ -513,11 +513,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     // ZetaChain tools
     allTools.push(...createBalancesTools());
-    allTools.push(...createEvmDepositTools(async () => {
-      const wallet = wallets.find((w) => w.walletClientType === "privy");
-      if (!wallet?.address) return null;
-      return wallet as any;
-    }));
+    allTools.push(...createEvmDepositTools(
+      async () => {
+        const wallet = wallets.find((w) => w.walletClientType === "privy");
+        if (!wallet?.address) return null;
+        return wallet as any;
+      },
+      {
+        getContext: () => uiInteraction,
+        getLastMessageId: () => messagesRef.current.at(-1)?.id,
+      }
+    ));
 
     return allTools;
   }, [calendarToken, driveToken, hasCalendarCreds, hasDriveCreds, requestCalendarAccess, requestDriveAccess, notionTools, uiInteraction, wallets]);
