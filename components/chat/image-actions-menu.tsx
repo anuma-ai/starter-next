@@ -48,48 +48,78 @@ function useCornerLuminance(imageUrl: string) {
   return isDark;
 }
 
+let nftEnabledCache: boolean | null = null;
+
+function useNftEnabled() {
+  const [enabled, setEnabled] = useState(nftEnabledCache);
+
+  useEffect(() => {
+    if (nftEnabledCache !== null) return;
+    fetch("/api/ipfs")
+      .then((r) => r.json())
+      .then((data) => {
+        nftEnabledCache = data.enabled;
+        setEnabled(data.enabled);
+      })
+      .catch(() => {
+        nftEnabledCache = false;
+        setEnabled(false);
+      });
+  }, []);
+
+  return enabled;
+}
+
 export function ImageActionsMenu({ imageUrl, children }: ImageActionsMenuProps) {
+  const nftEnabled = useNftEnabled();
   const { mint, mintState, explorerUrl } = useNftMint(imageUrl);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isDark = useCornerLuminance(imageUrl);
+
+  if (!nftEnabled) {
+    return children ? <>{children}</> : null;
+  }
+
+  const isBusy = mintState.status === "uploading" || mintState.status === "minting";
 
   const overlay = (
     <div
       className={cn(
         "absolute -top-2 -right-2 z-10",
-        isMenuOpen
+        isBusy || isMenuOpen
           ? "opacity-100"
           : "opacity-0 pointer-events-none group-hover/image:opacity-100 group-hover/image:pointer-events-auto"
       )}
     >
-      <DropdownMenu onOpenChange={setIsMenuOpen}>
-        <DropdownMenuTrigger asChild>
-          <button className="rounded-full bg-white p-1.5 cursor-pointer shadow-[0_0_4px_rgba(0,0,0,0.1)] hover:bg-white/90">
-            <HugeiconsIcon
-              icon={DashboardCircleIcon}
-              className={cn("size-4", isDark ? "text-white" : "text-black")}
-            />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {mintState.status === "success" ? (
-            <DropdownMenuItem asChild>
-              <a href={explorerUrl!} target="_blank" rel="noopener noreferrer">
-                View on Explorer
-              </a>
-            </DropdownMenuItem>
-          ) : mintState.status === "minting" ? (
-            <DropdownMenuItem disabled>
-              <Loader2 className="size-4 animate-spin mr-2" />
-              Minting...
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem onClick={() => mint()}>
-              Create an NFT
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {isBusy ? (
+        <div className="rounded-full bg-white p-1.5 shadow-[0_0_4px_rgba(0,0,0,0.1)]">
+          <Loader2 className="size-4 animate-spin text-black" />
+        </div>
+      ) : (
+        <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <button className="rounded-full bg-white p-1.5 cursor-pointer shadow-[0_0_4px_rgba(0,0,0,0.1)] hover:bg-white/90">
+              <HugeiconsIcon
+                icon={DashboardCircleIcon}
+                className={cn("size-4", isDark ? "text-white" : "text-black")}
+              />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {mintState.status === "success" ? (
+              <DropdownMenuItem asChild>
+                <a href={explorerUrl!} target="_blank" rel="noopener noreferrer">
+                  View on Explorer
+                </a>
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={() => mint()}>
+                Create an NFT
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 
