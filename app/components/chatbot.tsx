@@ -1399,6 +1399,7 @@ const ChatBotDemo = () => {
                         amount={interaction.data.amount}
                         chainId={interaction.data.chainId}
                         chainName={interaction.data.chainName}
+                        nativeSymbol={interaction.data.nativeSymbol}
                         receiver={interaction.data.receiver}
                         from={interaction.data.from}
                         erc20={interaction.data.erc20}
@@ -1507,6 +1508,7 @@ const ChatBotDemo = () => {
                   amount={interaction.data.amount}
                   chainId={interaction.data.chainId}
                   chainName={interaction.data.chainName}
+                  nativeSymbol={interaction.data.nativeSymbol}
                   receiver={interaction.data.receiver}
                   from={interaction.data.from}
                   erc20={interaction.data.erc20}
