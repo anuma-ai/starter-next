@@ -58,6 +58,7 @@ import { useChatPatternWithProject } from "@/lib/chat-pattern";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import { parseDisplayResults } from "@/lib/display-interaction";
+import { ImageActionsMenu } from "@/components/chat/image-actions-menu";
 
 function getErrorTitle(error: string): string {
   const e = error.toLowerCase();
@@ -1293,11 +1294,13 @@ const ChatBotDemo = () => {
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
                         <MessageContent>
-                          <img
-                            src={part.image_url?.url}
-                            alt="Uploaded image"
-                            className="max-h-60 max-w-[300px] rounded-lg object-contain"
-                          />
+                          <ImageActionsMenu imageUrl={part.image_url?.url || ""}>
+                            <img
+                              src={part.image_url?.url}
+                              alt="Uploaded image"
+                              className="max-h-60 max-w-[300px] rounded-lg object-contain"
+                            />
+                          </ImageActionsMenu>
                         </MessageContent>
                       </Message>
                     );
@@ -1324,11 +1327,13 @@ const ChatBotDemo = () => {
                     return (
                       <Message key={`${message.id}-${i}`} from={message.role}>
                         <MessageContent>
-                          <img
-                            src={part.url}
-                            alt="Generated image"
-                            className="rounded-lg max-w-full"
-                          />
+                          <ImageActionsMenu imageUrl={part.url}>
+                            <img
+                              src={part.url}
+                              alt="Generated image"
+                              className="rounded-lg max-w-full"
+                            />
+                          </ImageActionsMenu>
                         </MessageContent>
                       </Message>
                     );

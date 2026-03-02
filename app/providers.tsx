@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
+import { zetachainTestnet } from "@/lib/nft";
 import type { Database } from "@nozbe/watermelondb";
 import { useDatabaseManager } from "@anuma/sdk/react";
 import { dbManager } from "@/lib/database";
@@ -92,6 +93,7 @@ export function PrivyAuthProvider({ children }: Props) {
       appId={privyAppId}
       clientId={privyClientId}
       config={{
+        supportedChains: [zetachainTestnet as any],
         embeddedWallets: {
           ethereum: {
             createOnLogin: "users-without-wallets",

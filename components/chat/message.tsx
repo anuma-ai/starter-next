@@ -5,7 +5,9 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { InformationSquareIcon } from "@hugeicons/core-free-icons";
 import type { MessageRole } from "@/types/chat";
 import type { HTMLAttributes, ImgHTMLAttributes } from "react";
-import { memo, useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { memo, useEffect, useRef, useState, useMemo, useCallback, type ReactPortal } from "react";
+import { createPortal } from "react-dom";
+import { ImageActionsMenu } from "@/components/chat/image-actions-menu";
 import { marked } from "marked";
 import { codeToHtml } from "shiki";
 import { Streamdown } from "streamdown";
@@ -178,6 +180,66 @@ const CodeBlock = ({
   );
 };
 
+// Memo'd HTML container that won't re-render when sibling portals change
+const HtmlContent = memo(({ html }: { html: string }) => (
+  <div dangerouslySetInnerHTML={{ __html: html }} />
+));
+HtmlContent.displayName = "HtmlContent";
+
+// Renders HTML content and wraps any <img> elements with ImageActionsMenu via portals.
+// HtmlContent is memo'd so that when setPortalEntries triggers a re-render,
+// dangerouslySetInnerHTML doesn't reset the DOM and undo the wrapper elements.
+const HtmlWithImageActions = ({ html }: { html: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [portalEntries, setPortalEntries] = useState<
+    Array<{ src: string; container: HTMLDivElement }>
+  >([]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const imgs = container.querySelectorAll("img");
+    const entries: Array<{ src: string; container: HTMLDivElement }> = [];
+
+    imgs.forEach((img) => {
+      if (img.parentElement?.hasAttribute("data-image-actions")) return;
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "group/image relative inline-block";
+      wrapper.setAttribute("data-image-actions", "true");
+      img.parentElement?.insertBefore(wrapper, img);
+      wrapper.appendChild(img);
+
+      const portalTarget = document.createElement("div");
+      wrapper.appendChild(portalTarget);
+
+      entries.push({ src: img.src, container: portalTarget });
+    });
+
+    if (entries.length > 0) {
+      setPortalEntries(entries);
+    }
+
+    return () => {
+      entries.forEach((e) => e.container.remove());
+    };
+  }, [html]);
+
+  return (
+    <div ref={containerRef}>
+      <HtmlContent html={html} />
+      {portalEntries.map((entry, i) =>
+        createPortal(
+          <ImageActionsMenu imageUrl={entry.src} />,
+          entry.container,
+          `img-action-${i}`
+        )
+      )}
+    </div>
+  );
+};
+
 // Use marked's lexer to parse markdown into tokens, then render code blocks specially
 export const MessageResponse = memo(
   ({ className, children, resolveFilePlaceholders }: MessageResponseProps) => {
@@ -291,7 +353,7 @@ export const MessageResponse = memo(
           item.type === "code" ? (
             <CodeBlock key={i} code={item.code || ""} language={item.lang || "text"} />
           ) : (
-            <div key={i} dangerouslySetInnerHTML={{ __html: item.html || "" }} />
+            <HtmlWithImageActions key={i} html={item.html || ""} />
           )
         )}
       </div>
@@ -315,13 +377,15 @@ export type StreamingMessageProps = {
   resolveFilePlaceholders?: (content: string) => Promise<string>;
 };
 
-// Custom image component that doesn't wrap in div (avoids <p><div> hydration error)
+// Custom image component that wraps in ImageActionsMenu for NFT minting
 const MarkdownImage = ({
   src,
   alt,
   ...props
 }: ImgHTMLAttributes<HTMLImageElement>) => (
-  <img src={src} alt={alt || ""} loading="lazy" {...props} />
+  <ImageActionsMenu imageUrl={typeof src === "string" ? src : ""}>
+    <img src={src} alt={alt || ""} loading="lazy" {...props} />
+  </ImageActionsMenu>
 );
 
 export const StreamingMessage = ({
