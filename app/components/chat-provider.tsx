@@ -49,6 +49,7 @@ import type {
 import { createChatTools, createDriveTools } from "@anuma/sdk/tools";
 import { useUIInteraction } from "@anuma/sdk/react";
 import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
+import { createBalancesTools } from "@/lib/balances-tools";
 import { useNotionTools } from "@/hooks/useNotionTools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
@@ -509,6 +510,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       getContext: () => uiInteraction,
       getLastMessageId: () => messagesRef.current.at(-1)?.id,
     }));
+
+    // ZetaChain balances tools
+    allTools.push(...createBalancesTools());
 
     return allTools;
   }, [calendarToken, driveToken, hasCalendarCreds, hasDriveCreds, requestCalendarAccess, requestDriveAccess, notionTools, uiInteraction]);
