@@ -227,7 +227,8 @@ the full list of options.
       for (let retry = 0; retry < MAX_RETRIES; retry++) {
         if (stoppedRef.current) break;
         const hasAutoExecutedTools = (response as any)?.autoExecutedToolResults?.length > 0;
-        const emptyResponse = !response?.error && !hasAutoExecutedTools && !streamingTextRef.current.trim();
+        const hasToolCalls = extractToolCalls(response).length > 0;
+        const emptyResponse = !response?.error && !hasAutoExecutedTools && !hasToolCalls && !streamingTextRef.current.trim();
         const transientError = isTransientError(response);
         if (!emptyResponse && !transientError) break;
         console.warn(`[useAppChatStorage] ${transientError ? "Transient error" : "Empty response"}, retrying (${retry + 1}/${MAX_RETRIES})`);
@@ -236,7 +237,7 @@ the full list of options.
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L763-L838)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L763-L839)
 
 ## Stopping a Response
 
@@ -350,7 +351,7 @@ SDK-wrapped responses.
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L842-L913)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L843-L914)
 
 ## Title Generation
 
@@ -399,7 +400,7 @@ as a conversation message. `extractTextFromResponse` and
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L959-L994)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L960-L995)
 
 ## Post-Stream Cleanup
 
@@ -428,4 +429,4 @@ they switch back.
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L939-L955)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L940-L956)
