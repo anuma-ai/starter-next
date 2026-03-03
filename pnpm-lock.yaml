@@ -102,8 +102,8 @@ importers:
         specifier: ^12.9.3
         version: 12.10.0(@types/react@19.2.7)(immer@11.1.4)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@zetachain/toolkit':
-        specifier: ^16.3.0
-        version: 16.3.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-native@0.84.1(@babel/core@7.28.5)(@types/react@19.2.7)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@5.0.10))(react@19.2.3)(typescript@5.9.3)(utf-8-validate@5.0.10)
+        specifier: ^16.3.1
+        version: 16.3.1(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-native@0.84.1(@babel/core@7.28.5)(@types/react@19.2.7)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@5.0.10))(react@19.2.3)(typescript@5.9.3)(utf-8-validate@5.0.10)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -5097,8 +5097,8 @@ packages:
   '@zetachain/standard-contracts@2.0.1':
     resolution: {integrity: sha512-SHV9a1bSgy8litI/LRZ4VIus7Gsjy0wj3n9bZeIsEydn0C5NNZxYO4XW+P06dlEyDQjtcVJQHoQOyHkodBoVsQ==}
 
-  '@zetachain/toolkit@16.3.0':
-    resolution: {integrity: sha512-pAvUgSM3K/LfGwPOoNIWOrXZj+ApyagCq0bidknlN5AEURzeL6qzJyiDfFGD0DmIcNb8YItl1BTwpQaHDwBe7g==}
+  '@zetachain/toolkit@16.3.1':
+    resolution: {integrity: sha512-q7W7wkTsl+0wNydlmnMsEzL8+elcrghxqot9vqfT8QJFYwj1gNNrRtuiVS9SfZSPGliYpkxMuHKwcu4oT9ZebA==}
 
   abitype@0.7.1:
     resolution: {integrity: sha512-VBkRHTDZf9Myaek/dO3yMmOzB/y2s3Zo6nVU7yaw1G+TvCHAjwaJzNGN9yo4K5D8bU/VZXKP1EJpRhFr862PlQ==}
@@ -18538,7 +18538,7 @@ snapshots:
 
   '@zetachain/standard-contracts@2.0.1': {}
 
-  '@zetachain/toolkit@16.3.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-native@0.84.1(@babel/core@7.28.5)(@types/react@19.2.7)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@5.0.10))(react@19.2.3)(typescript@5.9.3)(utf-8-validate@5.0.10)':
+  '@zetachain/toolkit@16.3.1(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-native@0.84.1(@babel/core@7.28.5)(@types/react@19.2.7)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@5.0.10))(react@19.2.3)(typescript@5.9.3)(utf-8-validate@5.0.10)':
     dependencies:
       '@bitcoinerlab/secp256k1': 1.2.0
       '@coral-xyz/anchor': 0.30.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
