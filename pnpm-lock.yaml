@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@anuma/sdk':
-        specifier: 1.0.0-next.20260227110239
-        version: 1.0.0-next.20260227110239(55651b44486e8415988216cdc97fc79a)
+        specifier: 1.0.0-next.20260302232615
+        version: 1.0.0-next.20260302232615(55651b44486e8415988216cdc97fc79a)
       '@codesandbox/sandpack-react':
         specifier: ^2.20.0
         version: 2.20.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -254,11 +254,11 @@ packages:
   '@antfu/install-pkg@1.1.0':
     resolution: {integrity: sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ==}
 
-  '@anuma/portal@1.0.0-next.20260226221905':
-    resolution: {integrity: sha512-EtC31yimM9IJ+XhDGwY3dkvBwKjVfAGMPG1qRfOhMG8Aym1e7gGP8B7rCr93JmIzGa2g1FhgckJM/jGs7L/JDQ==}
+  '@anuma/portal@1.0.0-next.20260228183644':
+    resolution: {integrity: sha512-nA6PZbX8WoWo9C/aqgpEBLWjxkkBTVf0NvybB5+pyu6RuZcnMfBJTn0e6xVSD10pgI32ZGvfVEOJ8u4/3dwp8g==}
 
-  '@anuma/sdk@1.0.0-next.20260227110239':
-    resolution: {integrity: sha512-dGFpBYtY8PB51lzvn9lDX0h6odxjfyuJuOrQSdM/KPl+fr854oDRlIjscU3d9TXMqKD936MHwe5UaLMr0bMgmw==}
+  '@anuma/sdk@1.0.0-next.20260302232615':
+    resolution: {integrity: sha512-9p8Q9QZPltyQrl/lV4f4Kcaou2ciDHPCko8tvEO38ksol8Shc3dCpzeLlaSgXMSiCZYEqCcCAu8iZUBzUAV7oA==}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -8647,11 +8647,11 @@ snapshots:
       package-manager-detector: 1.6.0
       tinyexec: 1.0.2
 
-  '@anuma/portal@1.0.0-next.20260226221905': {}
+  '@anuma/portal@1.0.0-next.20260228183644': {}
 
-  '@anuma/sdk@1.0.0-next.20260227110239(55651b44486e8415988216cdc97fc79a)':
+  '@anuma/sdk@1.0.0-next.20260302232615(55651b44486e8415988216cdc97fc79a)':
     dependencies:
-      '@anuma/portal': 1.0.0-next.20260226221905
+      '@anuma/portal': 1.0.0-next.20260228183644
       ai: 5.0.93(zod@4.3.5)
       jszip: 3.10.1
       mammoth: 1.11.0
