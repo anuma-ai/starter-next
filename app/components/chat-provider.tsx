@@ -49,7 +49,7 @@ import type {
 import { createChatTools, createDriveTools } from "@anuma/sdk/tools";
 import { useUIInteraction } from "@anuma/sdk/react";
 import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
-import { createBalancesTools, createEvmDepositTools } from "@/lib/tools";
+import { createBalancesTools, createEvmDepositTools, createZetachainWithdrawTools } from "@/lib/tools";
 import { useNotionTools } from "@/hooks/useNotionTools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
@@ -514,6 +514,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     // ZetaChain tools
     allTools.push(...createBalancesTools());
     allTools.push(...createEvmDepositTools(
+      async () => {
+        const wallet = wallets.find((w) => w.walletClientType === "privy");
+        if (!wallet?.address) return null;
+        return wallet as any;
+      },
+      {
+        getContext: () => uiInteraction,
+        getLastMessageId: () => messagesRef.current.at(-1)?.id,
+      }
+    ));
+    allTools.push(...createZetachainWithdrawTools(
       async () => {
         const wallet = wallets.find((w) => w.walletClientType === "privy");
         if (!wallet?.address) return null;

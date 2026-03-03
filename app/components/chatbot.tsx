@@ -53,6 +53,7 @@ import { useUIInteraction } from "@anuma/sdk/react";
 import { ChoiceInteraction } from "@/components/chat/choice-interaction";
 import { FormInteraction } from "@/components/chat/form-interaction";
 import { DepositConfirmation } from "@/components/chat/deposit-confirmation";
+import { WithdrawalConfirmation } from "@/components/chat/withdrawal-confirmation";
 import { WeatherCard } from "@/components/chat/weather-card";
 import { ChartCard } from "@anuma/sdk/react";
 import { useChatPatternWithProject } from "@/lib/chat-pattern";
@@ -991,7 +992,7 @@ const ChatBotDemo = () => {
           {(() => {
             // Build a queue of resolved interactions for inline rendering
             const resolvedInteractions = Array.from(uiInteraction.pendingInteractions.values())
-              .filter(i => (i.type === "choice" || i.type === "form" || i.type === "deposit_confirm") && i.resolved)
+              .filter(i => (i.type === "choice" || i.type === "form" || i.type === "deposit_confirm" || i.type === "withdraw_confirm") && i.resolved)
               .sort((a, b) => a.createdAt - b.createdAt);
             let resolvedIdx = 0;
             const renderedInlineIds = new Set<string>();
@@ -1021,7 +1022,7 @@ const ChatBotDemo = () => {
                 return null;
               }
 
-              if (text.includes("[Tool Execution Results]") && (text.includes("prompt_user_choice") || text.includes("prompt_user_form") || text.includes("evm_deposit"))) {
+              if (text.includes("[Tool Execution Results]") && (text.includes("prompt_user_choice") || text.includes("prompt_user_form") || text.includes("evm_deposit") || text.includes("zetachain_withdraw"))) {
                 const interaction = resolvedInteractions[resolvedIdx];
                 if (interaction) {
                   resolvedIdx++;
@@ -1038,6 +1039,23 @@ const ChatBotDemo = () => {
                           receiver={interaction.data.receiver}
                           from={interaction.data.from}
                           erc20={interaction.data.erc20}
+                          resolved={true}
+                          result={interaction.result}
+                        />
+                        <MessageInfoButton onClick={() => handleShowInfo(message.id)} />
+                      </div>
+                    );
+                  }
+                  if (interaction.type === "withdraw_confirm") {
+                    return (
+                      <div key={message.id} className="group">
+                        <WithdrawalConfirmation
+                          id={interaction.id}
+                          amount={interaction.data.amount}
+                          zrc20={interaction.data.zrc20}
+                          tokenSymbol={interaction.data.tokenSymbol}
+                          receiver={interaction.data.receiver}
+                          from={interaction.data.from}
                           resolved={true}
                           result={interaction.result}
                         />
@@ -1093,6 +1111,26 @@ const ChatBotDemo = () => {
                           receiver={meta.receiver || ""}
                           from={meta.from || ""}
                           erc20={meta.erc20}
+                          resolved={true}
+                          result={parsed}
+                        />
+                        <MessageInfoButton onClick={() => handleShowInfo(message.id)} />
+                      </div>
+                    );
+                  }
+                  const withdrawMatch = text.match(/Tool "zetachain_withdraw" returned: (.+)/);
+                  if (withdrawMatch) {
+                    const parsed = JSON.parse(withdrawMatch[1]);
+                    const meta = parsed._meta || {};
+                    return (
+                      <div key={message.id} className="group">
+                        <WithdrawalConfirmation
+                          id={message.id}
+                          amount={meta.amount || ""}
+                          zrc20={meta.zrc20 || ""}
+                          tokenSymbol={meta.tokenSymbol}
+                          receiver={meta.receiver || ""}
+                          from={meta.from || ""}
                           resolved={true}
                           result={parsed}
                         />
@@ -1406,6 +1444,18 @@ const ChatBotDemo = () => {
                         resolved={true}
                         result={interaction.result}
                       />
+                    ) : interaction.type === "withdraw_confirm" ? (
+                      <WithdrawalConfirmation
+                        key={interaction.id}
+                        id={interaction.id}
+                        amount={interaction.data.amount}
+                        zrc20={interaction.data.zrc20}
+                        tokenSymbol={interaction.data.tokenSymbol}
+                        receiver={interaction.data.receiver}
+                        from={interaction.data.from}
+                        resolved={true}
+                        result={interaction.result}
+                      />
                     ) : interaction.type === "form" ? (
                       <FormInteraction
                         key={interaction.id}
@@ -1467,6 +1517,16 @@ const ChatBotDemo = () => {
                   from={interaction.data.from}
                   erc20={interaction.data.erc20}
                 />
+              ) : interaction.type === "withdraw_confirm" ? (
+                <WithdrawalConfirmation
+                  key={interaction.id}
+                  id={interaction.id}
+                  amount={interaction.data.amount}
+                  zrc20={interaction.data.zrc20}
+                  tokenSymbol={interaction.data.tokenSymbol}
+                  receiver={interaction.data.receiver}
+                  from={interaction.data.from}
+                />
               ) : interaction.type === "form" ? (
                 <FormInteraction
                   key={interaction.id}
@@ -1496,7 +1556,7 @@ const ChatBotDemo = () => {
               const toolResultExists = messages.some((m: any) =>
                 m.role === "user" && m.parts?.[0]?.type === "text" &&
                 m.parts[0].text?.includes("[Tool Execution Results]") &&
-                (m.parts[0].text?.includes("prompt_user_choice") || m.parts[0].text?.includes("prompt_user_form") || m.parts[0].text?.includes("evm_deposit"))
+                (m.parts[0].text?.includes("prompt_user_choice") || m.parts[0].text?.includes("prompt_user_form") || m.parts[0].text?.includes("evm_deposit") || m.parts[0].text?.includes("zetachain_withdraw"))
               );
               return !anchorExists && !toolResultExists;
             })
@@ -1512,6 +1572,18 @@ const ChatBotDemo = () => {
                   receiver={interaction.data.receiver}
                   from={interaction.data.from}
                   erc20={interaction.data.erc20}
+                  resolved={true}
+                  result={interaction.result}
+                />
+              ) : interaction.type === "withdraw_confirm" ? (
+                <WithdrawalConfirmation
+                  key={interaction.id}
+                  id={interaction.id}
+                  amount={interaction.data.amount}
+                  zrc20={interaction.data.zrc20}
+                  tokenSymbol={interaction.data.tokenSymbol}
+                  receiver={interaction.data.receiver}
+                  from={interaction.data.from}
                   resolved={true}
                   result={interaction.result}
                 />
