@@ -20,7 +20,7 @@
     "deploy:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
-    "@anuma/sdk": "1.0.0-next.20260227110239",
+    "@anuma/sdk": "1.0.0-next.20260303083249",
     "@codesandbox/sandpack-react": "^2.20.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",

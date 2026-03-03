@@ -1,7 +1,7 @@
 # Memory Vault
 
 The memory vault is a persistent knowledge store that complements the
-conversation-based memory retrieval system. While memory retrieval searches
+conversation-based memory engine system. While the memory engine searches
 across past conversation chunks, the vault stores curated facts and
 preferences explicitly — things like "I'm vegetarian" or "my timezone is
 PST". Vault entries persist independently of conversations and can be managed
@@ -10,7 +10,7 @@ directly by the user.
 ## How It Works
 
 The vault operates through two client-side tools injected alongside the memory
-retrieval tool:
+engine tool:
 
 - `memory_vault_search` — semantic similarity search across stored vault
   entries. The AI calls this to check if a related memory already exists
@@ -43,7 +43,7 @@ the memory settings:
 [hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L96-L100)
 
 Default values and ranges are visible in the code above. `vaultSearchThreshold`
-is lower than memory retrieval's threshold because vault entries are typically
+is lower than the memory engine's threshold because vault entries are typically
 short and precise.
 
 ## System Prompt
@@ -73,7 +73,7 @@ This prompt can be overridden by setting `customVaultPrompt` in
 ## Creating Vault Tools
 
 On each `sendMessage` call, vault tools are created with the current settings
-and added to the client tools array alongside the memory retrieval tool. If
+and added to the client tools array alongside the memory engine tool. If
 the vault is disabled, the tools are simply omitted.
 
 The save tool wraps the caller's `onVaultSave` callback with eager embedding

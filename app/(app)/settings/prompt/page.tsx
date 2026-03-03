@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
-const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.`;
+const DEFAULT_SYSTEM_PROMPT = `You have access to a memory engine tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory engine tool to recall relevant context before responding.`;
 
 function setLocalStorageWithEvent(key: string, value: string) {
   localStorage.setItem(key, value);
