@@ -99,6 +99,6 @@ Each feature the hook composes has its own page with implementation details:
   and the lower-level `useAppChatStorage` hook
 - [Streaming](streaming) — `subscribeToStreaming` and `subscribeToThinking`
   for real-time DOM updates
-- [Memory Retrieval](memory/retrieval) and [Vault](memory/vault) — how
+- [Memory Engine](memory/retrieval) and [Vault](memory/vault) — how
   long-term memory and encrypted storage are injected as client tools
 - [Tools](tools) — server tools, client tools, and how tool sets are managed

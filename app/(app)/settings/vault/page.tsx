@@ -196,7 +196,7 @@ export default function VaultPage() {
                         <div className="text-sm space-y-2">
                           <p>
                             The memory vault stores facts and preferences that the AI explicitly
-                            decides to remember during your conversations. Unlike memory retrieval
+                            decides to remember during your conversations. Unlike the memory engine
                             (which searches past messages), the vault keeps curated, persistent notes.
                           </p>
                           <p>

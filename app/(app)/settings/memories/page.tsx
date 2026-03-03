@@ -85,7 +85,7 @@ export default function MemoriesPage() {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="memoryEnabled" className="text-base">
-                    Enable memory retrieval
+                    Enable memory engine
                   </Label>
                   <p className="text-sm text-muted-foreground">
                     Allow the AI to search past conversations for relevant context

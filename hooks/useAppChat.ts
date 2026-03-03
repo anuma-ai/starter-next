@@ -15,7 +15,7 @@ import type { FileUIPart } from "@/types/chat";
 /**
  * useAppChat Hook Example
  *
- * This hook demonstrates how to use useAppChatStorage with memory retrieval tools
+ * This hook demonstrates how to use useAppChatStorage with memory engine tools
  * to create a complete chat experience with persistent storage and memory-augmented
  * responses. Memories are fetched on-demand when sendMessage is called.
  */
@@ -51,7 +51,7 @@ type UseAppChatProps = {
 //#endregion chatProps
 
 // Default system prompt (general instructions, without vault-specific rules)
-const DEFAULT_SYSTEM_PROMPT = `You have access to a memory retrieval tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory retrieval tool to recall relevant context before responding.`;
+const DEFAULT_SYSTEM_PROMPT = `You have access to a memory engine tool that can recall information from previous conversations with this user. When the user asks questions that might relate to past conversations (like their name, preferences, personal information, or previously discussed topics), use the memory engine tool to recall relevant context before responding.`;
 
 //#region vaultPrompt
 // Default vault instructions appended when the vault is enabled
@@ -216,7 +216,7 @@ export function useAppChat({
     thinkingCallbacksRef.current.forEach((callback) => callback(accumulated));
   }, []);
 
-  // Use chat storage for message persistence and memory retrieval
+  // Use chat storage for message persistence and memory engine
   const {
     messages,
     setMessages,
@@ -232,7 +232,7 @@ export function useAppChat({
     refreshConversations,
     getMessages,
     getConversation,
-    createMemoryRetrievalTool,
+    createMemoryEngineTool,
     createMemoryVaultTool,
     createMemoryVaultSearchTool,
     vaultEmbeddingCache,
@@ -311,7 +311,7 @@ export function useAppChat({
         };
 
         // Merge tools from hook props and per-request options
-        // Memory retrieval tool is automatically included for on-demand memory fetching
+        // Memory engine tool is automatically included for on-demand memory fetching
         const effectiveServerTools = options?.serverTools || serverTools;
         const baseClientTools = options?.clientTools || clientTools || [];
 
@@ -328,12 +328,12 @@ export function useAppChat({
           }
         }
 
-        // Build client tools: memory retrieval + memory vault + base tools
+        // Build client tools: memory engine + memory vault + base tools
         const builtInTools: any[] = [];
 
         if (memoryEnabled) {
           builtInTools.push(
-            createMemoryRetrievalTool({
+            createMemoryEngineTool({
               limit: memoryLimit,
               minSimilarity: memoryThreshold,
               excludeConversationId: effectiveConversationId ?? undefined,
@@ -428,7 +428,7 @@ export function useAppChat({
       temperature,
       maxOutputTokens,
       handleThinkingData,
-      createMemoryRetrievalTool,
+      createMemoryEngineTool,
       createMemoryVaultTool,
       createMemoryVaultSearchTool,
       vaultEmbeddingCache,

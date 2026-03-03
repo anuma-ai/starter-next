@@ -23,7 +23,7 @@ See Setup for how to obtain `database`, `getToken`, and the wallet fields.
     setConversationId,
     deleteConversation,
     getAllFiles,
-    createMemoryRetrievalTool,
+    createMemoryEngineTool,
     createMemoryVaultTool,
     createMemoryVaultSearchTool,
     vaultEmbeddingCache,

@@ -1,4 +1,4 @@
 export default {
-  retrieval: "Memory Retrieval",
+  retrieval: "Memory Engine",
   vault: "Memory Vault",
 };
