@@ -309,6 +309,36 @@ div[data-streamdown="code-block-body"]::after {
   background-color: transparent !important;
 }
 
+/* Table styling for completed messages (matches Streamdown's table rendering) */
+table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border: 1px solid var(--border) !important;
+  margin: 1rem 0 !important;
+  font-size: 0.875rem !important;
+}
+
+thead {
+  background-color: var(--muted) !important;
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--border) !important;
+}
+
+th {
+  white-space: nowrap !important;
+  padding: 0.5rem 1rem !important;
+  text-align: left !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+}
+
+td {
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+}
+
 /* Theme presets */
 .theme-dark {
   --icon-invert: 1;
