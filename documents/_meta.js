@@ -1,5 +1,5 @@
 export default {
-  README: "Getting Started",
+  index: "Getting Started",
   setup: "Setup",
   chat: "Chat Orchestration",
   messages: "Sending Messages",
