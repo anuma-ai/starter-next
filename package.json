@@ -32,7 +32,7 @@
     "@isomorphic-git/lightning-fs": "^4.6.2",
     "@monaco-editor/react": "^4.7.0",
     "@nozbe/watermelondb": "^0.28.0",
-    "@opennextjs/cloudflare": "^1.17.0",
+    "@opennextjs/cloudflare": "^1.17.1",
     "@privy-io/react-auth": "^3.7.0",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-collapsible": "^1.1.12",
