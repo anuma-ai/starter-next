@@ -1,63 +1,23 @@
-# AI App Starter Kit
+# Anuma Starter
 
-A feature-rich AI chat application with conversation management, project
-organization, file handling, and memory-augmented responses.
-
-## Tech Stack
-
-- [Next.js 16](https://nextjs.org/docs) - React framework with App Router
-- [React 19](https://react.dev/) - UI library
-- [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
-- [Anuma SDK](https://github.com/zeta-chain/ai-sdk) - Unified AI SDK for chat,
-  storage, and memory
-- [shadcn/ui](https://ui.shadcn.com/) - Component library built on Radix UI
-- [Tailwind CSS 4](https://tailwindcss.com/) - Utility-first CSS framework
-- [Privy](https://docs.privy.io/) - Embedded wallet and authentication
-- [WatermelonDB](https://watermelondb.dev/) - Local reactive database
-
-## Features
-
-- AI chat interface with real-time streaming and multiple models (Anuma, GPT 5.2,
-  Claude Opus 4.5, Grok 4.1)
-- Memory system with semantic retrieval from past conversations
-- Conversation management with persistent storage
-- Projects to organize conversations with custom icons and themes
-- File management with encrypted storage
-- App builder for creating applications via AI prompts
-- Thinking mode with extended reasoning and token visibility
-- Voice input with on-device transcription
-- Server-side and client-side tool integration
-- Cloud backups to Google Drive and Dropbox
-- Light/dark themes with customizable accent colors
-
-## Architecture
-
-The starter kit uses a hook-based architecture where each capability is
-encapsulated in its own hook. The hooks handle persistence to WatermelonDB,
-authentication via Privy, and communication with AI services through the SDK.
-
-All data is stored locally, enabling offline operation. The memory system
-extracts facts from conversations and stores
-them with embeddings for semantic search, making relevant context available to
-future conversations.
-
-## Prerequisites
-
-- [Node.js](https://nodejs.org/) 18.x or later
-- [pnpm](https://pnpm.io/) package manager (recommended)
+A feature-rich AI chat application built with the
+[Anuma SDK](https://github.com/anuma-ai/sdk), [Next.js](https://nextjs.org),
+and [Privy](https://privy.io) for authentication. Includes conversation
+management, project organization, file handling, memory-augmented responses,
+and support for multiple AI models.
 
 ## Getting Started
 
-### Clone the repository
+### Create an Anuma app
+
+Sign in at [dashboard.anuma.ai](https://dashboard.anuma.ai/) and create an app.
+This provisions the API account that powers AI responses.
+
+### Clone and install
 
 ```bash
-git clone https://github.com/zeta-chain/ai-examples.git
-cd ai-examples
-```
-
-### Install dependencies
-
-```bash
+git clone https://github.com/anuma-ai/starter-next.git
+cd starter-next
 pnpm install
 ```
 
@@ -66,23 +26,9 @@ pnpm install
 Create a `.env.local` file in the root directory:
 
 ```bash
-# Required
 NEXT_PUBLIC_API_URL=https://portal.anuma-dev.ai
-NEXT_PUBLIC_PRIVY_APP_ID=cmjkga3y002g0ju0clwca9wwp
-
-# Optional - for Google Drive/Calendar integration
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
-
-# Optional - for Dropbox backups
-NEXT_PUBLIC_DROPBOX_APP_KEY=your-dropbox-app-key
+NEXT_PUBLIC_PRIVY_APP_ID=<your-privy-app-id>
 ```
-
-To obtain optional credentials:
-
-- Google: Create OAuth credentials in the
-  [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-- Dropbox: Create an app in the
-  [Dropbox App Console](https://www.dropbox.com/developers/apps)
 
 ### Run the development server
 
@@ -90,58 +36,29 @@ To obtain optional credentials:
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open http://localhost:3000 in your browser. After signing in through Privy
+you'll get a chat interface with AI streaming, conversation history, projects,
+file management, and more.
 
-## Data Storage
+## Features
 
-All data is stored locally in the browser:
+- AI chat with real-time streaming and multiple models
+- Memory system with semantic retrieval from past conversations
+- Conversation management with persistent local storage
+- Projects to organize conversations with custom icons and themes
+- File management with encrypted storage
+- Thinking mode with extended reasoning
+- Voice input with on-device transcription
+- Server-side and client-side tool integration
+- Cloud backups to Google Drive and Dropbox
+- Light/dark themes with customizable accent colors
 
-- WatermelonDB (with LokiJS adapter) for conversations, messages, projects, and
-  settings
-- IndexedDB for database persistence
-- OPFS (Origin Private File System) for encrypted file storage when wallet is
-  connected
-- localStorage for user preferences and theme settings
+## Tech Stack
 
-No data is sent to external servers except for AI chat requests to the Portal
-API.
+Next.js 16, React 19, TypeScript, Anuma SDK, shadcn/ui, Tailwind CSS 4, Privy,
+and WatermelonDB. All data is stored locally in the browser — nothing is sent to
+external servers except AI chat requests.
 
-## Running E2E Tests
+## License
 
-Configure test credentials in `.env.local`:
-
-```
-NEXT_PUBLIC_PRIVY_TEST_MODE=true
-TEST_USER_EMAIL=test@example.com
-TEST_USER_OTP=your-test-otp
-```
-
-Run the tests:
-
-```bash
-# Run all tests
-pnpm test:e2e
-
-# Run with interactive UI
-pnpm test:e2e:ui
-
-# Run in headed mode (visible browser)
-pnpm test:e2e:headed
-```
-
-## External Services
-
-The app connects to the following external services:
-
-| Service         | Purpose                        | Required |
-| --------------- | ------------------------------ | -------- |
-| Portal API      | AI chat completions and tools  | Yes      |
-| Privy           | Authentication and wallet      | Yes      |
-| Google Drive    | Backup/export conversations    | No       |
-| Google Calendar | Calendar integration           | No       |
-| Dropbox         | Alternative backup destination | No       |
-
-## Resources
-
-- [GitHub Repository](https://github.com/zeta-chain/ai-examples)
-- [Live Demo](https://ai-examples.zetachain.app/)
+MIT
