@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@anuma/sdk':
-        specifier: 1.0.0-next.20260307160841
-        version: 1.0.0-next.20260307160841(55651b44486e8415988216cdc97fc79a)
+        specifier: 1.0.0-next.20260310010854
+        version: 1.0.0-next.20260310010854(55651b44486e8415988216cdc97fc79a)
       '@codesandbox/sandpack-react':
         specifier: ^2.20.0
         version: 2.20.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -257,8 +257,8 @@ packages:
   '@anuma/portal@1.0.0-next.20260306183544':
     resolution: {integrity: sha512-kfvuWWwwV3Gtt4vbBp7cFWmWqI/0AevOThGUkoFUscb4ZLU25ZIcFBgXge28G6RJWNTHpLUO8gqoFOUdo1/jtA==}
 
-  '@anuma/sdk@1.0.0-next.20260307160841':
-    resolution: {integrity: sha512-hnFfAUnxPlGQ8stpr399tghZ1HfkavY9g5HxnyruQ8ngRQODrsuPwFkJA02p6wcUSCgZznKrsjiNfzfbRgMBYg==}
+  '@anuma/sdk@1.0.0-next.20260310010854':
+    resolution: {integrity: sha512-+SBki8M7rYIvBKoNbMTCszwxRC3KR53RoFJMlniMStb7C0ohZc8BKmIzix91064o7O8hqgwbHVf0agViJMQ6Xg==}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -8790,7 +8790,7 @@ snapshots:
 
   '@anuma/portal@1.0.0-next.20260306183544': {}
 
-  '@anuma/sdk@1.0.0-next.20260307160841(55651b44486e8415988216cdc97fc79a)':
+  '@anuma/sdk@1.0.0-next.20260310010854(55651b44486e8415988216cdc97fc79a)':
     dependencies:
       '@anuma/portal': 1.0.0-next.20260306183544
       ai: 5.0.93(zod@4.3.5)
@@ -10707,7 +10707,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
       '@types/debug': 4.1.12
-      debug: 4.3.4
+      debug: 4.4.3
       pony-cause: 2.1.11
       semver: 7.7.4
       uuid: 9.0.1
