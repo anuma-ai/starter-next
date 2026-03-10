@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@anuma/sdk':
-        specifier: 1.0.0-next.20260310010854
-        version: 1.0.0-next.20260310010854(55651b44486e8415988216cdc97fc79a)
+        specifier: 1.0.0-next.20260310143358
+        version: 1.0.0-next.20260310143358(55651b44486e8415988216cdc97fc79a)
       '@codesandbox/sandpack-react':
         specifier: ^2.20.0
         version: 2.20.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -257,8 +257,8 @@ packages:
   '@anuma/portal@1.0.0-next.20260306183544':
     resolution: {integrity: sha512-kfvuWWwwV3Gtt4vbBp7cFWmWqI/0AevOThGUkoFUscb4ZLU25ZIcFBgXge28G6RJWNTHpLUO8gqoFOUdo1/jtA==}
 
-  '@anuma/sdk@1.0.0-next.20260310010854':
-    resolution: {integrity: sha512-+SBki8M7rYIvBKoNbMTCszwxRC3KR53RoFJMlniMStb7C0ohZc8BKmIzix91064o7O8hqgwbHVf0agViJMQ6Xg==}
+  '@anuma/sdk@1.0.0-next.20260310143358':
+    resolution: {integrity: sha512-WiX5DFwyTokBLujHVmQb7TKJBTa7Vfv36dZTeCF39+40/ek79q4aBmP99fUFj10LQI+dwLOqs2Jl0sUhfQrFMA==}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -8756,7 +8756,7 @@ snapshots:
 
   '@anuma/portal@1.0.0-next.20260306183544': {}
 
-  '@anuma/sdk@1.0.0-next.20260310010854(55651b44486e8415988216cdc97fc79a)':
+  '@anuma/sdk@1.0.0-next.20260310143358(55651b44486e8415988216cdc97fc79a)':
     dependencies:
       '@anuma/portal': 1.0.0-next.20260306183544
       ai: 5.0.93(zod@4.3.5)
