@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft } from "lucide-react";
+import { CaretLeft } from "@phosphor-icons/react";
 import { useIdentityToken } from "@privy-io/react-auth";
 import {
   getDatabaseStats,
@@ -170,7 +170,7 @@ export default function SeedPage() {
             onClick={() => router.push("/settings")}
             className="absolute left-0 top-1/2 -translate-y-1/2"
           >
-            <ChevronLeft className="size-5" />
+            <CaretLeft size={20} />
           </Button>
           <h1 className="text-lg font-semibold w-full text-center">
             Seed Database

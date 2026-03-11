@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { CaretLeft } from "@phosphor-icons/react";
 import { useAppBackup } from "@/hooks/useAppBackup";
 import { useChatContext } from "@/app/components/chat-provider";
 
@@ -205,7 +205,7 @@ export default function BackupsPage() {
             onClick={() => router.push("/settings")}
             className="absolute left-0 top-1/2 -translate-y-1/2"
           >
-            <ChevronLeft className="size-5" />
+            <CaretLeft size={20} />
           </Button>
           <h1 className="text-lg font-semibold w-full text-center">Backups</h1>
         </div>

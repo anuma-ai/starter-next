@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useUIInteraction } from "@anuma/sdk/react";
 import { Button } from "@/components/ui/button";
-import { Check, Circle } from "lucide-react";
+import { Check, Circle } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 export type ChoiceOption = {
@@ -139,7 +139,7 @@ export function ChoiceInteraction({
                       isSelected && "bg-primary text-primary-foreground"
                     )}
                   >
-                    {isSelected && <Check className="h-4 w-4" />}
+                    {isSelected && <Check size={16} />}
                   </div>
                 ) : (
                   <div
@@ -147,7 +147,7 @@ export function ChoiceInteraction({
                       "h-4 w-4 shrink-0 rounded-full border border-primary ring-offset-background flex items-center justify-center"
                     )}
                   >
-                    {isSelected && <Circle className="h-2.5 w-2.5 fill-current text-primary" />}
+                    {isSelected && <Circle size={10} weight="fill" className="text-primary" />}
                   </div>
                 )}
               </div>
@@ -182,7 +182,7 @@ export function ChoiceInteraction({
                   selectedValues.has("__other__") && "bg-primary text-primary-foreground"
                 )}
               >
-                {selectedValues.has("__other__") && <Check className="h-4 w-4" />}
+                {selectedValues.has("__other__") && <Check size={16} />}
               </div>
             ) : (
               <div
@@ -190,7 +190,7 @@ export function ChoiceInteraction({
                   "h-4 w-4 shrink-0 rounded-full border border-primary ring-offset-background flex items-center justify-center"
                 )}
               >
-                {selectedValues.has("__other__") && <Circle className="h-2.5 w-2.5 fill-current text-primary" />}
+                {selectedValues.has("__other__") && <Circle size={10} weight="fill" className="text-primary" />}
               </div>
             )}
           </div>

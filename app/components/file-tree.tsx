@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Folder01Icon,
-  FolderOpenIcon,
-  FileScriptIcon,
-  File01Icon,
-  ArrowRight01Icon,
-} from "@hugeicons/core-free-icons";
+import { Folder, FolderOpen, FileCode, File, CaretRight } from "@phosphor-icons/react";
 import type { FileTreeNode } from "@/hooks/useAppFiles";
 import { cn } from "@/lib/utils";
 
@@ -49,15 +42,15 @@ function FileTreeItem({
   // Determine icon based on file type
   const getIcon = () => {
     if (file.isDirectory) {
-      return isExpanded ? FolderOpenIcon : Folder01Icon;
+      return isExpanded ? FolderOpen : Folder;
     }
     // Use script icon for code files
     const ext = file.name.split(".").pop()?.toLowerCase();
     const codeExts = ["ts", "tsx", "js", "jsx", "py", "rb", "go", "rs", "java", "c", "cpp", "h", "cs", "php"];
     if (ext && codeExts.includes(ext)) {
-      return FileScriptIcon;
+      return FileCode;
     }
-    return File01Icon;
+    return File;
   };
 
   const handleClick = () => {
@@ -91,8 +84,7 @@ function FileTreeItem({
             onClick={handleChevronClick}
             className="shrink-0 w-4 h-4 flex items-center justify-center cursor-pointer"
           >
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
+            <CaretRight
               size={12}
               className={cn(
                 "transition-transform",
@@ -105,11 +97,7 @@ function FileTreeItem({
         {!file.isDirectory && <span className="w-4" />}
 
         {/* File/folder icon */}
-        <HugeiconsIcon
-          icon={getIcon()}
-          size={14}
-          className="shrink-0 text-muted-foreground"
-        />
+        {(() => { const Icon = getIcon(); return <Icon size={14} className="shrink-0 text-muted-foreground" />; })()}
 
         {/* File name */}
         <span className="truncate flex-1">{file.name}</span>

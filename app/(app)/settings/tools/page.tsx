@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { CaretLeft } from "@phosphor-icons/react";
 import { SearchInput } from "@/components/ui/search-input";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 import { useAppTools, type ToolParameter } from "@/hooks/useAppTools";
@@ -182,7 +182,7 @@ export default function ToolsPage() {
             onClick={() => router.push("/settings")}
             className="absolute left-0 top-1/2 -translate-y-1/2"
           >
-            <ChevronLeft className="size-5" />
+            <CaretLeft size={20} />
           </Button>
           <h1 className="text-lg font-semibold w-full text-center">
             Server-Side Tools

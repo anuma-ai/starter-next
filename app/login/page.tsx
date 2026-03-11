@@ -4,8 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { Button } from "@/components/ui/button";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { SourceCodeSquareIcon, Book03Icon } from "@hugeicons/core-free-icons";
+import { BracketsCurly, BookOpen } from "@phosphor-icons/react";
 import { RotatingLines } from "react-loader-spinner";
 
 export default function LoginPage() {
@@ -66,7 +65,7 @@ export default function LoginPage() {
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <HugeiconsIcon icon={SourceCodeSquareIcon} size={16} />
+            <BracketsCurly size={16} />
             Source
           </a>
           <a
@@ -75,7 +74,7 @@ export default function LoginPage() {
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <HugeiconsIcon icon={Book03Icon} size={16} />
+            <BookOpen size={16} />
             Docs
           </a>
         </div>

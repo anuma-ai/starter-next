@@ -2,10 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Zip02Icon, DashboardSquare01Icon, Alert02Icon, Tick02Icon, NoteEditIcon } from "@hugeicons/core-free-icons";
+import { FileZip, SquaresFour, Warning, Check, NotePencil, Image, Cpu, FileText, Table, File, Brain, Waveform, Square } from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "motion/react";
-import { ImageIcon, CpuIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, BrainIcon, AudioLinesIcon, SquareIcon } from "lucide-react";
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
 
@@ -86,16 +84,16 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <PromptInputButton>
-          <HugeiconsIcon icon={DashboardSquare01Icon} className="size-5" />
+          <SquaresFour size={20} />
         </PromptInputButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="overflow-hidden">
         <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
-          <ImageIcon className="size-4" />
+          <Image size={16} />
           Add photos & files
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={onToggleThinking}>
-          <BrainIcon className="size-4" />
+          <Brain size={16} />
           <span>Thinking</span>
           <Switch
             checked={thinkingEnabled}
@@ -106,7 +104,7 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <CpuIcon className="size-4" />
+            <Cpu size={16} />
             Select model
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
@@ -117,7 +115,7 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
               >
                 <ModelIcon modelId={model.id} className="size-4" />
                 {model.name}
-                <HugeiconsIcon icon={Tick02Icon} className={`size-4 ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
+                <Check size={16} className={`ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>
@@ -1179,7 +1177,7 @@ const ChatBotDemo = () => {
                           <Message from={message.role}>
                             <MessageContent>
                               <div className="flex items-center gap-2 text-muted-foreground">
-                                <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
+                                <Warning size={20} className="flex-shrink-0" />
                                 <span>{getErrorTitle(error || "")}</span>
                               </div>
                             </MessageContent>
@@ -1223,7 +1221,7 @@ const ChatBotDemo = () => {
                     const isSpreadsheet = ext === "xlsx" || ext === "xls" || ext === "csv";
                     const isDocument = ext === "docx" || ext === "doc" || ext === "pdf" || ext === "txt";
                     const isArchive = ext === "zip";
-                    const FileTypeIcon = isSpreadsheet ? FileSpreadsheetIcon : isDocument ? FileTextIcon : FileIcon;
+                    const FileTypeIcon = isSpreadsheet ? Table : isDocument ? FileText : File;
                     const fileTypeLabel = isArchive ? "Archive" : isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
                     const iconBgColor = isArchive ? "bg-amber-500" : isSpreadsheet ? "bg-green-500" : "bg-blue-500";
 
@@ -1236,9 +1234,9 @@ const ChatBotDemo = () => {
                         >
                           <div className={`flex size-10 items-center justify-center rounded-lg ${iconBgColor}`}>
                             {isArchive ? (
-                              <HugeiconsIcon icon={Zip02Icon} className="size-5 text-white" />
+                              <FileZip size={20} className="text-white" />
                             ) : (
-                              <FileTypeIcon className="size-5 text-white" />
+                              <FileTypeIcon size={20} className="text-white" />
                             )}
                           </div>
                           <div className="flex flex-col overflow-hidden">
@@ -1259,9 +1257,9 @@ const ChatBotDemo = () => {
                           <div className="flex items-center gap-3 rounded-xl bg-muted/50 border border-border p-2 pr-4 text-sm">
                             <div className={`flex size-10 items-center justify-center rounded-lg ${iconBgColor}`}>
                               {isArchive ? (
-                                <HugeiconsIcon icon={Zip02Icon} className="size-5 text-white" />
+                                <FileZip size={20} className="text-white" />
                               ) : (
-                                <FileTypeIcon className="size-5 text-white" />
+                                <FileTypeIcon size={20} className="text-white" />
                               )}
                             </div>
                             <div className="flex flex-col overflow-hidden">
@@ -1316,7 +1314,7 @@ const ChatBotDemo = () => {
                   case "error":
                     return (
                       <div key={`${message.id}-${i}`} className="flex items-center gap-2 text-muted-foreground text-sm">
-                        <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
+                        <Warning size={20} className="flex-shrink-0" />
                         <span>{getErrorTitle(part.error)}</span>
                       </div>
                     );
@@ -1391,7 +1389,7 @@ const ChatBotDemo = () => {
           {/* Standalone error when API fails before an assistant message is created */}
           {error && !isLoading && !isSubmitting && messages.at(-1)?.role === "user" && (
             <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4">
-              <HugeiconsIcon icon={Alert02Icon} className="size-5 flex-shrink-0" />
+              <Warning size={20} className="flex-shrink-0" />
               <span>{getErrorTitle(error)}</span>
             </div>
           )}
@@ -1476,7 +1474,7 @@ const ChatBotDemo = () => {
                 onMouseEnter={pauseVaultDismiss}
                 onMouseLeave={resumeVaultDismiss}
               >
-                <HugeiconsIcon icon={NoteEditIcon} className="size-5 text-foreground flex-shrink-0" />
+                <NotePencil size={20} className="text-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm">
                     <span className="text-foreground">Saved to memory vault:</span>{" "}
@@ -1568,7 +1566,7 @@ const ChatBotDemo = () => {
                       className="flex items-center gap-1.5 rounded-r-xl bg-black dark:bg-white text-white dark:text-black pl-2.5 pr-3 h-8 text-xs font-medium cursor-pointer ml-[2px]"
                       style={{ cornerShape: "squircle" } as React.CSSProperties}
                     >
-                      <AudioLinesIcon className="size-3.5" />
+                      <Waveform size={14} />
                       Chat
                     </button>
                   </div>
@@ -1615,7 +1613,7 @@ const ChatBotDemo = () => {
                     disabled={isLoading || !authenticated}
                     className="animate-in fade-in zoom-in-50 duration-200"
                   >
-                    <AudioLinesIcon className="size-5" />
+                    <Waveform size={20} />
                   </PromptInputButton>
                 )
               )}
@@ -1627,7 +1625,7 @@ const ChatBotDemo = () => {
                     aria-label="Stop generating"
                     className="inline-flex items-center justify-center size-8 rounded-full bg-primary text-primary-foreground hover:opacity-80 transition-opacity cursor-pointer"
                   >
-                    <SquareIcon className="size-3" fill="currentColor" strokeWidth={0} />
+                    <Square size={12} weight="fill" />
                   </button>
                 ) : (
                   <PromptInputSubmit

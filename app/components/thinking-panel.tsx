@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BrainIcon, XIcon } from "lucide-react";
+import { Brain, X } from "@phosphor-icons/react";
 import { Streamdown } from "streamdown";
 import {
   RightSidebar,
@@ -51,7 +51,7 @@ export function ThinkingPanel() {
     <RightSidebar>
       <RightSidebarHeader className="flex-row items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <BrainIcon className="size-4" />
+          <Brain size={16} />
           <span>Thinking</span>
         </div>
         <button
@@ -60,7 +60,7 @@ export function ThinkingPanel() {
           className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           aria-label="Close thinking panel"
         >
-          <XIcon className="size-4" />
+          <X size={16} />
         </button>
       </RightSidebarHeader>
       <RightSidebarContent className="p-4">

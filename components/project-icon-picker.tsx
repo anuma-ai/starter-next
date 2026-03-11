@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useState, useMemo, useCallback } from "react";
-import { SearchIcon } from "lucide-react";
+import { MagnifyingGlass } from "@phosphor-icons/react";
 import openmojiData from "openmoji/data/openmoji.json";
 import {
   Dialog,
@@ -11,8 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { FolderLibraryIcon } from "@hugeicons/core-free-icons";
+import { Folders } from "@phosphor-icons/react";
 
 // Type for openmoji metadata
 type OpenmojiEntry = {
@@ -268,7 +267,7 @@ export function ProjectIconPicker({
 
         {/* Search input */}
         <div className="flex items-center gap-2 border border-input rounded-md px-3 py-2 bg-muted/50">
-          <SearchIcon className="size-4 text-muted-foreground" />
+          <MagnifyingGlass size={16} className="text-muted-foreground" />
           <input
             type="text"
             placeholder="Search icons..."
@@ -291,7 +290,7 @@ export function ProjectIconPicker({
                 }`}
                 title="Default folder icon"
               >
-                <HugeiconsIcon icon={FolderLibraryIcon} size={36} />
+                <Folders size={36} />
               </button>
             )}
             {filteredIcons.map((icon) => (

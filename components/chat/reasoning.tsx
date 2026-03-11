@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { BrainIcon } from "lucide-react";
+import { Brain } from "@phosphor-icons/react";
 import type { HTMLAttributes } from "react";
 import { memo, useEffect, useState } from "react";
 
@@ -69,7 +69,7 @@ export const Reasoning = memo(
         )}
         {...props}
       >
-        <BrainIcon className="size-4" />
+        <Brain size={16} />
         <span>{getThinkingMessage(isStreaming, duration)}</span>
       </button>
     );

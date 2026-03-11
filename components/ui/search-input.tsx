@@ -1,8 +1,7 @@
 "use client";
 
-import { Search } from "lucide-react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { CancelCircleIcon } from "@hugeicons/core-free-icons";
+import { MagnifyingGlass } from "@phosphor-icons/react";
+import { XCircle } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 
 type SearchInputProps = {
@@ -20,7 +19,7 @@ export function SearchInput({
 }: SearchInputProps) {
   return (
     <div className={`relative ${className || ""}`}>
-      <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
+      <MagnifyingGlass size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
       <Input
         type="text"
         placeholder={placeholder}
@@ -34,7 +33,7 @@ export function SearchInput({
           onClick={() => onChange("")}
           className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
-          <HugeiconsIcon icon={CancelCircleIcon} size={20} />
+          <XCircle size={20} />
         </button>
       )}
     </div>

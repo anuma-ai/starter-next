@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowRight01Icon, Logout02Icon } from "@hugeicons/core-free-icons";
+import { CaretRight, SignOut } from "@phosphor-icons/react";
 
 export function SettingsView() {
   const router = useRouter();
@@ -26,11 +25,7 @@ export function SettingsView() {
                   Customize theme and background patterns
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/models")}
@@ -42,11 +37,7 @@ export function SettingsView() {
                   Choose which AI models to use
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/apps")}
@@ -58,11 +49,7 @@ export function SettingsView() {
                   Manage Google Calendar, Drive, and other integrations
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/backups")}
@@ -74,11 +61,7 @@ export function SettingsView() {
                   Backup conversations to Google Drive or Dropbox
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/personalization")}
@@ -90,11 +73,7 @@ export function SettingsView() {
                   Configure temperature, max tokens, and other model settings
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/prompt")}
@@ -106,11 +85,7 @@ export function SettingsView() {
                   Customize instructions sent to the AI
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/voice")}
@@ -122,11 +97,7 @@ export function SettingsView() {
                   Enable on-device voice input and transcription
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/tools")}
@@ -138,11 +109,7 @@ export function SettingsView() {
                   Enable or disable AI tools like image generation and search
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/memories")}
@@ -154,11 +121,7 @@ export function SettingsView() {
                   Configure how the AI recalls past conversations
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/vault")}
@@ -170,11 +133,7 @@ export function SettingsView() {
                   View and manage saved facts and preferences
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => router.push("/settings/seed")}
@@ -186,11 +145,7 @@ export function SettingsView() {
                   Populate with LongMemEval test data
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
           </div>
 
@@ -205,17 +160,13 @@ export function SettingsView() {
                   Manage your account, subscription, and credits
                 </p>
               </div>
-              <HugeiconsIcon
-                icon={ArrowRight01Icon}
-                size={20}
-                className="text-muted-foreground"
-              />
+              <CaretRight size={20} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => logout()}
               className="flex w-full items-center px-4 py-3 cursor-pointer hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors text-left text-destructive"
             >
-              <HugeiconsIcon icon={Logout02Icon} size={16} className="mr-2" />
+              <SignOut size={16} className="mr-2" />
               <span className="text-base">Sign out</span>
             </button>
           </div>

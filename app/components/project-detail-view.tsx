@@ -2,10 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { MenuSquareIcon } from "hugeicons-react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Setting07Icon, Delete02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CheckIcon, CpuIcon, PaletteIcon, BrainIcon } from "lucide-react";
+import { List, GearSix, Trash, Check, Folders, Image, Cpu, Palette, Brain } from "@phosphor-icons/react";
 
 import { ModelIcon } from "@/components/model-icons";
 import { usePrivy } from "@privy-io/react-auth";
@@ -39,7 +36,6 @@ import { THEME_PRESETS } from "@/lib/theme-colors";
 import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import { ThemedProjectIcon, ProjectIconPicker } from "@/components/project-icon-picker";
-import { FolderLibraryIcon } from "@hugeicons/core-free-icons";
 
 type PromptMenuProps = {
   selectedModel: string;
@@ -55,16 +51,16 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <PromptInputButton>
-          <MenuSquareIcon className="size-4" strokeWidth={2} />
+          <List size={16} />
         </PromptInputButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="overflow-hidden">
         <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
-          <ImageIcon className="size-4" />
+          <Image size={16} />
           Add photos & files
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={onToggleThinking}>
-          <BrainIcon className="size-4" />
+          <Brain size={16} />
           <span>Thinking</span>
           <Switch
             checked={thinkingEnabled}
@@ -75,7 +71,7 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <CpuIcon className="size-4" />
+            <Cpu size={16} />
             Select model
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
@@ -86,7 +82,7 @@ const PromptMenu = ({ selectedModel, onSelectModel, thinkingEnabled, onToggleThi
               >
                 <ModelIcon modelId={model.id} className="size-4" />
                 {model.name}
-                <HugeiconsIcon icon={Tick02Icon} className={`size-4 ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
+                <Check size={16} className={`ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>
@@ -412,7 +408,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
                 scale={1.1}
               />
             ) : (
-              <HugeiconsIcon icon={FolderLibraryIcon} size={32} />
+              <Folders size={32} />
             )}
           </button>
           <input
@@ -432,25 +428,25 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="p-2 rounded-lg hover:bg-muted transition-colors">
-                <HugeiconsIcon icon={Setting07Icon} size={20} className="text-muted-foreground" />
+                <GearSix size={20} className="text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {/* Background (Icon Theme) Submenu */}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
-                  <ImageIcon className="size-4" />
+                  <Image size={16} />
                   Background
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={() => updateIconTheme(undefined)}>
-                    {!projectTheme.iconTheme && <CheckIcon className="size-4" />}
+                    {!projectTheme.iconTheme && <Check size={16} />}
                     <span className={projectTheme.iconTheme ? "pl-6" : ""}>
                       Default
                     </span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => updateIconTheme("none")}>
-                    {projectTheme.iconTheme === "none" && <CheckIcon className="size-4" />}
+                    {projectTheme.iconTheme === "none" && <Check size={16} />}
                     <span className={projectTheme.iconTheme !== "none" ? "pl-6" : ""}>
                       None
                     </span>
@@ -462,7 +458,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
                       onClick={() => updateIconTheme(id)}
                     >
                       {projectTheme.iconTheme === id && (
-                        <CheckIcon className="size-4" />
+                        <Check size={16} />
                       )}
                       <span className={projectTheme.iconTheme !== id ? "pl-6" : ""}>
                         {theme.name}
@@ -475,12 +471,12 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
               {/* Color Theme Submenu */}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
-                  <PaletteIcon className="size-4" />
+                  <Palette size={16} />
                   Color Theme
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={() => updateColorTheme(undefined)}>
-                    {!projectTheme.colorTheme && <CheckIcon className="size-4" />}
+                    {!projectTheme.colorTheme && <Check size={16} />}
                     <span className={projectTheme.colorTheme ? "pl-6" : ""}>
                       Default
                     </span>
@@ -496,7 +492,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
                         style={{ backgroundColor: preset.background }}
                       />
                       {projectTheme.colorTheme === preset.id && (
-                        <CheckIcon className="size-4" />
+                        <Check size={16} />
                       )}
                       <span className={projectTheme.colorTheme !== preset.id ? "pl-2" : ""}>
                         {preset.name}
@@ -517,7 +513,7 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
                 }}
                 className="text-destructive focus:text-destructive"
               >
-                <HugeiconsIcon icon={Delete02Icon} size={16} className="text-destructive" />
+                <Trash size={16} className="text-destructive" />
                 Delete project
               </DropdownMenuItem>
             </DropdownMenuContent>

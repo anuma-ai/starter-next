@@ -1,20 +1,6 @@
 "use client";
 
-import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  QuillWrite02Icon,
-  Setting07Icon,
-  Search01Icon,
-  Folder01Icon,
-  FolderLibraryIcon,
-  ArrowRight01Icon,
-  ArrowDown01Icon,
-  CodeIcon,
-  SourceCodeIcon,
-  FileScriptIcon,
-  MoreVerticalIcon,
-  Delete02Icon,
-} from "@hugeicons/core-free-icons";
+import { PencilLine, GearSix, MagnifyingGlass, Folder, Folders, CaretRight, CaretDown, Code, FileCode, DotsThreeVertical, Trash } from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -183,14 +169,12 @@ function SortableProjectItem({
                 className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
               />
             ) : (
-              <HugeiconsIcon
-                icon={FolderLibraryIcon}
+              <Folders
                 size={16}
                 className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
               />
             )}
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
+            <CaretRight
               size={16}
               className={`absolute ${showChevron ? 'opacity-100' : 'opacity-0'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
             />
@@ -223,7 +207,7 @@ function ProjectItemOverlay({
           {projectIcon ? (
             <ThemedProjectIcon hexcode={projectIcon} size={16} strokeWidth={2.5} scale={1.25} />
           ) : (
-            <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
+            <Folders size={16} />
           )}
           <span className="truncate">{project.name || "Project"}</span>
         </SidebarMenuButton>
@@ -274,13 +258,11 @@ function AppItem({
             className={`relative shrink-0 w-4 h-4 flex items-center justify-center ${showChevron ? 'cursor-pointer' : ''}`}
             role={showChevron ? "button" : undefined}
           >
-            <HugeiconsIcon
-              icon={CodeIcon}
+            <Code
               size={16}
               className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
             />
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
+            <CaretRight
               size={16}
               className={`absolute ${showChevron ? 'opacity-100' : 'opacity-0'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
             />
@@ -291,7 +273,7 @@ function AppItem({
           <DropdownMenu onOpenChange={setIsMenuOpen}>
             <DropdownMenuTrigger asChild>
               <SidebarMenuAction className="cursor-pointer">
-                <HugeiconsIcon icon={MoreVerticalIcon} size={14} />
+                <DotsThreeVertical size={14} />
               </SidebarMenuAction>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="right">
@@ -302,7 +284,7 @@ function AppItem({
                 }}
                 className="text-destructive focus:text-destructive cursor-pointer"
               >
-                <HugeiconsIcon icon={Delete02Icon} size={16} className="text-destructive" />
+                <Trash size={16} className="text-destructive" />
                 Delete app
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -443,7 +425,7 @@ function SortableConversationItem({
           <DropdownMenu onOpenChange={setIsMenuOpen}>
             <DropdownMenuTrigger asChild>
               <SidebarMenuAction className="cursor-pointer">
-                <HugeiconsIcon icon={MoreVerticalIcon} size={14} />
+                <DotsThreeVertical size={14} />
               </SidebarMenuAction>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="right">
@@ -454,7 +436,7 @@ function SortableConversationItem({
                 }}
                 className="text-destructive focus:text-destructive cursor-pointer"
               >
-                <HugeiconsIcon icon={Delete02Icon} size={16} className="text-destructive" />
+                <Trash size={16} className="text-destructive" />
                 Delete chat
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -1126,18 +1108,18 @@ export function AppSidebar({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={onNewConversation}>
-                <HugeiconsIcon icon={QuillWrite02Icon} size={16} />
+                <PencilLine size={16} />
                 <span>New chat</span>
               </SidebarMenuButton>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuAction className="!opacity-100">
-                    <HugeiconsIcon icon={ArrowDown01Icon} size={14} />
+                    <CaretDown size={14} />
                   </SidebarMenuAction>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" side="bottom">
                   <DropdownMenuItem onClick={onNewConversation}>
-                    <HugeiconsIcon icon={QuillWrite02Icon} size={16} />
+                    <PencilLine size={16} />
                     New chat
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -1150,7 +1132,7 @@ export function AppSidebar({
                       }
                     }}
                   >
-                    <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
+                    <Folders size={16} />
                     New project
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -1163,7 +1145,7 @@ export function AppSidebar({
                       }
                     }}
                   >
-                    <HugeiconsIcon icon={CodeIcon} size={16} />
+                    <Code size={16} />
                     New app
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -1174,7 +1156,7 @@ export function AppSidebar({
                 isActive={currentView === "conversations"}
                 onClick={() => onViewChange("conversations")}
               >
-                <HugeiconsIcon icon={Search01Icon} size={16} />
+                <MagnifyingGlass size={16} />
                 <span>Search</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -1183,7 +1165,7 @@ export function AppSidebar({
                 isActive={currentView === "files"}
                 onClick={() => onViewChange("files")}
               >
-                <HugeiconsIcon icon={Folder01Icon} size={16} />
+                <Folder size={16} />
                 <span>Files</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -1353,7 +1335,7 @@ export function AppSidebar({
                 isActive={currentView === "settings"}
                 onClick={() => onViewChange("settings")}
               >
-                <HugeiconsIcon icon={Setting07Icon} size={16} />
+                <GearSix size={16} />
                 <span>Settings</span>
               </SidebarMenuButton>
             </SidebarMenuItem>

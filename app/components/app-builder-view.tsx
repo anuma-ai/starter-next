@@ -2,10 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { MenuSquareIcon, Cancel01Icon } from "hugeicons-react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Tick02Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, CpuIcon, AlertCircleIcon, CodeIcon, PlayIcon, TerminalIcon, ChevronDownIcon, ChevronUpIcon, FolderIcon, GitBranchIcon } from "lucide-react";
+import { List, X, Check, Image, Cpu, WarningCircle, Code, Play, Terminal, CaretDown, CaretUp, Folder, GitBranch } from "@phosphor-icons/react";
 import { ModelIcon } from "@/components/model-icons";
 import {
   SandpackProvider,
@@ -95,17 +92,17 @@ const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <PromptInputButton>
-          <MenuSquareIcon className="size-4" strokeWidth={2} />
+          <List size={16} />
         </PromptInputButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="overflow-hidden">
         <DropdownMenuItem onClick={() => attachments.openFileDialog()}>
-          <ImageIcon className="size-4" />
+          <Image size={16} />
           Add photos & files
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <CpuIcon className="size-4" />
+            <Cpu size={16} />
             Select model
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
@@ -116,7 +113,7 @@ const PromptMenu = ({ selectedModel, onSelectModel }: PromptMenuProps) => {
               >
                 <ModelIcon modelId={model.id} className="size-4" />
                 {model.name}
-                <HugeiconsIcon icon={Tick02Icon} className={`size-4 ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
+                <Check size={16} className={`ml-auto text-black ${selectedModel === model.id ? "" : "invisible"}`} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>
@@ -760,7 +757,7 @@ ${diffSummary}`;
                             <Message from={message.role}>
                               <MessageContent>
                                 <div className="flex items-center gap-2 text-destructive">
-                                  <AlertCircleIcon className="size-4 flex-shrink-0" />
+                                  <WarningCircle size={16} className="flex-shrink-0" />
                                   <span className="text-sm">
                                     {error || "Something went wrong. Please try again."}
                                   </span>
@@ -844,7 +841,7 @@ ${diffSummary}`;
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <CodeIcon className="size-3.5" />
+                <Code size={14} />
                 Code
               </button>
               <button
@@ -858,7 +855,7 @@ ${diffSummary}`;
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <PlayIcon className="size-3.5" />
+                <Play size={14} />
                 Preview
               </button>
             </div>
@@ -867,7 +864,7 @@ ${diffSummary}`;
                 onClick={() => setSelectedFilePath(null)}
                 className="text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <Cancel01Icon size={14} />
+                <X size={14} />
               </button>
             )}
           </div>
@@ -928,9 +925,9 @@ ${diffSummary}`;
                         onClick={() => setShowConsole(!showConsole)}
                         className="flex items-center gap-2 w-full px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
                       >
-                        <TerminalIcon className="size-3.5" />
+                        <Terminal size={14} />
                         <span>Console</span>
-                        {showConsole ? <ChevronDownIcon className="size-3.5 ml-auto" /> : <ChevronUpIcon className="size-3.5 ml-auto" />}
+                        {showConsole ? <CaretDown size={14} className="ml-auto" /> : <CaretUp size={14} className="ml-auto" />}
                       </button>
                       {showConsole && (
                         <div className="h-32">
@@ -943,7 +940,7 @@ ${diffSummary}`;
               ) : (
                 <div className="flex h-full items-center justify-center text-muted-foreground bg-muted/10">
                   <div className="text-center">
-                    <PlayIcon className="size-8 mx-auto mb-2 opacity-50" />
+                    <Play size={32} className="mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No files to preview</p>
                     <p className="text-xs mt-1">Create some files first, then preview your app here</p>
                   </div>
@@ -996,7 +993,7 @@ ${diffSummary}`;
             )}
             title="Files"
           >
-            <FolderIcon size={20} className="text-muted-foreground" />
+            <Folder size={20} className="text-muted-foreground" />
           </button>
           <button
             onClick={() => setRightSidebarView(rightSidebarView === "git" ? null : "git")}
@@ -1006,7 +1003,7 @@ ${diffSummary}`;
             )}
             title="Source Control"
           >
-            <GitBranchIcon size={20} className="text-muted-foreground" />
+            <GitBranch size={20} className="text-muted-foreground" />
             {gitStatus.hasChanges && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
             )}

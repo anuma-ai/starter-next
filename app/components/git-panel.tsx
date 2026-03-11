@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { Undo2Icon, MoreVerticalIcon, SparklesIcon, Loader2Icon, DownloadIcon } from "lucide-react";
+import { CaretRight, ArrowCounterClockwise, DotsThreeVertical, Sparkle, CircleNotch, DownloadSimple } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import type { GitStatus, GitFileStatus } from "@/hooks/useAppGit";
 import {
@@ -124,9 +122,9 @@ export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscar
               title="Generate commit message"
             >
               {isGenerating ? (
-                <Loader2Icon size={14} className="text-muted-foreground animate-spin" />
+                <CircleNotch size={14} className="text-muted-foreground animate-spin" />
               ) : (
-                <SparklesIcon size={14} className="text-muted-foreground" />
+                <Sparkle size={14} className="text-muted-foreground" />
               )}
             </button>
           )}
@@ -147,8 +145,7 @@ export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscar
             onClick={() => setChangesExpanded(!changesExpanded)}
             className="flex-1 flex items-center gap-1.5 p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted/50 transition-colors cursor-pointer"
           >
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
+            <CaretRight
               size={12}
               className={cn("transition-transform", changesExpanded && "rotate-90")}
             />
@@ -160,7 +157,7 @@ export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscar
               className="p-2 hover:bg-muted/50 transition-opacity opacity-0 group-hover/changes:opacity-100 cursor-pointer"
               title="Discard all changes"
             >
-              <Undo2Icon size={14} className="text-muted-foreground" />
+              <ArrowCounterClockwise size={14} className="text-muted-foreground" />
             </button>
           )}
         </div>
@@ -210,8 +207,7 @@ export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscar
           onClick={() => setCommitsExpanded(!commitsExpanded)}
           className="w-full flex items-center gap-1.5 p-2 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:bg-muted/50 transition-colors cursor-pointer shrink-0"
         >
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
+          <CaretRight
             size={12}
             className={cn("transition-transform", commitsExpanded && "rotate-90")}
           />
@@ -258,7 +254,7 @@ export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscar
                             className="shrink-0 p-0.5 rounded hover:bg-muted opacity-0 group-hover/commit:opacity-100 transition-opacity cursor-pointer"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <MoreVerticalIcon size={14} className="text-muted-foreground" />
+                            <DotsThreeVertical size={14} className="text-muted-foreground" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -285,9 +281,9 @@ export function GitPanel({ status, commits, currentCommitOid, onCommit, onDiscar
             className="w-full flex items-center justify-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors cursor-pointer disabled:opacity-50"
           >
             {isDownloading ? (
-              <Loader2Icon size={14} className="animate-spin" />
+              <CircleNotch size={14} className="animate-spin" />
             ) : (
-              <DownloadIcon size={14} />
+              <DownloadSimple size={14} />
             )}
             <span>{isDownloading ? "Downloading..." : "Download Source"}</span>
           </button>

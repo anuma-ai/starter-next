@@ -2,8 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, FolderLibraryIcon, Add01Icon } from "@hugeicons/core-free-icons";
+import { MagnifyingGlass, Folders, Plus } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useChatContext } from "./chat-provider";
@@ -50,7 +49,7 @@ export function ProjectsView() {
             variant="outline"
             size="sm"
           >
-            <HugeiconsIcon icon={Add01Icon} size={16} className="mr-2" />
+            <Plus size={16} className="mr-2" />
             New project
           </Button>
         </div>
@@ -90,7 +89,7 @@ export function ProjectsView() {
         )}
 
         <div className="relative mb-6">
-          <HugeiconsIcon icon={Search01Icon} size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <MagnifyingGlass size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search projects..."
@@ -120,7 +119,7 @@ export function ProjectsView() {
                   className="flex w-full items-center justify-between gap-3 px-4 py-3 hover:bg-sidebar dark:hover:bg-muted/50 rounded-lg transition-colors text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <HugeiconsIcon icon={FolderLibraryIcon} size={20} className="text-muted-foreground" />
+                    <Folders size={20} className="text-muted-foreground" />
                     <span className="truncate">{project.name}</span>
                   </div>
                   {formattedDate && (

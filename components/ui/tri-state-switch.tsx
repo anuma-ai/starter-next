@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { X } from "lucide-react"
+import { X } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 
 type TriState = "auto" | "enable" | "disable"
@@ -65,7 +65,7 @@ function TriStateSwitch({
         data-state={dataState}
       >
         {effectiveValue === "disable" && (
-          <X className="size-2.5 text-neutral-300" strokeWidth={4} />
+          <X size={10} weight="bold" className="text-neutral-300" />
         )}
       </span>
     </button>

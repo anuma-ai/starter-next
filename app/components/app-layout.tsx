@@ -13,8 +13,7 @@ import { useChatContext } from "./chat-provider";
 import { ThinkingPanelProvider } from "./thinking-panel-provider";
 import { ThinkingPanel } from "./thinking-panel";
 import { RightSidebarHandle } from "@/components/ui/right-sidebar";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
+import { SidebarSimple } from "@phosphor-icons/react";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import { getProjectTheme } from "@/lib/project-theme";
 import { useApps } from "@/hooks/useApps";
@@ -48,7 +47,7 @@ function SidebarHandle() {
           className="fixed top-5 left-5 z-50 md:hidden text-muted-foreground"
           aria-label="Open Sidebar"
         >
-          <HugeiconsIcon icon={SidebarLeftIcon} size={20} />
+          <SidebarSimple size={20} />
         </button>
       )}
     </>

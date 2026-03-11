@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronDown, Trash2, MoreHorizontal } from "lucide-react";
+import { CaretLeft, CaretDown, Trash, DotsThree, XCircle, Info } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -13,8 +13,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { CancelCircleIcon, InformationCircleIcon } from "@hugeicons/core-free-icons";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -172,7 +170,7 @@ export default function VaultPage() {
             onClick={() => router.push("/settings")}
             className="absolute left-0 top-1/2 -translate-y-1/2"
           >
-            <ChevronLeft className="size-5" />
+            <CaretLeft size={20} />
           </Button>
           <h1 className="text-lg font-semibold w-full text-center">Memory Vault</h1>
         </div>
@@ -189,7 +187,7 @@ export default function VaultPage() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                          <HugeiconsIcon icon={InformationCircleIcon} size={16} />
+                          <Info size={16} />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="center" className="max-w-sm p-3">
@@ -227,7 +225,7 @@ export default function VaultPage() {
             <Collapsible className={`border-t border-border ${!vaultEnabled ? "opacity-50 pointer-events-none" : ""}`}>
               <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium cursor-pointer [&[data-state=open]>svg]:rotate-180">
                 Advanced
-                <ChevronDown className="size-4 text-muted-foreground transition-transform duration-200" />
+                <CaretDown size={16} className="text-muted-foreground transition-transform duration-200" />
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="px-4 py-3 border-t border-border">
@@ -333,7 +331,7 @@ export default function VaultPage() {
                     onClick={() => setNewMemory("")}
                     className="text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
                   >
-                    <HugeiconsIcon icon={CancelCircleIcon} size={18} />
+                    <XCircle size={18} />
                   </button>
                   <button
                     onClick={handleAdd}
@@ -397,7 +395,7 @@ export default function VaultPage() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button className="text-muted-foreground hover:text-foreground transition-colors p-1 opacity-0 group-hover:opacity-100 cursor-pointer shrink-0">
-                          <MoreHorizontal className="size-4" />
+                          <DotsThree size={16} />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -405,7 +403,7 @@ export default function VaultPage() {
                           onClick={() => handleDelete(memory.uniqueId)}
                           className="text-destructive focus:text-destructive cursor-pointer"
                         >
-                          <Trash2 className="size-4 mr-2 text-destructive" />
+                          <Trash size={16} className="mr-2 text-destructive" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { CaretLeft } from "@phosphor-icons/react";
 import { useModels } from "@anuma/sdk/react";
 import { usePrivy, useIdentityToken } from "@privy-io/react-auth";
 
@@ -35,7 +35,7 @@ export default function ModelsPage() {
             onClick={() => router.push("/settings")}
             className="absolute left-0 top-1/2 -translate-y-1/2"
           >
-            <ChevronLeft className="size-5" />
+            <CaretLeft size={20} />
           </Button>
           <h1 className="text-lg font-semibold w-full text-center">Models</h1>
         </div>

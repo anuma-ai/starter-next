@@ -22,24 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { compressImage } from "@/lib/image-compression";
 import type { ChatStatus, FileUIPart } from "@/types/chat";
-import {
-  CornerDownLeftIcon,
-  ImageIcon,
-  Loader2Icon,
-  PaperclipIcon,
-  SquareIcon,
-  XIcon,
-  FileTextIcon,
-  FileSpreadsheetIcon,
-  FileIcon,
-} from "lucide-react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  File01Icon,
-  Image02Icon,
-  SourceCodeSquareIcon,
-  Zip02Icon,
-} from "@hugeicons/core-free-icons";
+import { ArrowElbowDownLeft, Image, CircleNotch, Paperclip, Square, X, FileText, Table, File, BracketsCurly, FileZip } from "@phosphor-icons/react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { nanoid } from "nanoid";
@@ -592,13 +575,13 @@ export const PromptInput = ({
                 >
                   <div className="relative flex h-20 w-28 items-center justify-center">
                     <div className="absolute left-0 top-2 flex size-12 -rotate-12 items-center justify-center rounded-xl bg-primary/90 shadow-lg">
-                      <HugeiconsIcon icon={File01Icon} className="size-6 text-primary-foreground" />
+                      <File size={24} className="text-primary-foreground" />
                     </div>
                     <div className="absolute right-0 top-0 flex size-12 rotate-12 items-center justify-center rounded-xl bg-primary/80 shadow-lg">
-                      <HugeiconsIcon icon={SourceCodeSquareIcon} className="size-6 text-primary-foreground" />
+                      <BracketsCurly size={24} className="text-primary-foreground" />
                     </div>
                     <div className="absolute bottom-0 left-1/2 z-10 flex size-14 -translate-x-1/2 items-center justify-center rounded-xl bg-primary shadow-lg">
-                      <HugeiconsIcon icon={Image02Icon} className="size-7 text-primary-foreground" />
+                      <Image size={28} className="text-primary-foreground" />
                     </div>
                   </div>
                   <div className="text-center">
@@ -801,7 +784,7 @@ export const PromptInputAttachButton = ({
       variant={variant}
       {...props}
     >
-      {children ?? <PaperclipIcon className="size-4" />}
+      {children ?? <Paperclip size={16} />}
     </PromptInputButton>
   );
 };
@@ -818,14 +801,14 @@ export const PromptInputSubmit = ({
   children,
   ...props
 }: PromptInputSubmitProps) => {
-  let Icon = <CornerDownLeftIcon className="size-4" />;
+  let Icon = <ArrowElbowDownLeft size={16} />;
 
   if (status === "submitted") {
-    Icon = <Loader2Icon className="size-4 animate-spin" />;
+    Icon = <CircleNotch size={16} className="animate-spin" />;
   } else if (status === "streaming") {
-    Icon = <SquareIcon className="size-4" />;
+    Icon = <Square size={16} />;
   } else if (status === "error") {
-    Icon = <XIcon className="size-4" />;
+    Icon = <X size={16} />;
   }
 
   return (
@@ -865,7 +848,7 @@ export function PromptInputAttachment({
   const isSpreadsheet = ext === "xlsx" || ext === "xls" || ext === "csv";
   const isDocument = ext === "docx" || ext === "doc" || ext === "pdf" || ext === "txt";
   const isArchive = ext === "zip";
-  const FileTypeIcon = isSpreadsheet ? FileSpreadsheetIcon : isDocument ? FileTextIcon : FileIcon;
+  const FileTypeIcon = isSpreadsheet ? Table : isDocument ? FileText : File;
   const fileTypeLabel = isArchive ? "Archive" : isSpreadsheet ? "Spreadsheet" : isDocument ? "Document" : "File";
   const iconBgColor = isArchive ? "bg-amber-500" : isSpreadsheet ? "bg-green-500" : "bg-blue-500";
 
@@ -895,7 +878,7 @@ export function PromptInputAttachment({
           }}
           type="button"
         >
-          <XIcon className="size-3 text-white dark:text-black" />
+          <X size={12} className="text-white dark:text-black" />
           <span className="sr-only">Remove</span>
         </button>
       </motion.div>
@@ -915,9 +898,9 @@ export function PromptInputAttachment({
     >
       <div className={`flex size-10 items-center justify-center rounded-lg ${iconBgColor}`}>
         {isArchive ? (
-          <HugeiconsIcon icon={Zip02Icon} className="size-5 text-white" />
+          <FileZip size={20} className="text-white" />
         ) : (
-          <FileTypeIcon className="size-5 text-white" />
+          <FileTypeIcon size={20} className="text-white" />
         )}
       </div>
       <div className="flex flex-col overflow-hidden">
@@ -937,7 +920,7 @@ export function PromptInputAttachment({
         }}
         type="button"
       >
-        <XIcon className="size-3 text-white dark:text-black" />
+        <X size={12} className="text-white dark:text-black" />
         <span className="sr-only">Remove</span>
       </button>
     </motion.div>

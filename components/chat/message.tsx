@@ -1,8 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { InformationSquareIcon } from "@hugeicons/core-free-icons";
+import { Info } from "@phosphor-icons/react";
 import type { MessageRole } from "@/types/chat";
 import type { HTMLAttributes, ImgHTMLAttributes } from "react";
 import { memo, useEffect, useRef, useState, useMemo, useCallback } from "react";
@@ -60,7 +59,7 @@ export const MessageInfoButton = ({ onClick }: { onClick: () => void }) => (
     onClick={onClick}
     className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted-foreground hover:text-foreground cursor-pointer"
   >
-    <HugeiconsIcon icon={InformationSquareIcon} className="size-4" />
+    <Info size={16} />
   </button>
 );
 

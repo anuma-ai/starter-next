@@ -2,7 +2,7 @@
 
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
-import { CheckIcon } from "lucide-react";
+import { Check } from "@phosphor-icons/react";
 
 export function ThemePicker() {
   const { currentThemeId, setTheme, presets } = useTheme();
@@ -26,9 +26,10 @@ export function ThemePicker() {
               title={preset.name}
             >
               {isSelected && (
-                <CheckIcon
+                <Check
+                  size={16}
                   className={cn(
-                    "absolute inset-0 m-auto size-4",
+                    "absolute inset-0 m-auto",
                     preset.isDark ? "text-white" : "text-gray-800"
                   )}
                 />

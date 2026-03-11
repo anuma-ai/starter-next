@@ -3,9 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, Delete01Icon, MoreHorizontalIcon, Message01Icon, Download01Icon } from "@hugeicons/core-free-icons";
-import { ImageIcon, FileTextIcon, FileSpreadsheetIcon, FileIcon, LayoutGridIcon, ListIcon, ArrowUpIcon, ArrowDownIcon, CheckIcon } from "lucide-react";
+import { MagnifyingGlass, Trash, DotsThree, ChatCircle, DownloadSimple, Image, FileText, Table, File, SquaresFour as LayoutGrid, List, ArrowUp, ArrowDown, Check } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,21 +36,21 @@ type ViewMode = "grid" | "list";
 type SortOption = "date" | "name" | "size";
 type SortDirection = "asc" | "desc";
 
-function getFileIcon(mimeType: string, filename: string) {
+function getFile(mimeType: string, filename: string) {
   if (mimeType.startsWith("image/")) {
-    return { Icon: ImageIcon, color: "text-purple-500" };
+    return { Icon: Image, color: "text-purple-500" };
   }
   const ext = filename.split(".").pop()?.toLowerCase() || "";
   if (["xlsx", "xls", "csv"].includes(ext)) {
-    return { Icon: FileSpreadsheetIcon, color: "text-green-500" };
+    return { Icon: Table, color: "text-green-500" };
   }
   if (ext === "pdf") {
-    return { Icon: FileTextIcon, color: "text-red-500" };
+    return { Icon: FileText, color: "text-red-500" };
   }
   if (["docx", "doc", "txt"].includes(ext)) {
-    return { Icon: FileTextIcon, color: "text-blue-500" };
+    return { Icon: FileText, color: "text-blue-500" };
   }
-  return { Icon: FileIcon, color: "text-gray-500" };
+  return { Icon: File, color: "text-gray-500" };
 }
 
 function formatFileSize(bytes: number): string {
@@ -232,16 +230,16 @@ export function FilesView() {
                     className="h-8 px-2"
                   >
                     {sortDirection === "asc" ? (
-                      <ArrowUpIcon className="size-4 mr-2" />
+                      <ArrowUp size={16} className="mr-2" />
                     ) : (
-                      <ArrowDownIcon className="size-4 mr-2" />
+                      <ArrowDown size={16} className="mr-2" />
                     )}
                     {sortBy === "date" ? "Date" : sortBy === "name" ? "Name" : "Size"}
                   </Button>
                 </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleSortClick("date")}>
-                  <CheckIcon className={`size-4 mr-2 ${sortBy === "date" ? "" : "invisible"}`} />
+                  <Check size={16} className={`mr-2 ${sortBy === "date" ? "" : "invisible"}`} />
                   <div className="flex flex-col">
                     <span>Date</span>
                     {sortBy === "date" && (
@@ -252,7 +250,7 @@ export function FilesView() {
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleSortClick("name")}>
-                  <CheckIcon className={`size-4 mr-2 ${sortBy === "name" ? "" : "invisible"}`} />
+                  <Check size={16} className={`mr-2 ${sortBy === "name" ? "" : "invisible"}`} />
                   <div className="flex flex-col">
                     <span>Name</span>
                     {sortBy === "name" && (
@@ -263,7 +261,7 @@ export function FilesView() {
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleSortClick("size")}>
-                  <CheckIcon className={`size-4 mr-2 ${sortBy === "size" ? "" : "invisible"}`} />
+                  <Check size={16} className={`mr-2 ${sortBy === "size" ? "" : "invisible"}`} />
                   <div className="flex flex-col">
                     <span>Size</span>
                     {sortBy === "size" && (
@@ -286,7 +284,7 @@ export function FilesView() {
                 className={`h-8 w-8 p-0 ${viewMode === "grid" ? "bg-muted" : ""}`}
                 aria-label="Grid view"
               >
-                <LayoutGridIcon className="size-4" />
+                <LayoutGrid size={16} />
               </Button>
               <Button
                 variant="ghost"
@@ -295,15 +293,14 @@ export function FilesView() {
                 className={`h-8 w-8 p-0 ${viewMode === "list" ? "bg-muted" : ""}`}
                 aria-label="List view"
               >
-                <ListIcon className="size-4" />
+                <List size={16} />
               </Button>
             </div>
           </div>
         </div>
 
         <div className="relative mb-6">
-          <HugeiconsIcon
-            icon={Search01Icon}
+          <MagnifyingGlass
             size={20}
             className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
@@ -331,7 +328,7 @@ export function FilesView() {
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredFiles.map((file) => {
-              const { Icon, color } = getFileIcon(file.mimeType, file.name);
+              const { Icon, color } = getFile(file.mimeType, file.name);
               const isImage = file.mimeType.startsWith("image/");
               const date = new Date(file.createdAt);
               const formattedDate = date.toLocaleDateString("en-US", {
@@ -354,7 +351,7 @@ export function FilesView() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Icon className={`size-12 ${color}`} />
+                      <Icon size={48} className={color} />
                     )}
                   </div>
 
@@ -381,7 +378,7 @@ export function FilesView() {
                         className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 cursor-pointer"
                         aria-label="More options"
                       >
-                        <HugeiconsIcon icon={MoreHorizontalIcon} size={14} />
+                        <DotsThree size={14} />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -391,7 +388,7 @@ export function FilesView() {
                           handleDownload(file);
                         }}
                       >
-                        <HugeiconsIcon icon={Download01Icon} size={16} className="mr-2" />
+                        <DownloadSimple size={16} className="mr-2" />
                         Download
                       </DropdownMenuItem>
                       {file.conversationId && (
@@ -401,7 +398,7 @@ export function FilesView() {
                             handleShowInChat(file);
                           }}
                         >
-                          <HugeiconsIcon icon={Message01Icon} size={16} className="mr-2" />
+                          <ChatCircle size={16} className="mr-2" />
                           Show in chat
                         </DropdownMenuItem>
                       )}
@@ -412,7 +409,7 @@ export function FilesView() {
                         }}
                         className="text-destructive focus:text-destructive"
                       >
-                        <HugeiconsIcon icon={Delete01Icon} size={16} className="mr-2 text-destructive" />
+                        <Trash size={16} className="mr-2 text-destructive" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -424,7 +421,7 @@ export function FilesView() {
         ) : (
           <div className="rounded-xl bg-white dark:bg-card overflow-hidden">
             {filteredFiles.map((file, index) => {
-              const { Icon, color } = getFileIcon(file.mimeType, file.name);
+              const { Icon, color } = getFile(file.mimeType, file.name);
               const isImage = file.mimeType.startsWith("image/");
               const date = new Date(file.createdAt);
               const formattedDate = date.toLocaleDateString("en-US", {
@@ -449,7 +446,7 @@ export function FilesView() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Icon className={`size-6 ${color}`} />
+                      <Icon size={24} className={color} />
                     )}
                   </div>
 
@@ -471,7 +468,7 @@ export function FilesView() {
                         className="p-1.5 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted hover:text-foreground cursor-pointer"
                         aria-label="More options"
                       >
-                        <HugeiconsIcon icon={MoreHorizontalIcon} size={16} />
+                        <DotsThree size={16} />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -481,7 +478,7 @@ export function FilesView() {
                           handleDownload(file);
                         }}
                       >
-                        <HugeiconsIcon icon={Download01Icon} size={16} className="mr-2" />
+                        <DownloadSimple size={16} className="mr-2" />
                         Download
                       </DropdownMenuItem>
                       {file.conversationId && (
@@ -491,7 +488,7 @@ export function FilesView() {
                             handleShowInChat(file);
                           }}
                         >
-                          <HugeiconsIcon icon={Message01Icon} size={16} className="mr-2" />
+                          <ChatCircle size={16} className="mr-2" />
                           Show in chat
                         </DropdownMenuItem>
                       )}
@@ -502,7 +499,7 @@ export function FilesView() {
                         }}
                         className="text-destructive focus:text-destructive"
                       >
-                        <HugeiconsIcon icon={Delete01Icon} size={16} className="mr-2 text-destructive" />
+                        <Trash size={16} className="mr-2 text-destructive" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
