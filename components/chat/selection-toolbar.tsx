@@ -63,17 +63,28 @@ export function MessageContextMenu() {
   const [generatedMemory, setGeneratedMemory] = useState("");
   const [saving, setSaving] = useState(false);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const [animate, setAnimate] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const visibleRef = useRef<HTMLDivElement>(null);
   const { createVaultMemory } = useChatContext();
   const { identityToken } = useIdentityToken();
 
-  // Measure content and animate to new size
+  // Measure content and animate to new size on phase changes
   useLayoutEffect(() => {
     if (!contentRef.current) return;
+    setAnimate(true);
     const { width, height } = contentRef.current.getBoundingClientRect();
     setSize({ width, height });
   }, [phase, generatedMemory, saving]);
+
+  // Remeasure instantly (no animation) on user input
+  const remeasure = useCallback(() => {
+    if (!visibleRef.current) return;
+    setAnimate(false);
+    const { width, height } = visibleRef.current.getBoundingClientRect();
+    setSize({ width, height });
+  }, []);
 
   const reset = useCallback(() => {
     setPosition(null);
@@ -173,7 +184,7 @@ export function MessageContextMenu() {
         style={size ? {
           width: size.width,
           height: size.height,
-          transition: "width 200ms ease-out, height 200ms ease-out",
+          transition: animate ? "width 200ms ease-out, height 200ms ease-out" : "none",
         } : undefined}
       >
         {/* Invisible measurer — always rendered at full size, positioned absolutely */}
@@ -192,7 +203,7 @@ export function MessageContextMenu() {
           )}
           {phase === "preview" && (
             <div className="flex flex-col gap-1">
-              <p className="px-2.5 py-1.5 text-sm leading-snug">{generatedMemory}</p>
+              <p className="px-2.5 py-1.5 text-sm leading-snug" aria-hidden>{generatedMemory}</p>
               <div className="flex gap-0.5">
                 <div className="flex flex-1 items-center justify-center gap-1.5 px-2.5 py-1.5 text-sm">
                   <span className="size-3.5 shrink-0" />
@@ -210,7 +221,7 @@ export function MessageContextMenu() {
         </div>
 
         {/* Visible content */}
-        <div className="relative p-1" style={{ width: "max-content", maxWidth: "20rem" }}>
+        <div ref={visibleRef} className="p-1" style={{ width: "max-content", maxWidth: "20rem" }}>
           {phase === "idle" && (
             <button
               onClick={handleGenerate}
@@ -230,7 +241,15 @@ export function MessageContextMenu() {
 
           {phase === "preview" && (
             <div className="flex flex-col gap-1">
-              <p className="px-2.5 py-1.5 text-sm leading-snug">{generatedMemory}</p>
+              <p
+                className="px-2.5 py-1.5 text-sm leading-snug outline-hidden"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e) => setGeneratedMemory(e.currentTarget.textContent?.trim() || "")}
+                onInput={remeasure}
+              >
+                {generatedMemory}
+              </p>
               <div className="flex gap-0.5">
                 <button
                   onClick={handleSave}
