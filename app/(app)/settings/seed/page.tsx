@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ChevronLeft } from "lucide-react";
 import { useIdentityToken } from "@privy-io/react-auth";
+import { useDatabase } from "@/app/providers";
 import {
   getDatabaseStats,
   clearAndSeedLongMemEval,
@@ -20,6 +21,7 @@ type Status = "idle" | "loading" | "success" | "error";
 
 export default function SeedPage() {
   const router = useRouter();
+  const database = useDatabase();
   const { identityToken } = useIdentityToken();
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
@@ -50,7 +52,7 @@ export default function SeedPage() {
 
   const refreshStats = async () => {
     try {
-      const currentStats = await getDatabaseStats();
+      const currentStats = await getDatabaseStats(database);
       setStats(currentStats);
     } catch (err) {
       console.error("Failed to get stats:", err);
@@ -74,6 +76,7 @@ export default function SeedPage() {
 
     try {
       const result = await clearAndSeedLongMemEval({
+        database,
         maxMessages,
         generateEmbeddings,
         getToken,
@@ -81,14 +84,9 @@ export default function SeedPage() {
       });
 
       if (result.success) {
-        setStatus("success");
-        setMessage(
-          `Seeding complete! Created ${result.conversationsCreated} conversations, ` +
-            `${result.messagesCreated} messages` +
-            (generateEmbeddings
-              ? `, ${result.embeddingsGenerated} embeddings`
-              : "")
-        );
+        // Reload to ensure sidebar picks up the new projects and conversations
+        window.location.href = "/settings/seed";
+        return;
       } else {
         setStatus("error");
         setMessage(`Failed: ${result.error || "Unknown error"}`);
@@ -112,6 +110,7 @@ export default function SeedPage() {
 
     try {
       const result = await regenerateAllEmbeddings({
+        database,
         getToken,
         onProgress: setProgress,
       });
@@ -140,7 +139,7 @@ export default function SeedPage() {
     setMessage("Clearing all embeddings...");
 
     try {
-      const result = await clearAllEmbeddings();
+      const result = await clearAllEmbeddings(database);
 
       if (result.success) {
         setStatus("success");
