@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useLayoutEffect } from "react";
 import { useChatContext } from "@/app/components/chat-provider";
 import { useIdentityToken } from "@privy-io/react-auth";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { NoteEditIcon, Cancel01Icon } from "@hugeicons/core-free-icons";
-import { Loader2Icon, CheckIcon } from "lucide-react";
+import { NoteEditIcon, Cancel01Icon, Tick02Icon, Refresh01Icon } from "@hugeicons/core-free-icons";
+import { Loader2Icon } from "lucide-react";
 
 const CONTEXT_CHARS = 500;
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -62,9 +62,18 @@ export function MessageContextMenu() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [generatedMemory, setGeneratedMemory] = useState("");
   const [saving, setSaving] = useState(false);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { createVaultMemory } = useChatContext();
   const { identityToken } = useIdentityToken();
+
+  // Measure content and animate to new size
+  useLayoutEffect(() => {
+    if (!contentRef.current) return;
+    const { width, height } = contentRef.current.getBoundingClientRect();
+    setSize({ width, height });
+  }, [phase, generatedMemory, saving]);
 
   const reset = useCallback(() => {
     setPosition(null);
@@ -73,6 +82,7 @@ export function MessageContextMenu() {
     setPhase("idle");
     setGeneratedMemory("");
     setSaving(false);
+    setSize(null);
   }, []);
 
   const handleGenerate = useCallback(async () => {
@@ -83,7 +93,6 @@ export function MessageContextMenu() {
       setGeneratedMemory(memory);
       setPhase("preview");
     } catch {
-      // Fall back to saving raw text
       setGeneratedMemory(selectedText);
       setPhase("preview");
     }
@@ -128,6 +137,7 @@ export function MessageContextMenu() {
         setContextText(getSelectionWithContext(text, messageEl));
         setPhase("idle");
         setGeneratedMemory("");
+        setSize(null);
         setPosition({
           top: rect.bottom + 6,
           left: rect.left + rect.width / 2,
@@ -157,49 +167,100 @@ export function MessageContextMenu() {
       className="fixed z-50 -translate-x-1/2"
       style={{ top: position.top, left: position.left }}
     >
-      <div className="min-w-[8rem] max-w-[20rem] origin-top overflow-hidden rounded-xl p-1 bg-popover text-popover-foreground animate-in fade-in-0 zoom-in-90 duration-150 [box-shadow:0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)] dark:[box-shadow:0_10px_38px_-10px_rgba(0,0,0,0.5),0_10px_20px_-15px_rgba(0,0,0,0.4)] dark:bg-card dark:border dark:border-border">
-        {phase === "idle" && (
-          <button
-            onClick={handleGenerate}
-            className="relative flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0"
-          >
-            <HugeiconsIcon icon={NoteEditIcon} size={16} />
-            Save to Vault
-          </button>
-        )}
-
-        {phase === "generating" && (
-          <div className="flex items-center gap-2 px-2.5 py-1.5 text-sm text-muted-foreground">
-            <Loader2Icon className="size-4 animate-spin" />
-            Generating memory...
-          </div>
-        )}
-
-        {phase === "preview" && (
-          <div className="flex flex-col gap-1">
-            <p className="px-2.5 py-1.5 text-sm leading-snug">{generatedMemory}</p>
-            <div className="flex gap-0.5">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2Icon className="size-3.5 animate-spin" />
-                ) : (
-                  <CheckIcon className="size-3.5" />
-                )}
-                {saving ? "Saving..." : "Save"}
-              </button>
-              <button
-                onClick={reset}
-                className="relative flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0"
-              >
-                <HugeiconsIcon icon={Cancel01Icon} size={14} />
-              </button>
+      {/* Animated outer shell */}
+      <div
+        className="origin-top overflow-hidden rounded-xl bg-popover text-popover-foreground animate-in fade-in-0 zoom-in-90 duration-150 [box-shadow:0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)] dark:[box-shadow:0_10px_38px_-10px_rgba(0,0,0,0.5),0_10px_20px_-15px_rgba(0,0,0,0.4)] dark:bg-card dark:border dark:border-border"
+        style={size ? {
+          width: size.width,
+          height: size.height,
+          transition: "width 200ms ease-out, height 200ms ease-out",
+        } : undefined}
+      >
+        {/* Invisible measurer — always rendered at full size, positioned absolutely */}
+        <div ref={contentRef} className="absolute invisible p-1" style={{ width: "max-content", maxWidth: "20rem" }}>
+          {phase === "idle" && (
+            <div className="flex items-center gap-2 px-2.5 py-1.5 text-sm whitespace-nowrap">
+              <span className="size-4 shrink-0" />
+              Save to Vault
             </div>
-          </div>
-        )}
+          )}
+          {phase === "generating" && (
+            <div className="flex items-center gap-2 px-2.5 py-1.5 text-sm whitespace-nowrap">
+              <span className="size-4 shrink-0" />
+              Generating memory...
+            </div>
+          )}
+          {phase === "preview" && (
+            <div className="flex flex-col gap-1">
+              <p className="px-2.5 py-1.5 text-sm leading-snug">{generatedMemory}</p>
+              <div className="flex gap-0.5">
+                <div className="flex flex-1 items-center justify-center gap-1.5 px-2.5 py-1.5 text-sm">
+                  <span className="size-3.5 shrink-0" />
+                  Save
+                </div>
+                <div className="px-2.5 py-1.5">
+                  <span className="size-3.5 shrink-0" />
+                </div>
+                <div className="px-2.5 py-1.5">
+                  <span className="size-3.5 shrink-0" />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Visible content */}
+        <div className="relative p-1" style={{ width: "max-content", maxWidth: "20rem" }}>
+          {phase === "idle" && (
+            <button
+              onClick={handleGenerate}
+              className="relative flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0"
+            >
+              <HugeiconsIcon icon={NoteEditIcon} size={16} />
+              Save to Vault
+            </button>
+          )}
+
+          {phase === "generating" && (
+            <div className="flex items-center gap-2 px-2.5 py-1.5 text-sm text-muted-foreground">
+              <Loader2Icon className="size-4 animate-spin" />
+              Generating memory...
+            </div>
+          )}
+
+          {phase === "preview" && (
+            <div className="flex flex-col gap-1">
+              <p className="px-2.5 py-1.5 text-sm leading-snug">{generatedMemory}</p>
+              <div className="flex gap-0.5">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2Icon className="size-4 animate-spin text-foreground" />
+                  ) : (
+                    <HugeiconsIcon icon={Tick02Icon} size={16} className="text-foreground" />
+                  )}
+                  {saving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={handleGenerate}
+                  disabled={saving}
+                  className="relative flex cursor-pointer items-center justify-center rounded-lg px-2.5 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <HugeiconsIcon icon={Refresh01Icon} size={14} className="text-foreground" />
+                </button>
+                <button
+                  onClick={reset}
+                  className="relative flex cursor-pointer items-center justify-center rounded-lg px-2.5 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} className="text-foreground" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
