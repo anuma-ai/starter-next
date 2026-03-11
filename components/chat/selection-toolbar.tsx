@@ -247,13 +247,13 @@ export function MessageContextMenu() {
                 <button
                   onClick={handleGenerate}
                   disabled={saving}
-                  className="relative flex cursor-pointer items-center justify-center rounded-lg px-2.5 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                  className="relative flex cursor-pointer items-center justify-center size-8 rounded-full outline-hidden select-none hover:bg-accent focus:bg-accent disabled:pointer-events-none disabled:opacity-50"
                 >
                   <HugeiconsIcon icon={Refresh01Icon} size={14} className="text-foreground" />
                 </button>
                 <button
                   onClick={reset}
-                  className="relative flex cursor-pointer items-center justify-center rounded-lg px-2.5 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                  className="relative flex cursor-pointer items-center justify-center size-8 rounded-full outline-hidden select-none hover:bg-accent focus:bg-accent"
                 >
                   <HugeiconsIcon icon={Cancel01Icon} size={16} className="text-foreground" />
                 </button>
