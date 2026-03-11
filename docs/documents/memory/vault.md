@@ -109,7 +109,7 @@ background processing.
         }
 ```
 
-[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L345-L369)
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L346-L370)
 
 ## CRUD Operations
 
@@ -124,4 +124,4 @@ settings page where users can view, edit, and delete their stored memories:
     deleteVaultMemory,
 ```
 
-[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L546-L550)
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L548-L552)

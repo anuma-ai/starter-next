@@ -68,6 +68,7 @@ The hook returns chat state, streaming subscriptions, and vault operations.
 
     // Chat actions
     sendMessage,
+    sendRawMessage,
     handleSubmit,
     addMessageOptimistically,
     createConversation,
@@ -89,7 +90,7 @@ The hook returns chat state, streaming subscriptions, and vault operations.
   };
 ```
 
-[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L518-L552)
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L519-L554)
 
 ## What's Next
 

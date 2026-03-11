@@ -41,7 +41,7 @@ without going through React's reconciliation:
   );
 ```
 
-[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L492-L510)
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L493-L511)
 
 ## Usage
 

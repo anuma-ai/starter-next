@@ -16,7 +16,7 @@ for Anthropic models:
         thinking?: { type?: string; budget_tokens?: number };
 ```
 
-[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L278-L279)
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L279-L280)
 
 Pass one or the other in the options object. Both are forwarded to the SDK and
 included in the API request; only the parameter matching the model provider has
@@ -50,7 +50,7 @@ React's batching for low-latency DOM updates:
   );
 ```
 
-[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L492-L510)
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L493-L511)
 
 Subscribe from your component to receive the accumulated thinking text as it
 streams:
