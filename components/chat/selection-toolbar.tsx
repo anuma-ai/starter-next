@@ -122,10 +122,13 @@ export function MessageContextMenu() {
   }, [generatedMemory, saving, createVaultMemory, reset]);
 
   useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
     const onMouseUp = (e: MouseEvent) => {
       if (menuRef.current?.contains(e.target as Node)) return;
 
-      requestAnimationFrame(() => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
         const sel = window.getSelection();
         if (!sel || sel.isCollapsed || !sel.toString().trim()) {
           if (phase === "idle") setPosition(null);
@@ -153,10 +156,11 @@ export function MessageContextMenu() {
           top: rect.bottom + 6,
           left: rect.left + rect.width / 2,
         });
-      });
+      }, 200);
     };
 
     const onMouseDown = (e: MouseEvent) => {
+      clearTimeout(debounceTimer);
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         reset();
       }
@@ -165,6 +169,7 @@ export function MessageContextMenu() {
     document.addEventListener("mouseup", onMouseUp);
     document.addEventListener("mousedown", onMouseDown);
     return () => {
+      clearTimeout(debounceTimer);
       document.removeEventListener("mouseup", onMouseUp);
       document.removeEventListener("mousedown", onMouseDown);
     };
