@@ -2,14 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState, useLayoutEffect } from "react";
 import { useChatContext } from "@/app/components/chat-provider";
-import { useIdentityToken } from "@privy-io/react-auth";
+import { extractTextFromResponse } from "@/hooks/useAppChatStorage";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { NoteEditIcon, Cancel01Icon, Tick02Icon, Refresh01Icon } from "@hugeicons/core-free-icons";
 import { Loader2Icon } from "lucide-react";
 
 const CONTEXT_CHARS = 500;
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const FAST_MODEL = "cerebras/qwen-3-235b-a22b-instruct-2507";
+
+const MEMORY_SYSTEM_PROMPT =
+  "You create concise memory vault entries from conversation snippets. " +
+  "The user selected text from a chat thread (marked with [SELECTED]...[/SELECTED]) " +
+  "with surrounding context. Write a single, clear memory entry that captures " +
+  "the key information from the selected text. Be concise — one to two sentences max. " +
+  "Write it as a factual note, not as a quote. Output only the memory text, nothing else.";
 
 type Phase = "idle" | "generating" | "preview";
 
@@ -22,38 +28,6 @@ function getSelectionWithContext(selectedText: string, messageEl: Element): stri
   return `${before ? `...${before}` : ""}[SELECTED]${selectedText}[/SELECTED]${after ? `${after}...` : ""}`;
 }
 
-async function generateMemory(
-  textWithContext: string,
-  token: string,
-): Promise<string> {
-  const res = await fetch(`${API_URL}/api/v1/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      model: FAST_MODEL,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You create concise memory vault entries from conversation snippets. " +
-            "The user selected text from a chat thread (marked with [SELECTED]...[/SELECTED]) " +
-            "with surrounding context. Write a single, clear memory entry that captures " +
-            "the key information from the selected text. Be concise — one to two sentences max. " +
-            "Write it as a factual note, not as a quote. Output only the memory text, nothing else.",
-        },
-        { role: "user", content: textWithContext },
-      ],
-      max_tokens: 200,
-      temperature: 0.3,
-    }),
-  });
-  if (!res.ok) throw new Error("Failed to generate memory");
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || "";
-}
 
 export function MessageContextMenu() {
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -67,8 +41,7 @@ export function MessageContextMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const visibleRef = useRef<HTMLDivElement>(null);
-  const { createVaultMemory } = useChatContext();
-  const { identityToken } = useIdentityToken();
+  const { createVaultMemory, sendRawMessage } = useChatContext();
 
   // Measure content and animate to new size on phase changes
   useLayoutEffect(() => {
@@ -97,17 +70,28 @@ export function MessageContextMenu() {
   }, []);
 
   const handleGenerate = useCallback(async () => {
-    if (!contextText || !identityToken) return;
+    if (!contextText) return;
     setPhase("generating");
     try {
-      const memory = await generateMemory(contextText, identityToken);
-      setGeneratedMemory(memory);
+      const response = await sendRawMessage({
+        messages: [
+          { role: "system", content: [{ type: "text", text: MEMORY_SYSTEM_PROMPT }] },
+          { role: "user", content: [{ type: "text", text: contextText }] },
+        ],
+        model: FAST_MODEL,
+        maxOutputTokens: 200,
+        temperature: 0.3,
+        skipStorage: true,
+        includeHistory: false,
+      });
+      const memory = extractTextFromResponse(response?.data)?.trim();
+      setGeneratedMemory(memory || selectedText);
       setPhase("preview");
     } catch {
       setGeneratedMemory(selectedText);
       setPhase("preview");
     }
-  }, [contextText, identityToken, selectedText]);
+  }, [contextText, selectedText, sendRawMessage]);
 
   const handleSave = useCallback(async () => {
     if (!generatedMemory || saving) return;
