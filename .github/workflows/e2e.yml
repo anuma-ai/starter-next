@@ -160,7 +160,6 @@ jobs:
         run: |
           echo "# E2E Test Videos" > videos/README.md
           echo "" >> videos/README.md
-          echo "Updated: $(date -u +%Y-%m-%dT%H:%M:%SZ) | [Workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> videos/README.md
           for f in videos/*.webm; do
             filename=$(basename "$f")
             # Strip project prefix and --video.webm suffix to get test name
@@ -171,22 +170,23 @@ jobs:
             echo "" >> videos/README.md
             echo "### $title" >> videos/README.md
             echo "" >> videos/README.md
-            echo "<video src=\"$filename\" controls></video>" >> videos/README.md
+            echo "<video src=\"https://github.com/${{ github.repository }}/raw/refs/heads/demo/${filename}\" controls style=\"border-radius: 8px;\"></video>" >> videos/README.md
           done
+          echo "" >> videos/README.md
+          echo "Updated: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> videos/README.md
 
-      - name: Push videos to e2e-videos branch
+      - name: Push videos to demo branch
         if: steps.collect.outputs.video_count > 0
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Create orphan branch with only videos
-          git checkout --orphan e2e-videos-tmp
+          git checkout --orphan demo-tmp
           git rm -rf .
           cp videos/*.webm .
           cp videos/README.md .
           git add *.webm README.md
           git commit -m "e2e videos from $(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-          Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           Ref: ${{ github.sha }}"
-          git push --force origin e2e-videos-tmp:e2e-videos
+          git push --force origin demo-tmp:demo
