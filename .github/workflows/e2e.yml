@@ -118,6 +118,7 @@ jobs:
   push-videos:
     needs: [e2e-light, e2e-full]
     if: |
+      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch') &&
       !cancelled() &&
       needs.e2e-light.result != 'failure' &&
       needs.e2e-full.result != 'failure'
