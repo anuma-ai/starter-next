@@ -7,7 +7,7 @@ const authFile = path.join(__dirname, "../playwright/.auth/user.json");
 const PRIVY_TEST_OTP = process.env.TEST_USER_OTP;
 const PRIVY_TEST_EMAIL = process.env.TEST_USER_EMAIL;
 
-setup("authenticate via Privy", async ({ page }) => {
+setup("Authenticating with Privy", async ({ page }) => {
   setup.skip(
     !PRIVY_TEST_EMAIL || !PRIVY_TEST_OTP,
     "TEST_USER_EMAIL and TEST_USER_OTP must be set"

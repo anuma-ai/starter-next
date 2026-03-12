@@ -169,8 +169,9 @@ jobs:
             name=$(echo "$name" | sed -E 's/-(chromium|setup)$//')
             # Strip trailing test tag
             name=$(echo "$name" | sed -E 's/-(light|full)$//')
-            # Strip leading test file name
+            # Strip leading test file name and describe block
             name=$(echo "$name" | sed -E 's/^(auth\.setup\.ts|chat|chart|demo)-//')
+            name=$(echo "$name" | sed -E 's/^(chat|Chart-display-tool)-//')
             # Convert hyphens to spaces for title
             title=$(echo "$name" | tr '-' ' ')
             echo "" >> videos/README.md
