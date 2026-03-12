@@ -114,3 +114,79 @@ jobs:
             exit 1
           fi
           echo "All e2e tests passed (or skipped)"
+
+  push-videos:
+    needs: [e2e-light, e2e-full]
+    if: |
+      !cancelled() &&
+      needs.e2e-light.result != 'failure' &&
+      needs.e2e-full.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download light test results
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report-light
+          path: artifacts/light
+        continue-on-error: true
+
+      - name: Download full test results
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report-full
+          path: artifacts/full
+        continue-on-error: true
+
+      - name: Collect videos
+        id: collect
+        run: |
+          mkdir -p videos
+          # Copy videos with parent dir prefix to avoid name collisions
+          find artifacts -name '*.webm' | while read -r f; do
+            dir=$(basename "$(dirname "$f")")
+            base=$(basename "$f")
+            cp "$f" "videos/${dir}--${base}"
+          done
+          count=$(find videos -name '*.webm' | wc -l)
+          echo "video_count=$count" >> "$GITHUB_OUTPUT"
+          echo "Found $count video(s)"
+
+      - name: Generate index
+        if: steps.collect.outputs.video_count > 0
+        run: |
+          echo "# E2E Test Videos" > videos/README.md
+          echo "" >> videos/README.md
+          echo "Updated: $(date -u +%Y-%m-%dT%H:%M:%SZ) | [Workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> videos/README.md
+          for f in videos/*.webm; do
+            filename=$(basename "$f")
+            # Strip project prefix and --video.webm suffix to get test name
+            name="${filename#chromium-}"
+            name="${name%--video.webm}"
+            # Convert hyphens to spaces and title-case
+            title=$(echo "$name" | tr '-' ' ')
+            echo "" >> videos/README.md
+            echo "### $title" >> videos/README.md
+            echo "" >> videos/README.md
+            echo "<video src=\"$filename\" controls></video>" >> videos/README.md
+          done
+
+      - name: Push videos to e2e-videos branch
+        if: steps.collect.outputs.video_count > 0
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Create orphan branch with only videos
+          git checkout --orphan e2e-videos-tmp
+          git rm -rf .
+          cp videos/*.webm .
+          cp videos/README.md .
+          git add *.webm README.md
+          git commit -m "e2e videos from $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Ref: ${{ github.sha }}"
+          git push --force origin e2e-videos-tmp:e2e-videos
