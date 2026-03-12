@@ -1,6 +1,6 @@
 name: E2E Tests
 permissions:
-  contents: write
+  contents: read
 on:
   merge_group:
   pull_request:
@@ -122,6 +122,8 @@ jobs:
       needs.e2e-light.result != 'failure' &&
       needs.e2e-full.result != 'failure'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
