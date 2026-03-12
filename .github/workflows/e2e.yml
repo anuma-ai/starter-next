@@ -159,20 +159,37 @@ jobs:
       - name: Generate index
         if: steps.collect.outputs.video_count > 0
         run: |
+          # Keep only the latest retry for each test (remove originals and older retries)
+          for f in videos/*-retry[0-9]*--video.webm; do
+            [ -e "$f" ] || continue
+            base=$(echo "$f" | sed -E 's/-retry[0-9]+--video\.webm//')
+            # Remove the original (non-retry) video
+            [ -e "${base}--video.webm" ] && rm "${base}--video.webm"
+            # Remove older retries (keep only the highest-numbered retry via glob sort)
+            latest=$(ls "${base}"-retry*--video.webm 2>/dev/null | tail -1)
+            for older in "${base}"-retry*--video.webm; do
+              [ "$older" != "$latest" ] && rm "$older"
+            done
+          done
           echo "# Features" > videos/README.md
           echo "" >> videos/README.md
           for f in videos/*.webm; do
             filename=$(basename "$f")
             # Extract clean test name from Playwright directory name
-            # Format: <file>-<Describe>-<test-name>-<tag>-<project>--video.webm
+            # Format: <file>-<Describe>-<test-name>-<tag>-<project>[-retryN]--video.webm
             name="${filename%--video.webm}"
+            # Strip retry suffix (e.g., -retry1)
+            name=$(echo "$name" | sed -E 's/-retry[0-9]+$//')
             # Strip trailing project name
             name=$(echo "$name" | sed -E 's/-(chromium|setup)$//')
-            # Strip trailing test tag
-            name=$(echo "$name" | sed -E 's/-(light|full)$//')
-            # Strip leading test file name and describe block
+            # Strip trailing test tag (handles @tag becoming --tag in directory name)
+            name=$(echo "$name" | sed -E 's/-{1,2}(light|full)$//')
+            # Strip leading test file name
             name=$(echo "$name" | sed -E 's/^(auth\.setup\.ts|chat|chart|demo)-//')
-            name=$(echo "$name" | sed -E 's/^(chat|Chart-display-tool)-//')
+            # Strip leading describe block
+            name=$(echo "$name" | sed -E 's/^(chat|Chat|Chart|Chart-display-tool)-//')
+            # Remove Playwright hash fragments from truncated names (e.g., --fc44f-)
+            name=$(echo "$name" | sed -E 's/--[a-f0-9]{4,6}-/-/g')
             # Convert hyphens to spaces for title
             title=$(echo "$name" | tr '-' ' ')
             echo "" >> videos/README.md
