@@ -38,6 +38,34 @@ setup("authenticate via Privy", async ({ page }) => {
   );
   await otpInputs.first().waitFor({ timeout: 30000 });
 
+  // Place a gray cover over the OTP inputs so codes aren't visible in videos
+  await page.evaluate(() => {
+    const input = document.querySelector<HTMLElement>(
+      '[data-testid*="otp"] input, input[inputmode="numeric"], input[autocomplete="one-time-code"]'
+    );
+    if (!input) return;
+    const container =
+      input.closest('[data-testid*="otp"]') ||
+      input.parentElement?.parentElement;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const parent = container.parentElement!;
+    parent.style.position = parent.style.position || "relative";
+    const cover = document.createElement("div");
+    cover.id = "otp-cover";
+    cover.style.cssText = `
+      position: absolute;
+      top: ${container.getBoundingClientRect().top - parent.getBoundingClientRect().top - 4}px;
+      left: ${container.getBoundingClientRect().left - parent.getBoundingClientRect().left - 4}px;
+      width: ${rect.width + 8}px;
+      height: ${rect.height + 8}px;
+      background: #e5e5e5;
+      border-radius: 8px;
+      z-index: 1;
+    `;
+    parent.appendChild(cover);
+  });
+
   const inputCount = await otpInputs.count();
   const otpDigits = otp.split("");
 

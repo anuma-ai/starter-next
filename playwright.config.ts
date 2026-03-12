@@ -41,6 +41,10 @@ export default defineConfig({
       name: "setup",
       testMatch: /.*\.setup\.ts/,
       timeout: 120000, // 2 minutes for auth setup
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1920, height: 1080 },
+      },
     },
 
     // Main test project that depends on setup
