@@ -3,7 +3,6 @@
  */
 
 import type { Database } from "@nozbe/watermelondb";
-import { dbManager } from "./database";
 import type { SeedData, SeedProject, SeedConversation, SeedMessage } from "./seed-data";
 import {
   fetchLongMemEvalDataset,
@@ -26,8 +25,7 @@ export type SeedResult = {
 /**
  * Seed the database with provided data
  */
-export async function seedDatabase(data: SeedData): Promise<SeedResult> {
-  const database = dbManager.getDatabase();
+export async function seedDatabase(database: Database, data: SeedData): Promise<SeedResult> {
   let projectsCreated = 0;
   let conversationsCreated = 0;
   let messagesCreated = 0;
@@ -108,10 +106,12 @@ export async function seedDatabase(data: SeedData): Promise<SeedResult> {
 /**
  * Clear the database and reseed with provided data
  */
-export async function clearAndSeed(data: SeedData): Promise<SeedResult> {
+export async function clearAndSeed(database: Database, data: SeedData): Promise<SeedResult> {
   try {
-    await dbManager.resetDatabase();
-    return await seedDatabase(data);
+    await database.write(async () => {
+      await database.unsafeResetDatabase();
+    });
+    return await seedDatabase(database, data);
   } catch (error) {
     console.error("Failed to clear and seed database:", error);
     return {
@@ -127,12 +127,11 @@ export async function clearAndSeed(data: SeedData): Promise<SeedResult> {
 /**
  * Get current database stats
  */
-export async function getDatabaseStats(): Promise<{
+export async function getDatabaseStats(database: Database): Promise<{
   projects: number;
   conversations: number;
   messages: number;
 }> {
-  const database = dbManager.getDatabase();
 
   const projects = await database.get("projects").query().fetchCount();
   const conversations = await database.get("conversations").query().fetchCount();
@@ -150,6 +149,7 @@ export type LongMemEvalSeedResult = {
 };
 
 export type LongMemEvalSeedOptions = {
+  database: Database;
   maxMessages: number;
   generateEmbeddings: boolean;
   getToken: () => Promise<string | null>;
@@ -162,8 +162,7 @@ export type LongMemEvalSeedOptions = {
 export async function seedLongMemEval(
   options: LongMemEvalSeedOptions
 ): Promise<LongMemEvalSeedResult> {
-  const { maxMessages, generateEmbeddings, getToken, onProgress } = options;
-  const database = dbManager.getDatabase();
+  const { database, maxMessages, generateEmbeddings, getToken, onProgress } = options;
 
   let conversationsCreated = 0;
   let messagesCreated = 0;
@@ -300,7 +299,9 @@ export async function clearAndSeedLongMemEval(
   options: LongMemEvalSeedOptions
 ): Promise<LongMemEvalSeedResult> {
   try {
-    await dbManager.resetDatabase();
+    await options.database.write(async () => {
+      await options.database.unsafeResetDatabase();
+    });
     return await seedLongMemEval(options);
   } catch (error) {
     console.error("Failed to clear and seed LongMemEval:", error);
@@ -324,8 +325,7 @@ export type ClearEmbeddingsResult = {
  * Clear all embeddings (vector and chunks) from all messages.
  * Use this before regenerating embeddings to apply new filters.
  */
-export async function clearAllEmbeddings(): Promise<ClearEmbeddingsResult> {
-  const database = dbManager.getDatabase();
+export async function clearAllEmbeddings(database: Database): Promise<ClearEmbeddingsResult> {
 
   try {
     const historyCollection = database.get("history");
@@ -376,11 +376,11 @@ export type RegenerateEmbeddingsResult = {
  * This will rechunk and re-embed all messages, replacing existing embeddings.
  */
 export async function regenerateAllEmbeddings(options: {
+  database: Database;
   getToken: () => Promise<string | null>;
   onProgress?: (progress: { phase: string; current: number; total: number }) => void;
 }): Promise<RegenerateEmbeddingsResult> {
-  const { getToken, onProgress } = options;
-  const database = dbManager.getDatabase();
+  const { database, getToken, onProgress } = options;
 
   try {
     // Get total message count for progress

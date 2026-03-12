@@ -221,7 +221,7 @@ When memory is disabled, the tool is simply omitted.
         const effectiveClientTools = [...builtInTools, ...baseClientTools];
 ```
 
-[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L319-L372)
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L320-L373)
 
 ## System Prompt
 

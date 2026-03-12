@@ -240,6 +240,7 @@ export function useAppChat({
     createVaultMemory,
     updateVaultMemory,
     deleteVaultMemory,
+    sendRawMessage,
     stop,
   } = useAppChatStorage({
     database,
@@ -529,6 +530,7 @@ export function useAppChat({
 
     // Chat actions
     sendMessage,
+    sendRawMessage,
     handleSubmit,
     addMessageOptimistically,
     createConversation,

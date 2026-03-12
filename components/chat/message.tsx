@@ -26,6 +26,7 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
 
 export const Message = ({ className, from, ...props }: MessageProps) => (
   <div
+    data-chat-message
     className={cn(
       "group flex w-full flex-col gap-2",
       from === "user" ? "is-user ml-auto max-w-[80%] justify-end" : "is-assistant",

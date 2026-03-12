@@ -137,7 +137,7 @@ function storeConversationTitle(conversationId: string, title: string): void {
 /**
  * Extract text content from SDK response data
  */
-function extractTextFromResponse(data: any): string | null {
+export function extractTextFromResponse(data: any): string | null {
   // Handle Responses API format
   if (data?.output && Array.isArray(data.output)) {
     for (const item of data.output) {
@@ -1148,6 +1148,7 @@ export function useAppChatStorage({
     conversationId,
     isLoading: effectiveIsLoading,
     sendMessage: handleSendMessage,
+    sendRawMessage: sendMessage,
     addMessageOptimistically,
     createConversation: handleNewConversation,
     resetConversation: handleNewConversation, // Alias for clarity

@@ -47,6 +47,7 @@ import {
   usePromptInputAttachments,
 } from "@/components/chat/prompt-input";
 import { Reasoning } from "@/components/chat/reasoning";
+import { MessageContextMenu } from "@/components/chat/selection-toolbar";
 import { useChatContext } from "./chat-provider";
 import { useThinkingPanel } from "./thinking-panel-provider";
 import { useUIInteraction } from "@anuma/sdk/react";
@@ -1459,6 +1460,8 @@ const ChatBotDemo = () => {
           {/* Render display interactions at bottom when anchor message not found */}
         </div>
       </div>
+
+      <MessageContextMenu />
 
       <AnimatePresence>
         {recentVaultSave && (
