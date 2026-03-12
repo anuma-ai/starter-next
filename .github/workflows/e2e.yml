@@ -158,7 +158,7 @@ jobs:
       - name: Generate index
         if: steps.collect.outputs.video_count > 0
         run: |
-          echo "# E2E Test Videos" > videos/README.md
+          echo "# Features" > videos/README.md
           echo "" >> videos/README.md
           for f in videos/*.webm; do
             filename=$(basename "$f")
