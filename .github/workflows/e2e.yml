@@ -164,7 +164,7 @@ jobs:
           for f in videos/*.webm; do
             filename=$(basename "$f")
             # Strip project prefix and --video.webm suffix to get test name
-            name="${filename#Desktop-Chrome-}"
+            name="${filename#chromium-}"
             name="${name%--video.webm}"
             # Convert hyphens to spaces and title-case
             title=$(echo "$name" | tr '-' ' ')
