@@ -6,6 +6,8 @@ and [Privy](https://privy.io) for authentication. Includes conversation
 management, project organization, file handling, memory-augmented responses,
 and support for multiple AI models.
 
+<video src="https://github.com/anuma-ai/starter-next/raw/refs/heads/main/public/demo.webm" autoplay loop playsinline style="border-radius: 8px;"></video>
+
 ## Getting Started
 
 ### Create an Anuma app
