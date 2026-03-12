@@ -6,7 +6,7 @@ const VIDEO_PAUSE_MS = 3000;
 // Pause before submitting so video shows the prompt
 const PRE_SUBMIT_PAUSE_MS = 1000;
 
-test.describe("Chat", () => {
+test.describe("chat", () => {
   // Log failed network requests to diagnose CI "Failed to fetch" errors
   test.beforeEach(async ({ page }) => {
     page.on("requestfailed", (request) => {
@@ -17,7 +17,7 @@ test.describe("Chat", () => {
     });
   });
 
-  test("authenticated user sees chat interface @light", async ({ page }) => {
+  test("Viewing the chat interface @light", async ({ page }) => {
     await page.goto("/");
 
     // Verify the chat input is visible
@@ -34,7 +34,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can send a prompt and receive a response @full", async ({ page }) => {
+  test("Sending a prompt and receiving a response @full", async ({ page }) => {
     await page.goto("/");
 
     // Wait for the chat interface to be ready
@@ -60,7 +60,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("chat input clears after sending @light", async ({ page }) => {
+  test("Clearing input after sending a message @light", async ({ page }) => {
     await page.goto("/");
 
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
@@ -82,7 +82,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can attach an image and ask about it @full", async ({ page }) => {
+  test("Attaching an image and asking about it @full", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
 
@@ -119,7 +119,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can ask to generate an image @full", async ({ page }) => {
+  test("Generating an image from a prompt @full", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
 
@@ -149,7 +149,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can attach an Excel file and ask about it @full", async ({ page }) => {
+  test("Attaching a spreadsheet and asking about it @full", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
 
@@ -188,7 +188,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can attach a Word document and ask about it @full", async ({ page }) => {
+  test("Attaching a document and asking about it @full", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
 
@@ -227,7 +227,7 @@ test.describe("Chat", () => {
     await page.waitForTimeout(VIDEO_PAUSE_MS);
   });
 
-  test("user can attach a zip file and ask about its contents @full", async ({ page }) => {
+  test("Attaching a zip file and asking about its contents @full", async ({ page }) => {
     test.setTimeout(120000);
     await page.goto("/");
 

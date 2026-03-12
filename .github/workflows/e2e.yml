@@ -118,6 +118,7 @@ jobs:
   push-videos:
     needs: [e2e-light, e2e-full]
     if: |
+      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch') &&
       !cancelled() &&
       needs.e2e-light.result != 'failure' &&
       needs.e2e-full.result != 'failure'
@@ -170,7 +171,7 @@ jobs:
               [ "$older" != "$latest" ] && rm "$older"
             done
           done
-          echo "# E2E Test Videos" > videos/README.md
+          echo "# Features" > videos/README.md
           echo "" >> videos/README.md
           for f in videos/*.webm; do
             filename=$(basename "$f")
@@ -186,7 +187,7 @@ jobs:
             # Strip leading test file name
             name=$(echo "$name" | sed -E 's/^(auth\.setup\.ts|chat|chart|demo)-//')
             # Strip leading describe block
-            name=$(echo "$name" | sed -E 's/^(Chat|Chart)-//')
+            name=$(echo "$name" | sed -E 's/^(chat|Chat|Chart|Chart-display-tool)-//')
             # Remove Playwright hash fragments from truncated names (e.g., --fc44f-)
             name=$(echo "$name" | sed -E 's/--[a-f0-9]{4,6}-/-/g')
             # Convert hyphens to spaces for title
