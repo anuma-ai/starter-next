@@ -145,8 +145,8 @@ jobs:
         id: collect
         run: |
           mkdir -p videos
-          # Copy videos with parent dir prefix to avoid name collisions
-          find artifacts -name '*.webm' | while read -r f; do
+          # Only collect from test-results (skip playwright-report/data blobs)
+          find artifacts -path '*/test-results/*' -name '*.webm' | while read -r f; do
             dir=$(basename "$(dirname "$f")")
             base=$(basename "$f")
             cp "$f" "videos/${dir}--${base}"
@@ -162,10 +162,16 @@ jobs:
           echo "" >> videos/README.md
           for f in videos/*.webm; do
             filename=$(basename "$f")
-            # Strip project prefix and --video.webm suffix to get test name
-            name="${filename#chromium-}"
-            name="${name%--video.webm}"
-            # Convert hyphens to spaces and title-case
+            # Extract clean test name from Playwright directory name
+            # Format: <file>-<Describe>-<test-name>-<tag>-<project>--video.webm
+            name="${filename%--video.webm}"
+            # Strip trailing project name
+            name=$(echo "$name" | sed -E 's/-(chromium|setup)$//')
+            # Strip trailing test tag
+            name=$(echo "$name" | sed -E 's/-(light|full)$//')
+            # Strip leading test file name
+            name=$(echo "$name" | sed -E 's/^(auth\.setup\.ts|chat|chart|demo)-//')
+            # Convert hyphens to spaces for title
             title=$(echo "$name" | tr '-' ' ')
             echo "" >> videos/README.md
             echo "### $title" >> videos/README.md
