@@ -34,14 +34,12 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              (function() {
-                try {
-                  var theme = localStorage.getItem('app_theme');
-                  if (theme && theme !== 'light') {
-                    document.documentElement.classList.add('theme-' + theme);
-                  }
-                } catch (e) {}
-              })();
+              try {
+                var theme = localStorage.getItem('app_theme');
+                if (theme && theme !== 'light') {
+                  document.documentElement.classList.add('theme-' + theme);
+                }
+              } catch (e) {}
             `,
           }}
         />
