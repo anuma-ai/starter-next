@@ -289,8 +289,6 @@ export function useAppChat({
         apiType?: "responses" | "completions";
         /** Explicitly specify the conversation ID to send this message to */
         conversationId?: string;
-        /** Callback when tool calls are received - used for client-side tool execution */
-        onToolCall?: (toolCall: { id: string; name: string; arguments: Record<string, any> }, clientTools: any[]) => Promise<any>;
         /** Flag to indicate this is the first message - used for title generation */
         isFirstMessage?: boolean;
       }
@@ -391,7 +389,6 @@ export function useAppChat({
           ...(options?.apiType && { apiType: options.apiType }),
           // Always pass the effectiveConversationId (either from options, hook state, or newly created)
           conversationId: effectiveConversationId ?? undefined,
-          ...(options?.onToolCall && { onToolCall: options.onToolCall }),
           ...(options?.isFirstMessage !== undefined && { isFirstMessage: options.isFirstMessage }),
           onThinking,
         });
