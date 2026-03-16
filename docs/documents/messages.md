@@ -48,7 +48,7 @@ See Setup for how to obtain `database`, `getToken`, and the wallet fields.
   });
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L293-L327)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L244-L278)
 
 ## Optimistic UI Updates
 
@@ -93,7 +93,7 @@ empty assistant placeholder that will be filled as the response streams in.
   );
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L615-L648)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L566-L599)
 
 ## Building Content Parts
 
@@ -147,7 +147,7 @@ and store non-image files in OPFS.
         }));
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L719-L755)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L669-L705)
 
 ## Calling sendMessage
 
@@ -236,7 +236,7 @@ the full list of options.
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L763-L838)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L713-L788)
 
 ## Stopping a Response
 
@@ -264,87 +264,14 @@ avoid triggering form submission.
   }, [stop]);
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L602-L611)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L553-L562)
 
 ## Tool Calling
 
-When client tools are provided and the model returns tool calls, a loop
-executes them locally via the `onToolCall` callback and sends results back to
-the model. The loop runs up to 10 iterations to handle chained tool calls.
-`extractToolCalls` and `safeParseArgs` are app-level helpers that normalize
-tool call formats across the Responses API, Chat Completions API, and
-SDK-wrapped responses.
-
-```ts
-      // Multi-turn tool calling loop (max 10 iterations)
-      if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClientTools.length > 0) {
-        let currentResponse: any = response;
-        let iteration = 0;
-
-        while (iteration++ < 10) {
-          if (stoppedRef.current) break;
-          // extractToolCalls normalizes across Responses API, Chat Completions, and SDK formats
-          const toolCalls = extractToolCalls(currentResponse);
-          if (toolCalls.length === 0) break;
-
-          // Execute each tool and collect results.
-          // Tools that return undefined (e.g. auto-execute tools already handled
-          // by the SDK's internal tool loop) are skipped to avoid sending garbage
-          // results back to the model.
-          const toolResults: Array<{ call_id: string; output: string }> = [];
-          for (const call of toolCalls) {
-            try {
-              const toolCall: ToolCall = {
-                id: call.id || call.call_id || `call_${Date.now()}`,
-                name: call.name || call.function?.name,
-                arguments: safeParseArgs(call.arguments ?? call.function?.arguments),
-              };
-              const result = await onToolCall(toolCall, effectiveClientTools);
-              if (result === undefined) continue;
-              toolResults.push({ call_id: toolCall.id, output: JSON.stringify(result) });
-            } catch (error) {
-              toolResults.push({
-                call_id: call.id || call.call_id || `call_${Date.now()}`,
-                output: JSON.stringify({ error: String(error) }),
-              });
-            }
-          }
-
-          // If no actionable tool results (all were auto-execute / undefined), stop the loop
-          if (toolResults.length === 0) break;
-
-          // Send results back to the model as a continuation message
-          const summary = toolResults.map((tr) => {
-            const name = toolCalls.find(c => (c.id || c.call_id) === tr.call_id)?.name || 'unknown';
-            return `Tool "${name}" returned: ${tr.output}`;
-          }).join('\n\n');
-
-          try {
-            currentResponse = await sendMessage({
-              messages: [{ role: 'user', content: [{ type: 'text', text: `[Tool Execution Results]\n\n${summary}\n\nBased on these results, continue with the task.` }] }],
-              model: model || 'openai/gpt-5.2-2025-12-11',
-              maxOutputTokens: maxOutputTokens || 16000,
-              includeHistory: true,
-              clientTools: effectiveClientTools,
-              toolChoice: 'auto',
-              ...(clientToolsFilter && { clientToolsFilter }),
-              ...(effectiveApiType && { apiType: effectiveApiType }),
-              ...(explicitConversationId && { conversationId: explicitConversationId }),
-              onData: (chunk: string) => {
-                streamingTextRef.current += chunk;
-                if (onStreamingData && loadedConversationIdRef.current === streamingConversationIdRef.current) {
-                  onStreamingData(chunk, streamingTextRef.current);
-                }
-              },
-            });
-          } catch {
-            break;
-          }
-        }
-      }
-```
-
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L842-L907)
+Tool execution is handled entirely by the SDK's internal tool loop. Client
+tools are passed to `sendMessage` with an `executor` function, and the SDK
+automatically executes them, sends results back to the model, and continues
+until the model stops calling tools or the iteration limit is reached.
 
 ## Title Generation
 
@@ -393,7 +320,7 @@ as a conversation message. `extractTextFromResponse` and
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L953-L988)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L834-L869)
 
 ## Post-Stream Cleanup
 
@@ -422,4 +349,4 @@ they switch back.
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L933-L949)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L814-L830)

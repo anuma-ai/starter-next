@@ -61,14 +61,10 @@ avoid triggering form submission.
 
 ## Tool Calling
 
-When client tools are provided and the model returns tool calls, a loop
-executes them locally via the `onToolCall` callback and sends results back to
-the model. The loop runs up to 10 iterations to handle chained tool calls.
-`extractToolCalls` and `safeParseArgs` are app-level helpers that normalize
-tool call formats across the Responses API, Chat Completions API, and
-SDK-wrapped responses.
-
-{@includeCode ../hooks/useAppChatStorage.ts#toolCalling}
+Tool execution is handled entirely by the SDK's internal tool loop. Client
+tools are passed to `sendMessage` with an `executor` function, and the SDK
+automatically executes them, sends results back to the model, and continues
+until the model stops calling tools or the iteration limit is reached.
 
 ## Title Generation
 
