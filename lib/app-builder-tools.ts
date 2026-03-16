@@ -52,7 +52,7 @@ export function createAppBuilderTools(
         },
         required: ["path", "content"],
       },
-      execute: async ({ path, content }: { path: string; content: string }) => {
+      executor: async ({ path, content }: { path: string; content: string }) => {
         if (!path) {
           return { success: false, error: "Path is required" };
         }
@@ -81,7 +81,7 @@ export function createAppBuilderTools(
         },
         required: ["path", "content"],
       },
-      execute: async ({ path, content }: { path: string; content: string }) => {
+      executor: async ({ path, content }: { path: string; content: string }) => {
         if (!path) {
           return { success: false, error: "Path is required" };
         }
@@ -107,7 +107,7 @@ export function createAppBuilderTools(
         },
         required: ["path"],
       },
-      execute: async ({ path }: { path: string }) => {
+      executor: async ({ path }: { path: string }) => {
         if (!path) {
           return { success: false, error: "Path is required" };
         }
@@ -129,7 +129,7 @@ export function createAppBuilderTools(
         },
         required: ["path"],
       },
-      execute: async ({ path }: { path: string }) => {
+      executor: async ({ path }: { path: string }) => {
         if (!path) {
           return { success: false, error: "Path is required" };
         }
@@ -157,7 +157,7 @@ export function createAppBuilderTools(
         properties: {},
         required: [],
       },
-      execute: async () => {
+      executor: async () => {
         const files = fileOps.listFiles();
         return files.map((f) => ({
           path: f.path,
@@ -180,7 +180,7 @@ export function createAppBuilderTools(
         },
         required: ["path"],
       },
-      execute: async ({ path }: { path: string }) => {
+      executor: async ({ path }: { path: string }) => {
         if (!path) {
           return { success: false, error: "Path is required" };
         }
