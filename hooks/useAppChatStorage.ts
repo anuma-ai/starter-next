@@ -70,12 +70,6 @@ type UseChatStorageProps = {
   encryptionReady?: boolean;
 };
 
-type ToolCall = {
-  id: string;
-  name: string;
-  arguments: Record<string, any>;
-};
-
 type SendMessageOptions = {
   model?: string;
   temperature?: number;
@@ -94,8 +88,6 @@ type SendMessageOptions = {
   apiType?: "responses" | "completions";
   /** Explicitly specify the conversation ID to send this message to */
   conversationId?: string;
-  /** Callback when tool calls are received - used for client-side tool execution */
-  onToolCall?: (toolCall: ToolCall, clientTools: any[]) => Promise<any>;
   /** Flag to indicate this is the first message - used for title generation */
   isFirstMessage?: boolean;
   /** Additional memory context (e.g. vault memories) to include alongside OCR context */
@@ -155,47 +147,6 @@ export function extractTextFromResponse(data: any): string | null {
     return data.choices[0].message.content;
   }
   return null;
-}
-
-/**
- * Safely parse JSON arguments from tool calls.
- * Handles undefined, null, JSON strings, and already-parsed objects.
- */
-function safeParseArgs(args: unknown): Record<string, unknown> {
-  if (args === undefined || args === null) {
-    return {};
-  }
-  if (typeof args === 'string' && args.trim()) {
-    try {
-      return JSON.parse(args);
-    } catch {
-      return {};
-    }
-  }
-  return (args as Record<string, unknown>) || {};
-}
-
-/**
- * Extract tool calls from an API response, handling multiple formats:
- * Responses API, Chat Completions API, and SDK-wrapped variants.
- */
-function extractToolCalls(response: any): any[] {
-  if (!response) return [];
-  if (response.toolCalls) return response.toolCalls;
-  if (response.tool_calls) return response.tool_calls;
-  if (response.data?.output && Array.isArray(response.data.output)) {
-    return response.data.output.filter((item: any) => item.type === 'function_call');
-  }
-  if (response.data?.choices?.[0]?.message?.tool_calls) {
-    return response.data.choices[0].message.tool_calls;
-  }
-  if (response.output && Array.isArray(response.output)) {
-    return response.output.filter((item: any) => item.type === 'function_call');
-  }
-  if (response.choices?.[0]?.message?.tool_calls) {
-    return response.choices[0].message.tool_calls;
-  }
-  return [];
 }
 
 /**
@@ -671,7 +622,6 @@ export function useAppChatStorage({
         toolChoice,
         apiType,
         conversationId: explicitConversationId,
-        onToolCall,
         isFirstMessage: isFirstMessageOption,
         memoryContext: additionalMemoryContext,
       } = options;
@@ -837,75 +787,6 @@ export function useAppChatStorage({
         response = await sendMessage(retryArgs);
       }
       //#endregion sendCall
-
-      //#region toolCalling
-      // Multi-turn tool calling loop (max 10 iterations)
-      if (!stoppedRef.current && onToolCall && effectiveClientTools && effectiveClientTools.length > 0) {
-        let currentResponse: any = response;
-        let iteration = 0;
-
-        while (iteration++ < 10) {
-          if (stoppedRef.current) break;
-          // extractToolCalls normalizes across Responses API, Chat Completions, and SDK formats
-          const toolCalls = extractToolCalls(currentResponse);
-          if (toolCalls.length === 0) break;
-
-          // Execute each tool and collect results.
-          // Tools that return undefined (e.g. auto-execute tools already handled
-          // by the SDK's internal tool loop) are skipped to avoid sending garbage
-          // results back to the model.
-          const toolResults: Array<{ call_id: string; output: string }> = [];
-          for (const call of toolCalls) {
-            try {
-              const toolCall: ToolCall = {
-                id: call.id || call.call_id || `call_${Date.now()}`,
-                name: call.name || call.function?.name,
-                arguments: safeParseArgs(call.arguments ?? call.function?.arguments),
-              };
-              const result = await onToolCall(toolCall, effectiveClientTools);
-              if (result === undefined) continue;
-              toolResults.push({ call_id: toolCall.id, output: JSON.stringify(result) });
-            } catch (error) {
-              toolResults.push({
-                call_id: call.id || call.call_id || `call_${Date.now()}`,
-                output: JSON.stringify({ error: String(error) }),
-              });
-            }
-          }
-
-          // If no actionable tool results (all were auto-execute / undefined), stop the loop
-          if (toolResults.length === 0) break;
-
-          // Send results back to the model as a continuation message
-          const summary = toolResults.map((tr) => {
-            const name = toolCalls.find(c => (c.id || c.call_id) === tr.call_id)?.name || 'unknown';
-            return `Tool "${name}" returned: ${tr.output}`;
-          }).join('\n\n');
-
-          try {
-            currentResponse = await sendMessage({
-              messages: [{ role: 'user', content: [{ type: 'text', text: `[Tool Execution Results]\n\n${summary}\n\nBased on these results, continue with the task.` }] }],
-              model: model || 'openai/gpt-5.2-2025-12-11',
-              maxOutputTokens: maxOutputTokens || 16000,
-              includeHistory: true,
-              clientTools: effectiveClientTools,
-              toolChoice: 'auto',
-              ...(clientToolsFilter && { clientToolsFilter }),
-              ...(effectiveApiType && { apiType: effectiveApiType }),
-              ...(explicitConversationId && { conversationId: explicitConversationId }),
-              onData: (chunk: string) => {
-                streamingTextRef.current += chunk;
-                if (onStreamingData && loadedConversationIdRef.current === streamingConversationIdRef.current) {
-                  onStreamingData(chunk, streamingTextRef.current);
-                }
-              },
-            });
-          } catch {
-            break;
-          }
-        }
-      }
-      //#endregion toolCalling
 
       // Persist auto-executed tool results (e.g. display_chart, display_weather)
       // as [Tool Execution Results] messages so they survive page refresh.

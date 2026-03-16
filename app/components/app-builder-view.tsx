@@ -634,36 +634,7 @@ ${diffSummary}`;
           skipOptimisticUpdate: true,
           isFirstMessage, // Pass to enable title generation for first message
           clientTools: appBuilderTools,
-          // Handle tool calls by executing the matching client tool
-          onToolCall: async (toolCall: { id: string; name: string; arguments: Record<string, any> }, tools: any[]) => {
-            console.log('[AppBuilder] Executing tool call:', toolCall.name, toolCall.arguments);
-
-            // Find the matching tool
-            const tool = tools.find((t) => t.name === toolCall.name);
-            if (!tool || !tool.executor) {
-              console.error('[AppBuilder] Tool not found or has no executor function:', toolCall.name);
-              return { error: `Tool ${toolCall.name} not found` };
-            }
-
-            try {
-              // Execute the tool
-              const result = await tool.executor(toolCall.arguments);
-              console.log('[AppBuilder] Tool result:', result);
-
-              // Sync files to git and refresh status after file operations
-              if (["create_file", "update_file", "delete_file"].includes(toolCall.name)) {
-                const currentFiles = listFiles();
-                await syncFilesToGit(currentFiles);
-                await refreshGitStatus();
-              }
-
-              return result;
-            } catch (error) {
-              console.error('[AppBuilder] Tool execution error:', error);
-              return { error: String(error) };
-            }
-          },
-        } as any // Use 'as any' since clientTools and onToolCall are handled by sendMessage but not typed in handleSubmit
+        } as any
       );
 
       // After AI completes, sync final state and refresh git status
