@@ -864,8 +864,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         await baseChatState.handleSubmit(message, {
           ...options,
           // Add onToolCall handler for client-side tool execution.
-          // Supports both flat format (name/execute) and SDK ToolConfig
-          // format (function.name/executor).
+          // Only handles non-auto-execute tools (e.g. interactive tools that
+          // need user input). Auto-execute tools are handled by the SDK's
+          // internal tool loop.
           onToolCall: async (toolCall: { id: string; name: string; arguments: Record<string, any> }, tools: any[]) => {
             const tool = tools.find((t: any) =>
               (t.function?.name || t.name) === toolCall.name
@@ -873,7 +874,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             // Skip server-side tools (not in clientTools) and auto-executed
             // tools (already handled by SDK's internal tool loop)
             if (!tool || tool.autoExecute) return undefined;
-            const executor = tool?.executor || tool?.execute;
+            const executor = tool?.executor;
             if (!executor) return undefined;
             try {
               return await executor(toolCall.arguments);

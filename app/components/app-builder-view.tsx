@@ -640,14 +640,14 @@ ${diffSummary}`;
 
             // Find the matching tool
             const tool = tools.find((t) => t.name === toolCall.name);
-            if (!tool || !tool.execute) {
-              console.error('[AppBuilder] Tool not found or has no execute function:', toolCall.name);
+            if (!tool || !tool.executor) {
+              console.error('[AppBuilder] Tool not found or has no executor function:', toolCall.name);
               return { error: `Tool ${toolCall.name} not found` };
             }
 
             try {
               // Execute the tool
-              const result = await tool.execute(toolCall.arguments);
+              const result = await tool.executor(toolCall.arguments);
               console.log('[AppBuilder] Tool result:', result);
 
               // Sync files to git and refresh status after file operations

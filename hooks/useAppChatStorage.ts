@@ -888,13 +888,7 @@ export function useAppChatStorage({
               model: model || 'openai/gpt-5.2-2025-12-11',
               maxOutputTokens: maxOutputTokens || 16000,
               includeHistory: true,
-              clientTools: effectiveClientTools?.map((t) => ({
-                type: t.type || 'function',
-                // Handle both nested (SDK tools) and flat (app-builder tools) structures
-                name: (t as any).function?.name || t.name,
-                description: (t as any).function?.description || t.description,
-                parameters: (t as any).function?.arguments || t.parameters,
-              })),
+              clientTools: effectiveClientTools,
               toolChoice: 'auto',
               ...(clientToolsFilter && { clientToolsFilter }),
               ...(effectiveApiType && { apiType: effectiveApiType }),
