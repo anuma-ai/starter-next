@@ -50,7 +50,7 @@ React's batching for low-latency DOM updates:
   );
 ```
 
-[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L493-L511)
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L490-L508)
 
 Subscribe from your component to receive the accumulated thinking text as it
 streams:

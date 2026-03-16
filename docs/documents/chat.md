@@ -90,7 +90,7 @@ The hook returns chat state, streaming subscriptions, and vault operations.
   };
 ```
 
-[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L519-L554)
+[hooks/useAppChat.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChat.ts#L516-L551)
 
 ## What's Next
 
