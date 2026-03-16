@@ -853,7 +853,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [encryptionReady, baseChatState.conversationId, baseChatState.switchConversation]);
 
-  // Wrap handleSubmit to track the current message for OAuth retry and add onToolCall handler
+  // Wrap handleSubmit to track the current message for OAuth retry
   const handleSubmit = useCallback(
     async (message: any, options?: any) => {
       // Track the message text for potential OAuth redirect
@@ -861,28 +861,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         currentMessageRef.current = message.text;
       }
       try {
-        await baseChatState.handleSubmit(message, {
-          ...options,
-          // Add onToolCall handler for client-side tool execution.
-          // Only handles non-auto-execute tools (e.g. interactive tools that
-          // need user input). Auto-execute tools are handled by the SDK's
-          // internal tool loop.
-          onToolCall: async (toolCall: { id: string; name: string; arguments: Record<string, any> }, tools: any[]) => {
-            const tool = tools.find((t: any) =>
-              (t.function?.name || t.name) === toolCall.name
-            );
-            // Skip server-side tools (not in clientTools) and auto-executed
-            // tools (already handled by SDK's internal tool loop)
-            if (!tool || tool.autoExecute) return undefined;
-            const executor = tool?.executor;
-            if (!executor) return undefined;
-            try {
-              return await executor(toolCall.arguments);
-            } catch (error) {
-              return { error: String(error) };
-            }
-          },
-        });
+        await baseChatState.handleSubmit(message, options);
       } finally {
         // Clear after successful send (or error)
         currentMessageRef.current = null;
