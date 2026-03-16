@@ -325,13 +325,7 @@ SDK-wrapped responses.
               model: model || 'openai/gpt-5.2-2025-12-11',
               maxOutputTokens: maxOutputTokens || 16000,
               includeHistory: true,
-              clientTools: effectiveClientTools?.map((t) => ({
-                type: t.type || 'function',
-                // Handle both nested (SDK tools) and flat (app-builder tools) structures
-                name: (t as any).function?.name || t.name,
-                description: (t as any).function?.description || t.description,
-                parameters: (t as any).function?.arguments || t.parameters,
-              })),
+              clientTools: effectiveClientTools,
               toolChoice: 'auto',
               ...(clientToolsFilter && { clientToolsFilter }),
               ...(effectiveApiType && { apiType: effectiveApiType }),
@@ -350,7 +344,7 @@ SDK-wrapped responses.
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L842-L913)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L842-L907)
 
 ## Title Generation
 
@@ -399,7 +393,7 @@ as a conversation message. `extractTextFromResponse` and
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L959-L994)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L953-L988)
 
 ## Post-Stream Cleanup
 
@@ -428,4 +422,4 @@ they switch back.
       }
 ```
 
-[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L939-L955)
+[hooks/useAppChatStorage.ts](https://github.com/anuma-ai/starter-next/blob/main/hooks/useAppChatStorage.ts#L933-L949)
