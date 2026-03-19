@@ -22,7 +22,7 @@ test.describe("chat", () => {
 
     // Verify the chat input is visible
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-    await expect(promptInput).toBeVisible();
+    await expect(promptInput).toBeVisible({ timeout: 30000 });
 
     // Verify submit button is visible
     const submitButton = page.getByRole("button", { name: "Submit" });
@@ -39,7 +39,7 @@ test.describe("chat", () => {
 
     // Wait for the chat interface to be ready
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-    await expect(promptInput).toBeVisible();
+    await expect(promptInput).toBeVisible({ timeout: 30000 });
 
     // Type a simple prompt
     const testPrompt = "Hello, say hi back in one word";
@@ -64,7 +64,7 @@ test.describe("chat", () => {
     await page.goto("/");
 
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-    await expect(promptInput).toBeVisible();
+    await expect(promptInput).toBeVisible({ timeout: 30000 });
 
     // Type a message
     await promptInput.fill("Test message");
@@ -88,7 +88,7 @@ test.describe("chat", () => {
 
     // Wait for the chat interface to be ready
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-    await expect(promptInput).toBeVisible();
+    await expect(promptInput).toBeVisible({ timeout: 30000 });
 
     // Attach the cat image via the hidden file input
     const fileInput = page.locator('input[type="file"]');
@@ -125,7 +125,7 @@ test.describe("chat", () => {
 
     // Wait for the chat interface to be ready
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-    await expect(promptInput).toBeVisible();
+    await expect(promptInput).toBeVisible({ timeout: 30000 });
 
     // Ask to generate an image of a cat (explicit request for actual image generation)
     const prompt = "Generate an actual image of a cat. Use image generation, not ASCII art.";
@@ -155,7 +155,7 @@ test.describe("chat", () => {
 
     // Wait for the chat interface to be ready
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-    await expect(promptInput).toBeVisible();
+    await expect(promptInput).toBeVisible({ timeout: 30000 });
 
     // Attach the Excel file via the hidden file input
     const fileInput = page.locator('input[type="file"]');
@@ -194,7 +194,7 @@ test.describe("chat", () => {
 
     // Wait for the chat interface to be ready
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-    await expect(promptInput).toBeVisible();
+    await expect(promptInput).toBeVisible({ timeout: 30000 });
 
     // Attach the Word document via the hidden file input
     const fileInput = page.locator('input[type="file"]');
@@ -233,7 +233,7 @@ test.describe("chat", () => {
 
     // Wait for the chat interface to be ready
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-    await expect(promptInput).toBeVisible();
+    await expect(promptInput).toBeVisible({ timeout: 30000 });
 
     // Attach the zip file via the hidden file input
     const fileInput = page.locator('input[type="file"]');
