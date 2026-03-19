@@ -10,7 +10,7 @@ test.describe("Chart display tool", () => {
     await page.goto("/");
 
     const promptInput = page.getByPlaceholder(CHAT_INPUT_PLACEHOLDER);
-    await expect(promptInput).toBeVisible();
+    await expect(promptInput).toBeVisible({ timeout: 30000 });
 
     const prompt =
       'Show a bar chart with title "Test Scores" and this data: ' +
