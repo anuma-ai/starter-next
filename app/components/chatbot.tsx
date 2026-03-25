@@ -60,6 +60,15 @@ import { useProjectTheme } from "@/hooks/useProjectTheme";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import { parseDisplayResults } from "@/lib/display-interaction";
 
+type InteractionData = {
+  title: string;
+  description?: string;
+  fields: any[];
+  options: any[];
+  allowMultiple?: boolean;
+  afterMessageId?: string;
+};
+
 function getErrorTitle(error: string): string {
   const e = error.toLowerCase();
   if (e.includes("timeout") || e.includes("etimedout")) return "Request timed out";
@@ -1031,9 +1040,9 @@ const ChatBotDemo = () => {
                       <div key={message.id} className="group">
                         <FormInteraction
                           id={interaction.id}
-                          title={interaction.data.title}
-                          description={interaction.data.description}
-                          fields={interaction.data.fields}
+                          title={(interaction.data as InteractionData).title}
+                          description={(interaction.data as InteractionData).description}
+                          fields={(interaction.data as InteractionData).fields}
                           resolved={true}
                           result={interaction.result}
                         />
@@ -1045,10 +1054,10 @@ const ChatBotDemo = () => {
                     <div key={message.id} className="group">
                       <ChoiceInteraction
                         id={interaction.id}
-                        title={interaction.data.title}
-                        description={interaction.data.description}
-                        options={interaction.data.options}
-                        allowMultiple={interaction.data.allowMultiple}
+                        title={(interaction.data as InteractionData).title}
+                        description={(interaction.data as InteractionData).description}
+                        options={(interaction.data as InteractionData).options}
+                        allowMultiple={(interaction.data as InteractionData).allowMultiple}
                         resolved={true}
                         result={interaction.result}
                       />
@@ -1341,7 +1350,7 @@ const ChatBotDemo = () => {
             // Inject resolved interactions before the message they were anchored to
             // This ensures the choice summary appears above the follow-up response
             const interactionsBeforeThisMsg = resolvedInteractions.filter(
-              i => !renderedInlineIds.has(i.id) && i.data.afterMessageId === message.id
+              i => !renderedInlineIds.has(i.id) && (i.data as InteractionData).afterMessageId === message.id
             );
 
             const hasInjections = interactionsBeforeThisMsg.length > 0;
@@ -1355,9 +1364,9 @@ const ChatBotDemo = () => {
                       <FormInteraction
                         key={interaction.id}
                         id={interaction.id}
-                        title={interaction.data.title}
-                        description={interaction.data.description}
-                        fields={interaction.data.fields}
+                        title={(interaction.data as InteractionData).title}
+                        description={(interaction.data as InteractionData).description}
+                        fields={(interaction.data as InteractionData).fields}
                         resolved={true}
                         result={interaction.result}
                       />
@@ -1365,10 +1374,10 @@ const ChatBotDemo = () => {
                       <ChoiceInteraction
                         key={interaction.id}
                         id={interaction.id}
-                        title={interaction.data.title}
-                        description={interaction.data.description}
-                        options={interaction.data.options}
-                        allowMultiple={interaction.data.allowMultiple}
+                        title={(interaction.data as InteractionData).title}
+                        description={(interaction.data as InteractionData).description}
+                        options={(interaction.data as InteractionData).options}
+                        allowMultiple={(interaction.data as InteractionData).allowMultiple}
                         resolved={true}
                         result={interaction.result}
                       />
@@ -1404,18 +1413,18 @@ const ChatBotDemo = () => {
                 <FormInteraction
                   key={interaction.id}
                   id={interaction.id}
-                  title={interaction.data.title}
-                  description={interaction.data.description}
-                  fields={interaction.data.fields}
+                  title={(interaction.data as InteractionData).title}
+                  description={(interaction.data as InteractionData).description}
+                  fields={(interaction.data as InteractionData).fields}
                 />
               ) : (
                 <ChoiceInteraction
                   key={interaction.id}
                   id={interaction.id}
-                  title={interaction.data.title}
-                  description={interaction.data.description}
-                  options={interaction.data.options}
-                  allowMultiple={interaction.data.allowMultiple}
+                  title={(interaction.data as InteractionData).title}
+                  description={(interaction.data as InteractionData).description}
+                  options={(interaction.data as InteractionData).options}
+                  allowMultiple={(interaction.data as InteractionData).allowMultiple}
                 />
               )
             )}
@@ -1423,7 +1432,7 @@ const ChatBotDemo = () => {
           {Array.from(uiInteraction.pendingInteractions.values())
             .filter((interaction) => interaction.resolved && interaction.type !== "display")
             .filter((interaction) => {
-              const anchorId = interaction.data.afterMessageId;
+              const anchorId = (interaction.data as InteractionData).afterMessageId;
               if (!anchorId) return true;
               const anchorExists = messages.some((m: any) => m.id === anchorId);
               const toolResultExists = messages.some((m: any) =>
@@ -1438,9 +1447,9 @@ const ChatBotDemo = () => {
                 <FormInteraction
                   key={interaction.id}
                   id={interaction.id}
-                  title={interaction.data.title}
-                  description={interaction.data.description}
-                  fields={interaction.data.fields}
+                  title={(interaction.data as InteractionData).title}
+                  description={(interaction.data as InteractionData).description}
+                  fields={(interaction.data as InteractionData).fields}
                   resolved={true}
                   result={interaction.result}
                 />
@@ -1448,10 +1457,10 @@ const ChatBotDemo = () => {
                 <ChoiceInteraction
                   key={interaction.id}
                   id={interaction.id}
-                  title={interaction.data.title}
-                  description={interaction.data.description}
-                  options={interaction.data.options}
-                  allowMultiple={interaction.data.allowMultiple}
+                  title={(interaction.data as InteractionData).title}
+                  description={(interaction.data as InteractionData).description}
+                  options={(interaction.data as InteractionData).options}
+                  allowMultiple={(interaction.data as InteractionData).allowMultiple}
                   resolved={true}
                   result={interaction.result}
                 />
