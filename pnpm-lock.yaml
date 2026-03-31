@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@anuma/sdk':
-        specifier: 1.0.0-next.20260325013233
-        version: 1.0.0-next.20260325013233(55651b44486e8415988216cdc97fc79a)
+        specifier: 1.0.0-next.20260329181416
+        version: 1.0.0-next.20260329181416(55651b44486e8415988216cdc97fc79a)
       '@codesandbox/sandpack-react':
         specifier: ^2.20.0
         version: 2.20.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -257,8 +257,8 @@ packages:
   '@anuma/portal@1.0.0-next.20260306183544':
     resolution: {integrity: sha512-kfvuWWwwV3Gtt4vbBp7cFWmWqI/0AevOThGUkoFUscb4ZLU25ZIcFBgXge28G6RJWNTHpLUO8gqoFOUdo1/jtA==}
 
-  '@anuma/sdk@1.0.0-next.20260325013233':
-    resolution: {integrity: sha512-BoBU6VAtiQA1YP7UjlENDn6C4gzxvPf4rUVMfn8R7un2RKWGYbtMSm2TNjMtuoV/sIvly44o1OQX5DySCpXjSQ==}
+  '@anuma/sdk@1.0.0-next.20260329181416':
+    resolution: {integrity: sha512-GNpaoQTVkWhwOgYvqIms4a5+NssfH6hQoQiXJ5lcoG7Zh8O3TxFLZls6senV5X7Ae4q0gM95tcjHZMyIHj8rNg==}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -4226,6 +4226,7 @@ packages:
   '@xmldom/xmldom@0.8.11':
     resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xyflow/react@12.10.0':
     resolution: {integrity: sha512-eOtz3whDMWrB4KWVatIBrKuxECHqip6PfA8fTpaS2RUGVpiEAe+nqDKsLqkViVWxDGreq0lWX71Xth/SPAzXiw==}
@@ -8827,7 +8828,7 @@ snapshots:
 
   '@anuma/portal@1.0.0-next.20260306183544': {}
 
-  '@anuma/sdk@1.0.0-next.20260325013233(55651b44486e8415988216cdc97fc79a)':
+  '@anuma/sdk@1.0.0-next.20260329181416(55651b44486e8415988216cdc97fc79a)':
     dependencies:
       '@anuma/portal': 1.0.0-next.20260306183544
       ai: 5.0.93(zod@4.3.5)
@@ -10282,7 +10283,7 @@ snapshots:
 
   '@hcaptcha/react-hcaptcha@1.17.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@babel/runtime': 7.28.4
+      '@babel/runtime': 7.29.2
       '@hcaptcha/loader': 2.3.0
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
@@ -10632,7 +10633,7 @@ snapshots:
 
   '@metamask/sdk@0.33.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
     dependencies:
-      '@babel/runtime': 7.28.4
+      '@babel/runtime': 7.29.2
       '@metamask/onboarding': 1.0.1
       '@metamask/providers': 16.1.0
       '@metamask/sdk-analytics': 0.0.5
@@ -13730,7 +13731,7 @@ snapshots:
 
   '@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)':
     dependencies:
-      '@babel/runtime': 7.28.4
+      '@babel/runtime': 7.29.2
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@solana/buffer-layout': 4.0.1
@@ -16134,7 +16135,7 @@ snapshots:
 
   date-fns@2.30.0:
     dependencies:
-      '@babel/runtime': 7.28.4
+      '@babel/runtime': 7.29.2
 
   date-fns@4.1.0: {}
 
