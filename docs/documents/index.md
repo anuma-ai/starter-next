@@ -28,7 +28,7 @@ pnpm install
 Create a `.env.local` file in the root directory:
 
 ```bash
-NEXT_PUBLIC_API_URL=https://portal.anuma-dev.ai
+NEXT_PUBLIC_API_URL=https://portal.anuma.ai
 NEXT_PUBLIC_PRIVY_APP_ID=<your-privy-app-id>
 ```
 
