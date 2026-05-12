@@ -17,7 +17,6 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import { getProjectTheme } from "@/lib/project-theme";
-import { useApps } from "@/hooks/useApps";
 import { RotatingLines } from "react-loader-spinner";
 
 
@@ -87,15 +86,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     encryptionReady,
   } = chatState;
 
-  // Apps hook - needs createConversation to create associated conversations
-  // and deleteConversation to clean up when apps are deleted
-  const {
-    apps,
-    isReady: appsReady,
-    createApp,
-    deleteApp,
-  } = useApps(createConversation, deleteConversation);
-
   const handleNewConversation = useCallback(async () => {
     // Apply global theme immediately before navigation to prevent flash
     applyTheme(getStoredThemeId());
@@ -117,7 +107,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   );
 
   const handleViewChange = useCallback(
-    (view: "chat" | "settings" | "conversations" | "files" | "projects" | "apps") => {
+    (view: "chat" | "settings" | "conversations" | "files" | "projects") => {
       if (view === "settings") {
         router.push("/settings");
       } else if (view === "conversations") {
@@ -126,32 +116,11 @@ export function AppLayout({ children }: AppLayoutProps) {
         router.push("/files");
       } else if (view === "projects") {
         router.push("/projects");
-      } else if (view === "apps") {
-        router.push("/apps");
       } else {
         router.push("/");
       }
     },
     [router]
-  );
-
-  const handleSelectApp = useCallback(
-    (appId: string) => {
-      router.push(`/apps/${appId}`);
-    },
-    [router]
-  );
-
-  const handleDeleteApp = useCallback(
-    async (appId: string) => {
-      const success = await deleteApp(appId);
-      // Navigate away if the deleted app is currently being viewed
-      if (success && pathname.startsWith("/apps/") && pathname.split("/")[2] === appId) {
-        router.push("/");
-      }
-      return success;
-    },
-    [deleteApp, pathname, router]
   );
 
   const handleSelectProject = useCallback(
@@ -183,8 +152,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     ? "files"
     : pathname.startsWith("/projects")
     ? "projects"
-    : pathname.startsWith("/apps")
-    ? "apps"
     : "chat";
   const insetBackground = "bg-background";
 
@@ -194,11 +161,6 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Extract selected project ID from pathname (e.g., /projects/abc123)
   const selectedProjectId = pathname.startsWith("/projects/")
-    ? pathname.split("/")[2]
-    : null;
-
-  // Extract selected app ID from pathname (e.g., /apps/abc123)
-  const selectedAppId = pathname.startsWith("/apps/")
     ? pathname.split("/")[2]
     : null;
 
@@ -241,12 +203,6 @@ export function AppLayout({ children }: AppLayoutProps) {
           updateConversationProject={updateConversationProject}
           encryptionReady={encryptionReady}
           onDeleteConversation={deleteConversation}
-          apps={apps}
-          appsReady={appsReady}
-          selectedAppId={selectedAppId}
-          onSelectApp={handleSelectApp}
-          onCreateApp={createApp}
-          onDeleteApp={handleDeleteApp}
         />
         <SidebarHandle />
         <SidebarInset className={`min-h-dvh min-w-0 ${insetBackground}`}>
