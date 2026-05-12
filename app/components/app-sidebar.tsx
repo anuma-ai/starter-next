@@ -9,9 +9,6 @@ import {
   FolderLibraryIcon,
   ArrowRight01Icon,
   ArrowDown01Icon,
-  CodeIcon,
-  SourceCodeIcon,
-  FileScriptIcon,
   MoreVerticalIcon,
   Delete02Icon,
 } from "@hugeicons/core-free-icons";
@@ -37,7 +34,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import type { StoredProject, StoredConversation, CreateProjectOptions, StoredMessage } from "@anuma/sdk/react";
-import type { StoredApp, CreateAppOptions } from "@/types/app";
 import { ThemedProjectIcon } from "@/components/project-icon-picker";
 import { getStoredConversationTitle } from "@/hooks/useAppChatStorage";
 import { getProjectTheme } from "@/lib/project-theme";
@@ -73,8 +69,8 @@ type AppSidebarProps = {
   conversationId: string | null;
   onNewConversation: () => void;
   onSelectConversation: (id: string) => void;
-  currentView: "chat" | "settings" | "conversations" | "files" | "projects" | "apps";
-  onViewChange: (view: "chat" | "settings" | "conversations" | "files" | "projects" | "apps") => void;
+  currentView: "chat" | "settings" | "conversations" | "files" | "projects";
+  onViewChange: (view: "chat" | "settings" | "conversations" | "files" | "projects") => void;
   // Projects
   projects: StoredProject[];
   projectsReady: boolean;
@@ -89,13 +85,6 @@ type AppSidebarProps = {
   updateConversationProject: (conversationId: string, projectId: string | null) => Promise<boolean>;
   encryptionReady: boolean;
   onDeleteConversation: (conversationId: string) => Promise<void>;
-  // Apps
-  apps: StoredApp[];
-  appsReady: boolean;
-  selectedAppId: string | null;
-  onSelectApp: (appId: string) => void;
-  onCreateApp: (opts?: CreateAppOptions) => Promise<StoredApp | null>;
-  onDeleteApp: (appId: string) => Promise<boolean>;
 };
 
 // Sortable project item with drag-and-drop support
@@ -228,109 +217,6 @@ function ProjectItemOverlay({
           <span className="truncate">{project.name || "Project"}</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
-    </div>
-  );
-}
-
-// App item component - similar to SortableProjectItem but without drag-and-drop
-function AppItem({
-  app,
-  isExpanded,
-  isActive,
-  onSelect,
-  onToggleExpand,
-  onDelete,
-}: {
-  app: StoredApp;
-  isExpanded: boolean;
-  isActive: boolean;
-  onSelect: () => void;
-  onToggleExpand: () => void;
-  onDelete: () => void;
-}) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const showChevron = isHovered && !isMenuOpen;
-  const showMenu = isHovered || isMenuOpen;
-
-  return (
-    <div className="mb-0.5">
-      <SidebarMenuItem
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <SidebarMenuButton
-          isActive={isActive}
-          onClick={onSelect}
-          className="cursor-pointer"
-        >
-          <span
-            onClick={(e) => {
-              if (showChevron) {
-                e.stopPropagation();
-                onToggleExpand();
-              }
-            }}
-            className={`relative shrink-0 w-4 h-4 flex items-center justify-center ${showChevron ? 'cursor-pointer' : ''}`}
-            role={showChevron ? "button" : undefined}
-          >
-            <HugeiconsIcon
-              icon={CodeIcon}
-              size={16}
-              className={`absolute ${showChevron ? 'opacity-0' : 'opacity-100'}`}
-            />
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
-              size={16}
-              className={`absolute ${showChevron ? 'opacity-100' : 'opacity-0'} transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-            />
-          </span>
-          <span className="truncate">{app.name || "Untitled App"}</span>
-        </SidebarMenuButton>
-        {showMenu && (
-          <DropdownMenu onOpenChange={setIsMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuAction className="cursor-pointer">
-                <HugeiconsIcon icon={MoreVerticalIcon} size={14} />
-              </SidebarMenuAction>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="right">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-                className="text-destructive focus:text-destructive cursor-pointer"
-              >
-                <HugeiconsIcon icon={Delete02Icon} size={16} className="text-destructive" />
-                Delete app
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </SidebarMenuItem>
-      {/* Nested conversation when expanded */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="ml-6 mt-0.5 overflow-hidden"
-          >
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={isActive}
-                onClick={onSelect}
-                className="cursor-pointer text-sm"
-              >
-                <span className="truncate">Chat</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -509,12 +395,6 @@ export function AppSidebar({
   updateConversationProject,
   encryptionReady,
   onDeleteConversation,
-  apps,
-  appsReady,
-  selectedAppId,
-  onSelectApp,
-  onCreateApp,
-  onDeleteApp,
 }: AppSidebarProps) {
   const { authenticated, login, ready } = usePrivy();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
@@ -522,23 +402,6 @@ export function AppSidebar({
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("sidebar-expanded-projects");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return new Set(parsed);
-          }
-        }
-      } catch {
-        // Ignore errors
-      }
-    }
-    return new Set();
-  });
-  const [expandedApps, setExpandedApps] = useState<Set<string>>(() => {
-    // Initialize from localStorage
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("sidebar-expanded-apps");
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
@@ -634,34 +497,6 @@ export function AppSidebar({
       // Ignore localStorage errors
     }
   }, [expandedProjects]);
-
-  // Save expanded apps to localStorage when it changes (only after initial load)
-  useEffect(() => {
-    if (!hasLoadedFromStorage.current) return;
-    try {
-      localStorage.setItem("sidebar-expanded-apps", JSON.stringify([...expandedApps]));
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, [expandedApps]);
-
-  // Create a Set of app conversationIds to filter them from project conversations
-  const appConversationIds = useMemo(() => {
-    return new Set(apps.map(app => app.conversationId));
-  }, [apps]);
-
-  // Toggle app expansion
-  const toggleAppExpanded = (appId: string) => {
-    setExpandedApps(prev => {
-      const newExpanded = new Set(prev);
-      if (newExpanded.has(appId)) {
-        newExpanded.delete(appId);
-      } else {
-        newExpanded.add(appId);
-      }
-      return newExpanded;
-    });
-  };
 
   // Handle conversation deletion - remove from local state and call delete function
   const handleDeleteConversation = async (conversationId: string) => {
@@ -1153,19 +988,6 @@ export function AppSidebar({
                     <HugeiconsIcon icon={FolderLibraryIcon} size={16} />
                     New project
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      // Create app with default empty name
-                      const app = await onCreateApp({ name: "" });
-                      if (app?.appId) {
-                        // Navigate to the app page
-                        onSelectApp(app.appId);
-                      }
-                    }}
-                  >
-                    <HugeiconsIcon icon={CodeIcon} size={16} />
-                    New app
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarMenuItem>
@@ -1225,9 +1047,7 @@ export function AppSidebar({
                         >
                           {orderedProjects.map((project) => {
                             const isExpanded = expandedProjects.has(project.projectId);
-                            // Filter out app conversations - they should only appear under their parent app
-                            const conversations = (projectConversations[project.projectId] || [])
-                              .filter(conv => !appConversationIds.has(conv.conversationId));
+                            const conversations = projectConversations[project.projectId] || [];
                             return (
                               <SortableProjectItem
                                 key={project.projectId}
@@ -1313,31 +1133,6 @@ export function AppSidebar({
                       ) : null}
                     </DragOverlay>
                   </DndContext>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )}
-
-          {/* Apps Section */}
-          {appsReady && apps.length > 0 && (
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {apps.map((app) => {
-                    const isExpanded = expandedApps.has(app.appId);
-                    const isActive = currentView === "apps" && selectedAppId === app.appId;
-                    return (
-                      <AppItem
-                        key={app.appId}
-                        app={app}
-                        isExpanded={isExpanded}
-                        isActive={isActive}
-                        onSelect={() => onSelectApp(app.appId)}
-                        onToggleExpand={() => toggleAppExpanded(app.appId)}
-                        onDelete={() => onDeleteApp(app.appId)}
-                      />
-                    );
-                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
