@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@anuma/sdk':
-        specifier: 1.0.0-next.20260329181416
-        version: 1.0.0-next.20260329181416(55651b44486e8415988216cdc97fc79a)
+        specifier: 1.0.0-next.20260512083222
+        version: 1.0.0-next.20260512083222(55651b44486e8415988216cdc97fc79a)
       '@codesandbox/sandpack-react':
         specifier: ^2.20.0
         version: 2.20.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -254,11 +254,11 @@ packages:
   '@antfu/install-pkg@1.1.0':
     resolution: {integrity: sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ==}
 
-  '@anuma/portal@1.0.0-next.20260306183544':
-    resolution: {integrity: sha512-kfvuWWwwV3Gtt4vbBp7cFWmWqI/0AevOThGUkoFUscb4ZLU25ZIcFBgXge28G6RJWNTHpLUO8gqoFOUdo1/jtA==}
+  '@anuma/portal@1.0.0-next.20260410171436':
+    resolution: {integrity: sha512-JHvwhHN9mOvGPMM1LDVa5XwDESTBbpIAf1AaTaXD6rxatI5yIZRpMv2TU5U1El/EDwMHwNtkCACu1EDqLswrUQ==}
 
-  '@anuma/sdk@1.0.0-next.20260329181416':
-    resolution: {integrity: sha512-GNpaoQTVkWhwOgYvqIms4a5+NssfH6hQoQiXJ5lcoG7Zh8O3TxFLZls6senV5X7Ae4q0gM95tcjHZMyIHj8rNg==}
+  '@anuma/sdk@1.0.0-next.20260512083222':
+    resolution: {integrity: sha512-QokUgoIjhQkb83FAMT+eVQXT2X3JvPISi7Px/Ple2GXlB7iaIFeKLn//mDoCqRkwqYsdub41pDWvvjXfKgw8qQ==}
     peerDependencies:
       '@huggingface/transformers': ^3.0.0
       '@nozbe/watermelondb': ^0.28.0
@@ -589,6 +589,11 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
+  '@babel/parser@7.29.3':
+    resolution: {integrity: sha512-b3ctpQwp+PROvU/cttc4OYl4MzfJUWy6FZg+PMXfzmt/+39iHVF0sDfqay8TQM3JA2EUOyKcFZt75jWriQijsA==}
+    engines: {node: '>=6.0.0'}
+    hasBin: true
+
   '@babel/runtime@7.26.0':
     resolution: {integrity: sha512-FDSOghenHTiToteC/QRlv2q3DhPZ/oOXTBoirfWNx1Cx3TMVcGWQtMMmQcSvb/JjpNeGzx8Pq/b4fKEJuWm1sw==}
     engines: {node: '>=6.9.0'}
@@ -611,6 +616,10 @@ packages:
 
   '@babel/types@7.28.5':
     resolution: {integrity: sha512-qQ5m48eI/MFLQ5PxQj4PFaprjyCTLI37ElWMmNs0K8Lk3dVeOdNpB3ks8jc7yM5CDmVC73eMVk/trk3fgmrUpA==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/types@7.29.0':
+    resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
 
   '@base-org/account@1.1.1':
@@ -6229,6 +6238,10 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
+  jsonrepair@3.14.0:
+    resolution: {integrity: sha512-tWPGKMZf/8UPim+fcW2EfcQ/d/7aKUrP6IECz9G3Tu6Q5dX0orSleqJ9z6sSw7qrQkjF8/Edo4DvsWBZ8H+HNg==}
+    hasBin: true
+
   jspdf@4.2.1:
     resolution: {integrity: sha512-YyAXyvnmjTbR4bHQRLzex3CuINCDlQnBqoSYyjJwTP2x9jDLuKDzy7aKUl0hgx3uhcl7xzg32agn5vlie6HIlQ==}
 
@@ -8410,6 +8423,7 @@ packages:
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@9.0.1:
@@ -8826,14 +8840,17 @@ snapshots:
       package-manager-detector: 1.6.0
       tinyexec: 1.0.2
 
-  '@anuma/portal@1.0.0-next.20260306183544': {}
+  '@anuma/portal@1.0.0-next.20260410171436': {}
 
-  '@anuma/sdk@1.0.0-next.20260329181416(55651b44486e8415988216cdc97fc79a)':
+  '@anuma/sdk@1.0.0-next.20260512083222(55651b44486e8415988216cdc97fc79a)':
     dependencies:
-      '@anuma/portal': 1.0.0-next.20260306183544
+      '@anuma/portal': 1.0.0-next.20260410171436
+      '@babel/parser': 7.29.3
+      '@babel/types': 7.29.0
       ai: 5.0.93(zod@4.3.5)
       exceljs: 4.4.0
       html2canvas: 1.4.1
+      jsonrepair: 3.14.0
       jspdf: 4.2.1
       jszip: 3.10.1
       mammoth: 1.11.0
@@ -9639,6 +9656,10 @@ snapshots:
     dependencies:
       '@babel/types': 7.28.5
 
+  '@babel/parser@7.29.3':
+    dependencies:
+      '@babel/types': 7.29.0
+
   '@babel/runtime@7.26.0':
     dependencies:
       regenerator-runtime: 0.14.1
@@ -9666,6 +9687,11 @@ snapshots:
       - supports-color
 
   '@babel/types@7.28.5':
+    dependencies:
+      '@babel/helper-string-parser': 7.27.1
+      '@babel/helper-validator-identifier': 7.28.5
+
+  '@babel/types@7.29.0':
     dependencies:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
@@ -16862,7 +16888,7 @@ snapshots:
 
   extension-port-stream@3.0.0:
     dependencies:
-      readable-stream: 3.6.2
+      readable-stream: 4.7.0
       webextension-polyfill: 0.10.0
 
   eyes@0.1.8: {}
@@ -17648,6 +17674,8 @@ snapshots:
       minimist: 1.2.8
 
   json5@2.2.3: {}
+
+  jsonrepair@3.14.0: {}
 
   jspdf@4.2.1:
     dependencies:
