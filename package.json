@@ -11,7 +11,7 @@
     "generate": "node scripts/generate-docs.mjs",
     "test:e2e": "playwright test",
     "test:e2e:light": "playwright test --grep @light",
-    "test:e2e:full": "playwright test --grep @full",
+    "test:e2e:full": "playwright test e2e/encryption.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "seed": "open http://localhost:3000/dev/seed",
