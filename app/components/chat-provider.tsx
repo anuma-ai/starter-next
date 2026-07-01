@@ -286,22 +286,28 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         // the still-pending request or picks up the key if it landed late.
         let lastError: unknown = null;
         for (let attempt = 1; attempt <= ENCRYPTION_MAX_ATTEMPTS; attempt++) {
+          // Observe the request's rejection even if the timeout wins the
+          // race, so an abandoned attempt can't surface as an unhandled
+          // promise rejection later
+          const keyRequest = requestEncryptionKey(
+            walletAddress,
+            signMessageRef.current,
+            signer
+          );
+          keyRequest.catch(() => {});
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
           try {
             await Promise.race([
-              requestEncryptionKey(
-                walletAddress,
-                signMessageRef.current,
-                signer
-              ),
-              new Promise<never>((_, reject) =>
-                setTimeout(
+              keyRequest,
+              new Promise<never>((_, reject) => {
+                timeoutId = setTimeout(
                   () =>
                     reject(
                       new Error("Timed out waiting for wallet signature")
                     ),
                   ENCRYPTION_ATTEMPT_TIMEOUT_MS
-                )
-              ),
+                );
+              }),
             ]);
             lastError = null;
             break;
@@ -316,6 +322,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 setTimeout(resolve, ENCRYPTION_RETRY_BASE_DELAY_MS * attempt)
               );
             }
+          } finally {
+            // Stop the timer so a won race doesn't leave a rejection behind
+            clearTimeout(timeoutId);
           }
         }
         if (lastError) throw lastError;
