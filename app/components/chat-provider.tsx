@@ -20,6 +20,7 @@ import { useAppChat } from "@/hooks/useAppChat";
 import {
   requestEncryptionKey,
   hasEncryptionKey,
+  onKeyAvailable,
   // Google Calendar Auth
   getValidCalendarToken,
   getCalendarAccessToken,
@@ -52,6 +53,15 @@ import { createUIInteractionTools } from "@/lib/ui-interaction-tools";
 import { useNotionTools } from "@/hooks/useNotionTools";
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+
+// Encryption key derivation requires a wallet signature that involves a
+// network round-trip to Privy (wallet UIs are disabled), so each attempt
+// must be bounded — otherwise a stalled request (common behind a VPN) hangs
+// the full-screen loading gate in app-layout.tsx forever. 10s matches the
+// identity-token safety timeout below.
+const ENCRYPTION_ATTEMPT_TIMEOUT_MS = 10_000;
+const ENCRYPTION_MAX_ATTEMPTS = 3;
+const ENCRYPTION_RETRY_BASE_DELAY_MS = 2_000;
 
 type VaultSaveOperation = {
   action: "add" | "update";
@@ -117,6 +127,8 @@ type ChatState = {
   triggerProjectConversationsRefresh: () => void;
   // Encryption state
   encryptionReady: boolean;
+  encryptionError: string | null;
+  retryEncryption: () => void;
   // Stop streaming
   stop: () => void;
 };
@@ -205,6 +217,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // State to track when encryption is ready (for reactive updates)
   // Start as false - will be set to true after encryption is verified/initialized
   const [encryptionReady, setEncryptionReady] = useState(false);
+  // Set when all key-derivation attempts fail, so the UI can show an error
+  // with a retry instead of an infinite spinner
+  const [encryptionError, setEncryptionError] = useState<string | null>(null);
+  // Bumped by retryEncryption() to re-run the init effect after a failure
+  const [encryptionRetryNonce, setEncryptionRetryNonce] = useState(0);
 
   // Check if wallets are ready (connected) before trying to sign
   // Must wait for Privy to be fully ready AND have an embedded wallet with an address
@@ -220,6 +237,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       // If no wallet, encryption isn't needed - mark as ready
       if (privyReady) {
         setEncryptionReady(true);
+        setEncryptionError(null);
       }
       return;
     }
@@ -247,6 +265,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       isInitializingRef.current = true;
+      setEncryptionError(null);
       try {
         // In development, wait a bit for Privy to fully initialize wallet connections
         if (process.env.NODE_ENV === "development") {
@@ -261,22 +280,85 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         console.log("[Encryption] Embedded wallet available:", !!embedded);
         console.log("[Encryption] Using embedded signer:", !!signer);
 
-        await requestEncryptionKey(
-          walletAddress,
-          signMessageRef.current,
-          signer
-        );
+        // Bound each attempt with a timeout and retry with backoff. The
+        // timeout doesn't abort the underlying Privy request — the SDK
+        // dedupes in-flight requests per wallet — so a retry either joins
+        // the still-pending request or picks up the key if it landed late.
+        let lastError: unknown = null;
+        for (let attempt = 1; attempt <= ENCRYPTION_MAX_ATTEMPTS; attempt++) {
+          try {
+            await Promise.race([
+              requestEncryptionKey(
+                walletAddress,
+                signMessageRef.current,
+                signer
+              ),
+              new Promise<never>((_, reject) =>
+                setTimeout(
+                  () =>
+                    reject(
+                      new Error("Timed out waiting for wallet signature")
+                    ),
+                  ENCRYPTION_ATTEMPT_TIMEOUT_MS
+                )
+              ),
+            ]);
+            lastError = null;
+            break;
+          } catch (err) {
+            lastError = err;
+            console.error(
+              `[Encryption] Attempt ${attempt}/${ENCRYPTION_MAX_ATTEMPTS} failed:`,
+              err
+            );
+            if (attempt < ENCRYPTION_MAX_ATTEMPTS) {
+              await new Promise((resolve) =>
+                setTimeout(resolve, ENCRYPTION_RETRY_BASE_DELAY_MS * attempt)
+              );
+            }
+          }
+        }
+        if (lastError) throw lastError;
+
         encryptionInitializedRef.current = walletAddress;
         setEncryptionReady(true);
         console.log("[Encryption] Key initialized successfully");
       } catch (err) {
         console.error("[Encryption] Failed to initialize:", err);
+        // A timed-out attempt doesn't abort the underlying request — the key
+        // may have landed while the error was being thrown
+        if (hasEncryptionKey(walletAddress)) {
+          encryptionInitializedRef.current = walletAddress;
+          setEncryptionReady(true);
+        } else {
+          setEncryptionError(
+            err instanceof Error
+              ? err.message
+              : "Failed to set up encryption for your session"
+          );
+        }
       } finally {
         isInitializingRef.current = false;
       }
     };
     initEncryption();
-  }, [walletAddress, walletsReady, privyReady]);
+  }, [walletAddress, walletsReady, privyReady, encryptionRetryNonce]);
+
+  // If the key lands after our timeout gave up (the race doesn't abort the
+  // underlying Privy request), pick it up instead of requiring a manual retry
+  useEffect(() => {
+    if (!walletAddress || encryptionReady) return;
+    return onKeyAvailable(walletAddress, () => {
+      encryptionInitializedRef.current = walletAddress;
+      setEncryptionReady(true);
+      setEncryptionError(null);
+    });
+  }, [walletAddress, encryptionReady]);
+
+  const retryEncryption = useCallback(() => {
+    setEncryptionError(null);
+    setEncryptionRetryNonce((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     const savedTemp = localStorage.getItem("chat_temperature");
@@ -961,6 +1043,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       triggerProjectConversationsRefresh,
       // Encryption
       encryptionReady,
+      encryptionError,
+      retryEncryption,
       // Memory vault
       recentVaultSave,
       undoVaultSave,
@@ -988,6 +1072,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setPendingProjectAssignment,
       triggerProjectConversationsRefresh,
       encryptionReady,
+      encryptionError,
+      retryEncryption,
       recentVaultSave,
       undoVaultSave,
       dismissVaultSave,
