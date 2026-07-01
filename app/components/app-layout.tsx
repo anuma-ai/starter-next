@@ -18,6 +18,7 @@ import { SidebarLeftIcon } from "@hugeicons/core-free-icons";
 import { applyTheme, getStoredThemeId } from "@/hooks/useTheme";
 import { getProjectTheme } from "@/lib/project-theme";
 import { RotatingLines } from "react-loader-spinner";
+import { Button } from "@/components/ui/button";
 
 
 type AppLayoutProps = {
@@ -84,6 +85,8 @@ export function AppLayout({ children }: AppLayoutProps) {
     getMessages,
     updateConversationProject,
     encryptionReady,
+    encryptionError,
+    retryEncryption,
   } = chatState;
 
   const handleNewConversation = useCallback(async () => {
@@ -163,6 +166,23 @@ export function AppLayout({ children }: AppLayoutProps) {
   const selectedProjectId = pathname.startsWith("/projects/")
     ? pathname.split("/")[2]
     : null;
+
+  // Encryption setup failed (e.g. a stalled Privy signing request behind a
+  // VPN) — offer a retry instead of leaving the user on an endless spinner
+  if (ready && authenticated && !encryptionReady && encryptionError) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-base font-medium">
+          Couldn&apos;t secure your session
+        </p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          We couldn&apos;t reach your wallet to set up encryption. This can
+          happen on slow connections or behind a VPN.
+        </p>
+        <Button onClick={retryEncryption}>Retry</Button>
+      </div>
+    );
+  }
 
   // Show loading state while auth is initializing, user is not authenticated,
   // or encryption is still being set up (to prevent flash of encrypted content)
